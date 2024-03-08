@@ -3,7 +3,7 @@ with Interfaces.C.Strings; use Interfaces.C.Strings;
 with Raymath; use Raymath;
 
 package Raylib is
-    procedure Init_Window(Width, Height: int; Title: chars_ptr)
+    procedure Init_Window(Width, Height: int; Title: in char_array)
         with 
             Import => True, 
             Convention => C, 
@@ -121,4 +121,14 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "IsKeyDown";
+    function Measure_Text(Text: Char_Array; FontSize: Int) return Int
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "MeasureText";
+    procedure Draw_Text(Text: Char_Array; PosX, PosY: Int; FontSize: Int; C: Color)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "DrawText";
 end Raylib;

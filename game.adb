@@ -9,6 +9,8 @@ with Ada.Containers.Vectors;
 with Ada.Unchecked_Deallocation;
 with Ada.Containers.Hashed_Maps;
 use Ada.Containers;
+with Ada.Strings.Fixed; use Ada.Strings.Fixed;
+with Ada.Strings;
 
 procedure Game is
     COLOR_BACKGROUND : constant Color := Get_Color(16#0b1424ff#);
@@ -18,6 +20,7 @@ procedure Game is
     COLOR_RED        : constant Color := Get_Color(16#FF0000FF#);
     COLOR_DOOR       : constant Color := Get_Color(16#ff9700ff#);
     COLOR_KEY        : constant Color := Get_Color(16#ff9700ff#);
+    COLOR_LABEL      : constant Color := Get_Color(16#FFFFFFFF#);
 
     type Cell is (None, Floor, Wall, Barricade, Door);
     Width : constant Integer := 20;
@@ -75,10 +78,18 @@ procedure Game is
         Bombs: Integer := 0;
     end record;
 
+    package Hashed_Map_Bombs is new
+        Ada.Containers.Hashed_Maps(
+            Key_Type => IVector2,
+            Element_Type => Integer,
+            Hash => Hash_IVector2,
+            Equivalent_Keys => Equivalent_IVector2);
+
     type Game_State is record
         Map: Map_Access := Null;
         Player: Player_State;
         Items: Hashed_Map_Items.Map;
+        Bombs: Hashed_Map_Bombs.Map;
         Camera_Position: Vector2 := (x => 0.0, y => 0.0);
         Camera_Velocity: Vector2 := (x => 0.0, y => 0.0);
     end record;
@@ -111,6 +122,7 @@ procedure Game is
             Delete_Map(Game.Map);
         end if;
         Game.Items.Clear;
+        Game.Bombs.Clear;
 
         Game.Map := new Map(1..Height, 1..Width);
         for Row in Game.Map'Range(1) loop
@@ -247,11 +259,12 @@ procedure Game is
     );
 
     Game: Game_State;
+    Title: Char_Array := To_C("Hello, NSA");
 begin
     Load_Game_From_File("map.txt", Game, True);
     Put_Line("Keys: " & Integer'Image(Game.Player.Keys));
     Set_Config_Flags(FLAG_WINDOW_RESIZABLE);
-    Init_Window(800, 600, New_String("Hello, NSA"));
+    Init_Window(800, 600, Title);
     while Window_Should_Close = 0 loop
         Begin_Drawing;
             Clear_Background(COLOR_BACKGROUND);
@@ -276,25 +289,49 @@ begin
                     if Boolean(Is_Key_Down(KEY_SPACE)) and then Game.Player.Bombs > 0 then
                         for Dir in Direction loop
                             declare
-                                Side: IVector2 := Game.Player.Position;
+                                Position: IVector2 := Game.Player.Position;
                             begin
-                                Step(Dir, Side);
-                                if Game.Map(Side.Y, Side.X) = Floor then
-                                    Draw_Bomb(Side);
+                                Step(Dir, Position);
+                                if Game.Map(Position.Y, Position.X) = Floor then
+                                    Draw_Bomb(Position);
                                     if Is_Key_Pressed(Keys(Dir)) then
-                                        Game.Map(Side.Y, Side.X) := Wall;
+                                        Game.Bombs.Insert(Position, 3);
                                         Game.Player.Bombs := Game.Player.Bombs - 1;
                                     end if;
                                 end if;
                             end;
                         end loop;
                     else
-                        for Dir in Direction loop
-                            if Is_Key_Pressed(Keys(Dir)) then
-                                Player_Step(Game, Dir);
-                            end if;
-                        end loop;
+                        declare
+                            use Hashed_Map_Bombs;
+                        begin
+                            for Dir in Direction loop
+                                if Is_Key_Pressed(Keys(Dir)) then
+                                    Player_Step(Game, Dir);
+                                    for C in Game.Bombs.Iterate loop
+                                        Game.Bombs.Replace_Element(C, Element(C) - 1);
+                                    end loop;
+                                end if;
+                            end loop;
+                        end;
                     end if;
+
+                    declare
+                        use Hashed_Map_Bombs;
+                    begin
+                        for C in Game.Bombs.Iterate loop
+                            Draw_Bomb(Key(C));
+                            declare
+                                Label: Char_Array := To_C(Trim(Integer'Image(Element(C)), Ada.Strings.Left));
+                                Label_Height: Integer := 32;
+                                Label_Width: Integer := Integer(Measure_Text(Label, Int(Label_Height)));
+                                Text_Size: Vector2 := To_Vector2((Label_Width, Label_Height));
+                                Position: Vector2 := To_Vector2(Key(C))*Cell_Size + Cell_Size*0.5 - Text_Size*0.5;
+                            begin
+                                Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), COLOR_LABEL);
+                            end;
+                        end loop;
+                    end;
                 End_Mode2D;
                 for Index in 1..Game.Player.Keys loop
                     declare
