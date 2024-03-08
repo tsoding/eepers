@@ -76,7 +76,7 @@ procedure Game is
     end record;
 
     type Game_State is record
-        Current_World: Map_Access := Null;
+        Map: Map_Access := Null;
         Player: Player_State;
         Items: Hashed_Map_Items.Map;
         Camera_Position: Vector2 := (x => 0.0, y => 0.0);
@@ -107,41 +107,41 @@ procedure Game is
         end loop;
         Close(F);
 
-        if Game.Current_World /= Null then
-            Delete_Map(Game.Current_World);
+        if Game.Map /= Null then
+            Delete_Map(Game.Map);
         end if;
         Game.Items.Clear;
 
-        Game.Current_World := new Map(1..Height, 1..Width);
-        for Row in Game.Current_World'Range(1) loop
+        Game.Map := new Map(1..Height, 1..Width);
+        for Row in Game.Map'Range(1) loop
             declare
                 Map_Row: Unbounded_String := Map_Rows(Row - 1);
             begin
                 Put_Line(To_String(Map_Rows(Row - 1)));
-                for Column in Game.Current_World'Range(2) loop
+                for Column in Game.Map'Range(2) loop
                     if Column in 1..Length(Map_Row) then
                         case Element(Map_Row, Column) is
-                            when '.' => Game.Current_World(Row, Column) := Floor;
-                            when '#' => Game.Current_World(Row, Column) := Wall;
-                            when '=' => Game.Current_World(Row, Column) := Door;
+                            when '.' => Game.Map(Row, Column) := Floor;
+                            when '#' => Game.Map(Row, Column) := Wall;
+                            when '=' => Game.Map(Row, Column) := Door;
                             when '*' =>
-                                Game.Current_World(Row, Column) := Floor;
+                                Game.Map(Row, Column) := Floor;
                                 Game.Items.Insert((Column, Row), Bomb);
                             when '&' =>
-                                Game.Current_World(Row, Column) := Barricade;
+                                Game.Map(Row, Column) := Barricade;
                             when '%' =>
-                                Game.Current_World(Row, Column) := Floor;
+                                Game.Map(Row, Column) := Floor;
                                 Game.Items.Insert((Column, Row), Key);
                             when '@' =>
-                                Game.Current_World(Row, Column) := Floor;
+                                Game.Map(Row, Column) := Floor;
                                 if Update_Player then
                                     Game.Player.Position.X := Column;
                                     Game.Player.Position.Y := Row;
                                 end if;
-                            when others => Game.Current_World(Row, Column) := None;
+                            when others => Game.Map(Row, Column) := None;
                         end case;
                     else
-                        Game.Current_World(Row, Column) := None;
+                        Game.Map(Row, Column) := None;
                     end if;
                 end loop;
             end;
@@ -160,14 +160,14 @@ procedure Game is
 
     procedure Draw_Game(Game: in Game_State) is
     begin
-        for Row in Game.Current_World'Range(1) loop
-            for Column in Game.Current_World'Range(2) loop
+        for Row in Game.Map'Range(1) loop
+            for Column in Game.Map'Range(2) loop
                 declare
                     Position: Vector2 := To_Vector2((Column, Row))*Cell_Size;
                     C: Color :=
                       (if (Column, Row) = Game.Player.Position
                        then COLOR_PLAYER
-                       else Cell_Colors(Game.Current_World(Row, Column)));
+                       else Cell_Colors(Game.Map(Row, Column)));
                 begin
                     Draw_Rectangle_V(position, cell_size, C);
                 end;
@@ -211,7 +211,7 @@ procedure Game is
     procedure Player_Step(Game: in out Game_State; Dir: Direction) is
     begin
         Step(Dir, Game.Player.Position);
-        case Game.Current_World(Game.Player.Position.Y, Game.Player.Position.X) is
+        case Game.Map(Game.Player.Position.Y, Game.Player.Position.X) is
            when Floor =>
                declare
                    use Hashed_Map_Items;
@@ -230,7 +230,7 @@ procedure Game is
            when Door =>
                if Game.Player.Keys > 0 then
                    Game.Player.Keys := Game.Player.Keys - 1;
-                   Game.Current_World(Game.Player.Position.Y, Game.Player.Position.X) := Floor;
+                   Game.Map(Game.Player.Position.Y, Game.Player.Position.X) := Floor;
                else
                    Step(Opposite(Dir), Game.Player.Position);
                end if;
@@ -279,10 +279,10 @@ begin
                                 Side: IVector2 := Game.Player.Position;
                             begin
                                 Step(Dir, Side);
-                                if Game.Current_World(Side.Y, Side.X) = Floor then
+                                if Game.Map(Side.Y, Side.X) = Floor then
                                     Draw_Bomb(Side);
                                     if Is_Key_Pressed(Keys(Dir)) then
-                                        Game.Current_World(Side.Y, Side.X) := Wall;
+                                        Game.Map(Side.Y, Side.X) := Wall;
                                         Game.Player.Bombs := Game.Player.Bombs - 1;
                                     end if;
                                 end if;
