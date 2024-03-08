@@ -66,7 +66,8 @@ package Raylib is
     KEY_W: constant int := 87;
     KEY_A: constant int := 65;
     KEY_D: constant int := 68;
-    function Is_Key_Pressed(key: int) return int
+    KEY_SPACE: constant int := 32;
+    function Is_Key_Pressed(key: int) return C_bool
         with
             Import => True,
             Convention => C,
@@ -115,4 +116,9 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "DrawCircleV";
+    function Is_Key_Down(Key: int) return C_Bool
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "IsKeyDown";
 end Raylib;

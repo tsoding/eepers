@@ -38,7 +38,7 @@ procedure Game is
     type IVector2 is record
         X, Y: Integer;
     end record;
-    
+
     function "="(A, B: IVector2) return Boolean is
     begin
         return A.X = B.X and then A.Y = B.Y;
@@ -56,7 +56,7 @@ procedure Game is
     end;
 
     type Item_Kind is (Key, Bomb);
-    
+
     package Hashed_Map_Items is new
         Ada.Containers.Hashed_Maps(
             Key_Type => IVector2,
@@ -96,7 +96,7 @@ procedure Game is
         Open(F, In_File, File_Name);
         while not End_Of_File(F) loop
             declare
-                Line: String := Get_Line(F); 
+                Line: String := Get_Line(F);
             begin
                 if Line'Length > Width then
                     Width := Line'Length;
@@ -132,7 +132,7 @@ procedure Game is
                             when '%' =>
                                 Game.Current_World(Row, Column) := Floor;
                                 Game.Items.Insert((Column, Row), Key);
-                            when '@' => 
+                            when '@' =>
                                 Game.Current_World(Row, Column) := Floor;
                                 if Update_Player then
                                     Game.Player.Position.X := Column;
@@ -146,6 +146,16 @@ procedure Game is
                 end loop;
             end;
         end loop;
+    end;
+
+    procedure Draw_Bomb(Position: IVector2) is
+    begin
+        Draw_Circle_V(To_Vector2(Position)*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.5, COLOR_RED);
+    end;
+
+    procedure Draw_Key(Position: IVector2) is
+    begin
+        Draw_Circle_V(To_Vector2(Position)*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.25, COLOR_KEY);
     end;
 
     procedure Draw_Game(Game: in Game_State) is
@@ -169,10 +179,8 @@ procedure Game is
         begin
             for C in Game.Items.Iterate loop
                 case Element(C) is
-                    when Key =>
-                        Draw_Circle_V(To_Vector2(Key(C))*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.25, COLOR_KEY);
-                    when Bomb =>
-                        Draw_Circle_V(To_Vector2(Key(C))*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.5, COLOR_RED);
+                    when Key => Draw_Key(Key(C));
+                    when Bomb => Draw_Bomb(Key(C));
                 end case;
             end loop;
         end;
@@ -200,6 +208,37 @@ procedure Game is
         end case;
     end;
 
+    procedure Player_Step(Game: in out Game_State; Dir: Direction) is
+    begin
+        Step(Dir, Game.Player.Position);
+        case Game.Current_World(Game.Player.Position.Y, Game.Player.Position.X) is
+           when Floor =>
+               declare
+                   use Hashed_Map_Items;
+                   C: Cursor := Game.Items.Find(Game.Player.Position);
+               begin
+                   if Has_Element(C) then
+                       case Element(C) is
+                          when Key =>
+                              Game.Player.Keys := Game.Player.Keys + 1;
+                          when Bomb =>
+                              Game.Player.Bombs := Game.Player.Bombs + 1;
+                       end case;
+                       Game.Items.Delete(C);
+                   end if;
+               end;
+           when Door =>
+               if Game.Player.Keys > 0 then
+                   Game.Player.Keys := Game.Player.Keys - 1;
+                   Game.Current_World(Game.Player.Position.Y, Game.Player.Position.X) := Floor;
+               else
+                   Step(Opposite(Dir), Game.Player.Position);
+               end if;
+           when others =>
+               Step(Opposite(Dir), Game.Player.Position);
+        end case;
+    end;
+
     Keys: array (Direction) of int := (
         Left  => KEY_A,
         Right => KEY_D,
@@ -216,38 +255,7 @@ begin
     while Window_Should_Close = 0 loop
         Begin_Drawing;
             Clear_Background(COLOR_BACKGROUND);
-            for Dir in Direction loop
-                if Is_Key_Pressed(Keys(Dir)) /= 0 then
-                    Step(Dir, Game.Player.Position);
-                    case Game.Current_World(Game.Player.Position.Y, Game.Player.Position.X) is 
-                        when Floor =>
-                            declare
-                                use Hashed_Map_Items;
-                                C: Cursor := Game.Items.Find(Game.Player.Position);
-                            begin
-                                if Has_Element(C) then
-                                    case Element(C) is
-                                        when Key =>
-                                            Game.Player.Keys := Game.Player.Keys + 1;
-                                        when Bomb =>
-                                            Game.Player.Bombs := Game.Player.Bombs + 1;
-                                    end case;
-                                    Game.Items.Delete(C);
-                                end if;
-                            end;
-                        when Door =>
-                            if Game.Player.Keys > 0 then
-                                Game.Player.Keys := Game.Player.Keys - 1;
-                                Game.Current_World(Game.Player.Position.Y, Game.Player.Position.X) := Floor;
-                            else
-                                Step(Opposite(Dir), Game.Player.Position);
-                            end if;
-                        when others =>
-                            Step(Opposite(Dir), Game.Player.Position);
-                    end case;
-                end if;
-            end loop;
-            if Is_Key_Pressed(KEY_R) /= 0 then
+            if Is_Key_Pressed(KEY_R) then
                 Load_Game_From_File("map.txt", Game, False);
             end if;
             Game.Camera_Position := Game.Camera_Position + Game.Camera_Velocity*Get_Frame_Time;
@@ -259,12 +267,34 @@ begin
                     zoom => 1.0
                 );
                 Screen_Size: Vector2 := To_Vector2((Integer(Get_Screen_Width), Integer(Get_Screen_Height)));
-                Camera_Target: Vector2 := 
+                Camera_Target: Vector2 :=
                     Screen_Size*0.5 - To_Vector2(Game.Player.Position)*Cell_Size - Cell_Size*0.5;
             begin
                 Game.Camera_Velocity := (Camera_Target - Game.Camera_Position)*2.0;
                 Begin_Mode2D(Camera);
-                Draw_Game(Game);
+                    Draw_Game(Game);
+                    if Boolean(Is_Key_Down(KEY_SPACE)) and then Game.Player.Bombs > 0 then
+                        for Dir in Direction loop
+                            declare
+                                Side: IVector2 := Game.Player.Position;
+                            begin
+                                Step(Dir, Side);
+                                if Game.Current_World(Side.Y, Side.X) = Floor then
+                                    Draw_Bomb(Side);
+                                    if Is_Key_Pressed(Keys(Dir)) then
+                                        Game.Current_World(Side.Y, Side.X) := Wall;
+                                        Game.Player.Bombs := Game.Player.Bombs - 1;
+                                    end if;
+                                end if;
+                            end;
+                        end loop;
+                    else
+                        for Dir in Direction loop
+                            if Is_Key_Pressed(Keys(Dir)) then
+                                Player_Step(Game, Dir);
+                            end if;
+                        end loop;
+                    end if;
                 End_Mode2D;
                 for Index in 1..Game.Player.Keys loop
                     declare
