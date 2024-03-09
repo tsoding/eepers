@@ -17,12 +17,14 @@ procedure Game is
     COLOR_FLOOR      : constant Color := Get_Color(16#2f2f2fFF#);
     COLOR_WALL       : constant Color := Get_Color(16#000000FF#);
     COLOR_PLAYER     : constant Color := Get_Color(16#3e89ffff#);
-    COLOR_RED        : constant Color := Get_Color(16#FF0000FF#);
     COLOR_DOOR       : constant Color := Get_Color(16#ff9700ff#);
     COLOR_KEY        : constant Color := Get_Color(16#ff9700ff#);
     COLOR_LABEL      : constant Color := Get_Color(16#FFFFFFFF#);
 
-    type Cell is (None, Floor, Wall, Barricade, Door);
+    COLOR_RED        : constant Color := Get_Color(16#FF0000FF#);
+    COLOR_PURPLE     : constant Color := Get_Color(16#FF00FFFF#);
+
+    type Cell is (None, Floor, Wall, Barricade, Door, Explosion);
     Width : constant Integer := 20;
     Height : constant Integer := 10;
     Cell_Size : constant Vector2 := (x => 50.0, y => 50.0);
@@ -31,7 +33,8 @@ procedure Game is
       Floor => COLOR_FLOOR,
       Wall => COLOR_WALL,
       Barricade => COLOR_RED,
-      Door => COLOR_DOOR
+      Door => COLOR_DOOR,
+      Explosion => COLOR_PURPLE
     );
 
     type Map is array (Positive range <>, Positive range <>) of Cell;
@@ -76,20 +79,21 @@ procedure Game is
         Position: IVector2;
         Keys: Integer := 0;
         Bombs: Integer := 0;
+        Dead: Boolean := False;
     end record;
 
-    package Hashed_Map_Bombs is new
-        Ada.Containers.Hashed_Maps(
-            Key_Type => IVector2,
-            Element_Type => Integer,
-            Hash => Hash_IVector2,
-            Equivalent_Keys => Equivalent_IVector2);
+    type Bomb_State is record
+        Position: IVector2;
+        Countdown: Integer := 0;
+    end record;
+
+    type Bomb_State_Array is array (1..10) of Bomb_State;
 
     type Game_State is record
         Map: Map_Access := Null;
         Player: Player_State;
         Items: Hashed_Map_Items.Map;
-        Bombs: Hashed_Map_Bombs.Map;
+        Bombs: Bomb_State_Array;
         Camera_Position: Vector2 := (x => 0.0, y => 0.0);
         Camera_Velocity: Vector2 := (x => 0.0, y => 0.0);
     end record;
@@ -122,7 +126,9 @@ procedure Game is
             Delete_Map(Game.Map);
         end if;
         Game.Items.Clear;
-        Game.Bombs.Clear;
+        for Bomb of Game.Bombs loop
+            Bomb.Countdown := 0;
+        end loop;
 
         Game.Map := new Map(1..Height, 1..Width);
         for Row in Game.Map'Range(1) loop
@@ -170,7 +176,7 @@ procedure Game is
         Draw_Circle_V(To_Vector2(Position)*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.25, COLOR_KEY);
     end;
 
-    procedure Draw_Game(Game: in Game_State) is
+    procedure Game_Cells(Game: in Game_State) is
     begin
         for Row in Game.Map'Range(1) loop
             for Column in Game.Map'Range(2) loop
@@ -185,17 +191,17 @@ procedure Game is
                 end;
             end loop;
         end loop;
+    end;
 
-        declare
-            use Hashed_Map_Items;
-        begin
-            for C in Game.Items.Iterate loop
-                case Element(C) is
-                    when Key => Draw_Key(Key(C));
-                    when Bomb => Draw_Bomb(Key(C));
-                end case;
-            end loop;
-        end;
+    procedure Game_Items(Game: in Game_State) is
+        use Hashed_Map_Items;
+    begin
+        for C in Game.Items.Iterate loop
+            case Element(C) is
+               when Key => Draw_Key(Key(C));
+               when Bomb => Draw_Bomb(Key(C));
+            end case;
+        end loop;
     end;
 
     type Direction is (Left, Right, Up, Down);
@@ -251,12 +257,133 @@ procedure Game is
         end case;
     end;
 
+    procedure Explode(Game: in out Game_State; Position: in IVector2) is
+        procedure Explode_Line(Dir: Direction) is
+            New_Position: IVector2 := Position;
+        begin
+            Line: loop
+                if New_Position = Game.Player.Position then
+                    Game.Player.Dead := True;
+                end if;
+                case Game.Map(New_Position.Y, New_Position.X) is
+                   when Floor | Explosion =>
+                       Game.Map(New_Position.Y, New_Position.X) := Explosion;
+                       Step(Dir, New_Position);
+                   when Barricade =>
+                       Game.Map(New_Position.Y, New_Position.X) := Explosion;
+                       return;
+                   when others =>
+                       return;
+                end case;
+            end loop Line;
+        end;
+    begin
+        for Dir in Direction loop
+            Explode_Line(Dir);
+        end loop;
+    end;
+
     Keys: array (Direction) of int := (
         Left  => KEY_A,
         Right => KEY_D,
         Up    => KEY_W,
         Down  => KEY_S
     );
+
+    procedure Game_Update_Camera(Game: in out Game_State) is
+        Screen_Size: Vector2 := To_Vector2((Integer(Get_Screen_Width), Integer(Get_Screen_Height)));
+        Camera_Target: Vector2 :=
+          Screen_Size*0.5 - To_Vector2(Game.Player.Position)*Cell_Size - Cell_Size*0.5;
+    begin
+        Game.Camera_Position := Game.Camera_Position + Game.Camera_Velocity*Get_Frame_Time;
+        Game.Camera_Velocity := (Camera_Target - Game.Camera_Position)*2.0;
+    end;
+
+    function Game_Camera(Game: in Game_State) return Camera2D is
+    begin
+        return (
+          offset => Game.Camera_Position,
+          target => (x => 0.0, y => 0.0),
+          rotation => 0.0,
+          zoom => 1.0);
+    end;
+
+    procedure Game_Player(Game: in out Game_State) is
+    begin
+        if Boolean(Is_Key_Down(KEY_SPACE)) and then Game.Player.Bombs > 0 then
+            for Dir in Direction loop
+                declare
+                    Position: IVector2 := Game.Player.Position;
+                begin
+                    Step(Dir, Position);
+                    if Game.Map(Position.Y, Position.X) = Floor then
+                        Draw_Bomb(Position);
+                        if Is_Key_Pressed(Keys(Dir)) then
+                            for Bomb of Game.Bombs loop
+                                if Bomb.Countdown <= 0 then
+                                    Bomb.Countdown := 3;
+                                    Bomb.Position := Position;
+                                    exit;
+                                end if;
+                            end loop;
+                            Game.Player.Bombs := Game.Player.Bombs - 1;
+                        end if;
+                    end if;
+                end;
+            end loop;
+        else
+            for Dir in Direction loop
+                if Is_Key_Pressed(Keys(Dir)) then
+                    for Y in Game.Map'Range(1) loop
+                        for X in Game.Map'Range(2) loop
+                            if Game.Map(Y, X) = Explosion then
+                                Game.Map(Y, X) := Floor;
+                            end if;
+                        end loop;
+                    end loop;
+
+                    Player_Step(Game, Dir);
+                    for Bomb of Game.Bombs loop
+                        if Bomb.Countdown > 0 then
+                            Bomb.Countdown := Bomb.Countdown - 1;
+                            if Bomb.Countdown <= 0 then
+                                Explode(Game, Bomb.Position);
+                            end if;
+                        end if;
+                    end loop;
+                end if;
+            end loop;
+        end if;
+    end;
+
+    procedure Game_Bombs(Game: Game_State) is
+    begin
+        for Bomb of Game.Bombs loop
+            if Bomb.Countdown > 0 then
+                Draw_Bomb(Bomb.Position);
+                declare
+                    Label: Char_Array := To_C(Trim(Integer'Image(Bomb.Countdown), Ada.Strings.Left));
+                    Label_Height: Integer := 32;
+                    Label_Width: Integer := Integer(Measure_Text(Label, Int(Label_Height)));
+                    Text_Size: Vector2 := To_Vector2((Label_Width, Label_Height));
+                    Position: Vector2 := To_Vector2(Bomb.Position)*Cell_Size + Cell_Size*0.5 - Text_Size*0.5;
+                begin
+                    Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), COLOR_LABEL);
+                end;
+            end if;
+        end loop;
+    end;
+
+    procedure Game_Hud(Game: in Game_State) is
+    begin
+        for Index in 1..Game.Player.Keys loop
+            declare
+                Position: Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 100.0);
+            begin
+                Draw_Circle_V(Position, Cell_Size.X*0.25, COLOR_KEY);
+            end;
+        end loop;
+    end;
 
     Game: Game_State;
     Title: Char_Array := To_C("Hello, NSA");
@@ -268,79 +395,20 @@ begin
     while Window_Should_Close = 0 loop
         Begin_Drawing;
             Clear_Background(COLOR_BACKGROUND);
+
             if Is_Key_Pressed(KEY_R) then
                 Load_Game_From_File("map.txt", Game, False);
             end if;
-            Game.Camera_Position := Game.Camera_Position + Game.Camera_Velocity*Get_Frame_Time;
-            declare
-                camera : Camera2D := (
-                    offset => Game.Camera_Position,
-                    target => (x => 0.0, y => 0.0),
-                    rotation => 0.0,
-                    zoom => 1.0
-                );
-                Screen_Size: Vector2 := To_Vector2((Integer(Get_Screen_Width), Integer(Get_Screen_Height)));
-                Camera_Target: Vector2 :=
-                    Screen_Size*0.5 - To_Vector2(Game.Player.Position)*Cell_Size - Cell_Size*0.5;
-            begin
-                Game.Camera_Velocity := (Camera_Target - Game.Camera_Position)*2.0;
-                Begin_Mode2D(Camera);
-                    Draw_Game(Game);
-                    if Boolean(Is_Key_Down(KEY_SPACE)) and then Game.Player.Bombs > 0 then
-                        for Dir in Direction loop
-                            declare
-                                Position: IVector2 := Game.Player.Position;
-                            begin
-                                Step(Dir, Position);
-                                if Game.Map(Position.Y, Position.X) = Floor then
-                                    Draw_Bomb(Position);
-                                    if Is_Key_Pressed(Keys(Dir)) then
-                                        Game.Bombs.Insert(Position, 3);
-                                        Game.Player.Bombs := Game.Player.Bombs - 1;
-                                    end if;
-                                end if;
-                            end;
-                        end loop;
-                    else
-                        declare
-                            use Hashed_Map_Bombs;
-                        begin
-                            for Dir in Direction loop
-                                if Is_Key_Pressed(Keys(Dir)) then
-                                    Player_Step(Game, Dir);
-                                    for C in Game.Bombs.Iterate loop
-                                        Game.Bombs.Replace_Element(C, Element(C) - 1);
-                                    end loop;
-                                end if;
-                            end loop;
-                        end;
-                    end if;
 
-                    declare
-                        use Hashed_Map_Bombs;
-                    begin
-                        for C in Game.Bombs.Iterate loop
-                            Draw_Bomb(Key(C));
-                            declare
-                                Label: Char_Array := To_C(Trim(Integer'Image(Element(C)), Ada.Strings.Left));
-                                Label_Height: Integer := 32;
-                                Label_Width: Integer := Integer(Measure_Text(Label, Int(Label_Height)));
-                                Text_Size: Vector2 := To_Vector2((Label_Width, Label_Height));
-                                Position: Vector2 := To_Vector2(Key(C))*Cell_Size + Cell_Size*0.5 - Text_Size*0.5;
-                            begin
-                                Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), COLOR_LABEL);
-                            end;
-                        end loop;
-                    end;
-                End_Mode2D;
-                for Index in 1..Game.Player.Keys loop
-                    declare
-                        Position: Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 100.0);
-                    begin
-                        Draw_Circle_V(Position, Cell_Size.X*0.25, COLOR_KEY);
-                    end;
-                end loop;
-            end;
+            Game_Update_Camera(Game);
+            Begin_Mode2D(Game_Camera(Game));
+                Game_Cells(Game);
+                Game_Items(Game);
+                Game_Player(Game);
+                Game_Bombs(Game);
+            End_Mode2D;
+
+            Game_Hud(Game);
         End_Drawing;
     end loop;
     Close_Window;
