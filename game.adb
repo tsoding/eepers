@@ -20,9 +20,12 @@ procedure Game is
     COLOR_DOOR       : constant Color := Get_Color(16#ff9700ff#);
     COLOR_KEY        : constant Color := Get_Color(16#ff9700ff#);
     COLOR_LABEL      : constant Color := Get_Color(16#FFFFFFFF#);
+    COLOR_FIRST_BOSS : constant Color := Get_Color(16#97FF00FF#);
 
     COLOR_RED        : constant Color := Get_Color(16#FF0000FF#);
     COLOR_PURPLE     : constant Color := Get_Color(16#FF00FFFF#);
+
+    TURN_DURATION_SECS : constant Float := 0.125;
 
     type Cell is (None, Floor, Wall, Barricade, Door, Explosion);
     Width : constant Integer := 20;
@@ -76,10 +79,18 @@ procedure Game is
     end;
 
     type Player_State is record
+        Prev_Position: IVector2;
         Position: IVector2;
         Keys: Integer := 0;
         Bombs: Integer := 0;
         Dead: Boolean := False;
+    end record;
+
+    type First_Boss_State is record
+        Prev_Position: IVector2;
+        Position: IVector2;
+        Health: Float;
+        Attack_Cooldown: Integer;
     end record;
 
     type Bomb_State is record
@@ -89,9 +100,14 @@ procedure Game is
 
     type Bomb_State_Array is array (1..10) of Bomb_State;
 
+
     type Game_State is record
         Map: Map_Access := Null;
         Player: Player_State;
+        First_Boss: First_Boss_State;
+
+        Turn_Animation: Float := 0.0;
+
         Items: Hashed_Map_Items.Map;
         Bombs: Bomb_State_Array;
         Camera_Position: Vector2 := (x => 0.0, y => 0.0);
@@ -139,6 +155,9 @@ procedure Game is
                 for Column in Game.Map'Range(2) loop
                     if Column in 1..Length(Map_Row) then
                         case Element(Map_Row, Column) is
+                            when 'B' =>
+                                Game.First_Boss.Position := (Column, Row);
+                                Game.Map(Row, Column) := Floor;
                             when '.' => Game.Map(Row, Column) := Floor;
                             when '#' => Game.Map(Row, Column) := Wall;
                             when '=' => Game.Map(Row, Column) := Door;
@@ -224,6 +243,8 @@ procedure Game is
 
     procedure Player_Step(Game: in out Game_State; Dir: Direction) is
     begin
+        Game.Player.Prev_Position := Game.Player.Position;
+        Game.Turn_Animation := 1.0;
         Step(Dir, Game.Player.Position);
         case Game.Map(Game.Player.Position.Y, Game.Player.Position.X) is
            when Floor =>
@@ -319,6 +340,18 @@ procedure Game is
             end if;
 
             return;
+        end if;
+
+        if Game.Turn_Animation > 0.0 then
+            declare
+                Prev_Position: Vector2 := To_Vector2(Game.Player.Prev_Position)*Cell_Size;
+                Curr_Position: Vector2 := To_Vector2(Game.Player.Position)*Cell_Size;
+                T: C_Float := C_Float(1.0 - Game.Turn_Animation);
+                Position: Vector2 := Prev_Position + (Curr_Position - Prev_Position)*T;
+            begin
+                Draw_Rectangle_V(Position, Cell_Size, COLOR_PLAYER);
+                return;
+            end;
         end if;
 
         Draw_Rectangle_V(To_Vector2(Game.Player.Position)*Cell_Size, Cell_Size, COLOR_PLAYER);
@@ -424,11 +457,19 @@ begin
                 Load_Game_From_File("map.txt", Game, False);
             end if;
 
+            if Game.Turn_Animation > 0.0 then
+                Game.Turn_Animation := (Game.Turn_Animation*TURN_DURATION_SECS - Float(Get_Frame_Time))/TURN_DURATION_SECS;
+            end if;
+
             Game_Update_Camera(Game);
             Begin_Mode2D(Game_Camera(Game));
                 Game_Cells(Game);
                 Game_Items(Game);
                 Game_Player(Game);
+                Draw_Rectangle_V(To_Vector2(Game.First_Boss.Position)*Cell_Size, Cell_Size*3.0, COLOR_FIRST_BOSS);
+                if Game.First_Boss.Attack_Cooldown <= 0 then
+                    Game.First_Boss.Attack_Cooldown := 0;
+                end if;
                 Game_Bombs(Game);
             End_Mode2D;
 
@@ -437,3 +478,6 @@ begin
     end loop;
     Close_Window;
 end;
+
+--  TODO: mechanics to skip a turn
+--  TODO: placing a bomb is not a turn (should it be tho?)
