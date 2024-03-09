@@ -182,12 +182,8 @@ procedure Game is
             for Column in Game.Map'Range(2) loop
                 declare
                     Position: Vector2 := To_Vector2((Column, Row))*Cell_Size;
-                    C: Color :=
-                      (if (Column, Row) = Game.Player.Position
-                       then COLOR_PLAYER
-                       else Cell_Colors(Game.Map(Row, Column)));
                 begin
-                    Draw_Rectangle_V(position, cell_size, C);
+                    Draw_Rectangle_V(position, cell_size, Cell_Colors(Game.Map(Row, Column)));
                 end;
             end loop;
         end loop;
@@ -290,8 +286,12 @@ procedure Game is
         Down  => KEY_S
     );
 
+    function Screen_Size return Vector2 is
+    begin
+        return To_Vector2((Integer(Get_Screen_Width), Integer(Get_Screen_Height)));
+    end;
+
     procedure Game_Update_Camera(Game: in out Game_State) is
-        Screen_Size: Vector2 := To_Vector2((Integer(Get_Screen_Width), Integer(Get_Screen_Height)));
         Camera_Target: Vector2 :=
           Screen_Size*0.5 - To_Vector2(Game.Player.Position)*Cell_Size - Cell_Size*0.5;
     begin
@@ -310,6 +310,18 @@ procedure Game is
 
     procedure Game_Player(Game: in out Game_State) is
     begin
+        if Game.Player.Dead then
+            if Is_Key_Pressed(KEY_SPACE) then
+                --  TODO: better way to reset the state of the game
+                --  Introduce the system of checkpoints
+                Load_Game_From_File("map.txt", Game, Update_Player => True);
+                Game.Player.Dead := False;
+            end if;
+
+            return;
+        end if;
+
+        Draw_Rectangle_V(To_Vector2(Game.Player.Position)*Cell_Size, Cell_Size, COLOR_PLAYER);
         if Boolean(Is_Key_Down(KEY_SPACE)) and then Game.Player.Bombs > 0 then
             for Dir in Direction loop
                 declare
@@ -383,6 +395,18 @@ procedure Game is
                 Draw_Circle_V(Position, Cell_Size.X*0.25, COLOR_KEY);
             end;
         end loop;
+
+        if Game.Player.Dead then
+            declare
+                Label: Char_Array := To_C("Ded");
+                Label_Height: Integer := 48;
+                Label_Width: Integer := Integer(Measure_Text(Label, Int(Label_Height)));
+                Text_Size: Vector2 := To_Vector2((Label_Width, Label_Height));
+                Position: Vector2 := Screen_Size*0.5 - Text_Size*0.5;
+            begin
+                Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), COLOR_LABEL);
+            end;
+        end if;
     end;
 
     Game: Game_State;
