@@ -66,10 +66,15 @@ procedure Game is
 
     type Item_Kind is (Key, Bomb);
 
+    type Item is record
+        Kind: Item_Kind;
+        Cooldown: Integer;
+    end record;
+
     package Hashed_Map_Items is new
         Ada.Containers.Hashed_Maps(
             Key_Type => IVector2,
-            Element_Type => Item_Kind,
+            Element_Type => Item,
             Hash => Hash_IVector2,
             Equivalent_Keys => Equivalent_IVector2);
 
@@ -163,12 +168,12 @@ procedure Game is
                             when '=' => Game.Map(Row, Column) := Door;
                             when '*' =>
                                 Game.Map(Row, Column) := Floor;
-                                Game.Items.Insert((Column, Row), Bomb);
+                                Game.Items.Insert((Column, Row), (Kind => Bomb, Cooldown => 0));
                             when '&' =>
                                 Game.Map(Row, Column) := Barricade;
                             when '%' =>
                                 Game.Map(Row, Column) := Floor;
-                                Game.Items.Insert((Column, Row), Key);
+                                Game.Items.Insert((Column, Row), (Kind => Key, Cooldown => 0));
                             when '@' =>
                                 Game.Map(Row, Column) := Floor;
                                 if Update_Player then
@@ -185,9 +190,9 @@ procedure Game is
         end loop;
     end;
 
-    procedure Draw_Bomb(Position: IVector2) is
+    procedure Draw_Bomb(Position: IVector2; C: Color) is
     begin
-        Draw_Circle_V(To_Vector2(Position)*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.5, COLOR_RED);
+        Draw_Circle_V(To_Vector2(Position)*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.5, C);
     end;
 
     procedure Draw_Key(Position: IVector2) is
@@ -208,13 +213,29 @@ procedure Game is
         end loop;
     end;
 
+    procedure Draw_Number(Cell_Position: IVector2; N: Integer) is
+        Label: Char_Array := To_C(Trim(Integer'Image(N), Ada.Strings.Left));
+        Label_Height: Integer := 32;
+        Label_Width: Integer := Integer(Measure_Text(Label, Int(Label_Height)));
+        Text_Size: Vector2 := To_Vector2((Label_Width, Label_Height));
+        Position: Vector2 := To_Vector2(Cell_Position)*Cell_Size + Cell_Size*0.5 - Text_Size*0.5;
+    begin
+        Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), COLOR_LABEL);
+    end;
+
     procedure Game_Items(Game: in Game_State) is
         use Hashed_Map_Items;
     begin
         for C in Game.Items.Iterate loop
-            case Element(C) is
+            case Element(C).Kind is
                when Key => Draw_Key(Key(C));
-               when Bomb => Draw_Bomb(Key(C));
+               when Bomb =>
+                   if Element(C).Cooldown > 0 then
+                       Draw_Bomb(Key(C), Color_Brightness(COLOR_RED, -0.5));
+                       Draw_Number(Key(C), Element(C).Cooldown);
+                   else
+                       Draw_Bomb(Key(C), COLOR_RED);
+                   end if;
             end case;
         end loop;
     end;
@@ -253,13 +274,15 @@ procedure Game is
                    C: Cursor := Game.Items.Find(Game.Player.Position);
                begin
                    if Has_Element(C) then
-                       case Element(C) is
+                       case Element(C).Kind is
                           when Key =>
                               Game.Player.Keys := Game.Player.Keys + 1;
-                          when Bomb =>
+                              Game.Items.Delete(C);
+                          when Bomb => if Element(C).Cooldown <= 0 then
                               Game.Player.Bombs := Game.Player.Bombs + 1;
+                              Game.Items.Replace_Element(C, (Kind => Bomb, Cooldown => 30));
+                          end if;
                        end case;
-                       Game.Items.Delete(C);
                    end if;
                end;
            when Door =>
@@ -278,7 +301,7 @@ procedure Game is
         procedure Explode_Line(Dir: Direction) is
             New_Position: IVector2 := Position;
         begin
-            Line: loop
+            Line: for I in 1..10 loop
                 if New_Position = Game.Player.Position then
                     Game.Player.Dead := True;
                 end if;
@@ -362,7 +385,7 @@ procedure Game is
                 begin
                     Step(Dir, Position);
                     if Game.Map(Position.Y, Position.X) = Floor then
-                        Draw_Bomb(Position);
+                        Draw_Bomb(Position, COLOR_RED);
                         if Is_Key_Pressed(Keys(Dir)) then
                             for Bomb of Game.Bombs loop
                                 if Bomb.Countdown <= 0 then
@@ -388,6 +411,7 @@ procedure Game is
                     end loop;
 
                     Player_Step(Game, Dir);
+
                     for Bomb of Game.Bombs loop
                         if Bomb.Countdown > 0 then
                             Bomb.Countdown := Bomb.Countdown - 1;
@@ -396,6 +420,18 @@ procedure Game is
                             end if;
                         end if;
                     end loop;
+
+                    declare
+                        use Hashed_Map_Items;
+                    begin
+                        for C in Game.Items.Iterate loop
+                            if Element(C).Kind = Bomb then
+                                if Element(C).Cooldown > 0 then
+                                    Game.Items.Replace_Element(C, (Kind => Bomb, Cooldown => Element(C).Cooldown - 1));
+                                end if;
+                            end if;
+                        end loop;
+                    end;
                 end if;
             end loop;
         end if;
@@ -405,16 +441,8 @@ procedure Game is
     begin
         for Bomb of Game.Bombs loop
             if Bomb.Countdown > 0 then
-                Draw_Bomb(Bomb.Position);
-                declare
-                    Label: Char_Array := To_C(Trim(Integer'Image(Bomb.Countdown), Ada.Strings.Left));
-                    Label_Height: Integer := 32;
-                    Label_Width: Integer := Integer(Measure_Text(Label, Int(Label_Height)));
-                    Text_Size: Vector2 := To_Vector2((Label_Width, Label_Height));
-                    Position: Vector2 := To_Vector2(Bomb.Position)*Cell_Size + Cell_Size*0.5 - Text_Size*0.5;
-                begin
-                    Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), COLOR_LABEL);
-                end;
+                Draw_Bomb(Bomb.Position, COLOR_RED);
+                Draw_Number(Bomb.Position, Bomb.Countdown);
             end if;
         end loop;
     end;

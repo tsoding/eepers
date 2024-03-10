@@ -141,4 +141,9 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "DrawFPS";
+    function Color_Brightness(C: Color; Factor: C_Float) return Color
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "ColorBrightness";
 end Raylib;

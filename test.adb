@@ -3,13 +3,15 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings; use Ada.Strings;
 
 procedure Test is
-    type IVector2 is record
-        X, Y: Integer;
-    end record;
-    type Ten_Numbers is array(IVector2) of Integer;
+    type Item_Kind is (Key, Bomb);
 
-    Position: IVector2;
-    Xs: Ten_Numbers;
+    type Item(Kind: Item_Kind) is record
+        case Kind is
+           when Key => null;
+           when Bomb =>
+               Cooldown: Integer;
+        end case;
+    end record;
 begin
     null;
 end;
