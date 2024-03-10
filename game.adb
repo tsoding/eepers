@@ -20,7 +20,7 @@ procedure Game is
     COLOR_DOOR       : constant Color := Get_Color(16#ff9700ff#);
     COLOR_KEY        : constant Color := Get_Color(16#ff9700ff#);
     COLOR_LABEL      : constant Color := Get_Color(16#FFFFFFFF#);
-    COLOR_FIRST_BOSS : constant Color := Get_Color(16#97FF00FF#);
+    COLOR_SHREK : constant Color := Get_Color(16#97FF00FF#);
 
     COLOR_RED        : constant Color := Get_Color(16#FF0000FF#);
     COLOR_PURPLE     : constant Color := Get_Color(16#FF00FFFF#);
@@ -51,6 +51,16 @@ procedure Game is
     function "="(A, B: IVector2) return Boolean is
     begin
         return A.X = B.X and then A.Y = B.Y;
+    end;
+
+    function "-"(A, B: IVector2) return IVector2 is
+    begin
+        return (A.X - B.X, A.Y - B.Y);
+    end;
+
+    function "+"(A, B: IVector2) return IVector2 is
+    begin
+        return (A.X + B.X, A.Y + B.Y);
     end;
 
     function Equivalent_IVector2(Left, Right: IVector2) return Boolean is
@@ -96,7 +106,7 @@ procedure Game is
         Prev_Position: IVector2;
         Position: IVector2;
         Health: Float;
-        Attack_Cooldown: Integer;
+        Attack_Cooldown: Integer := 2;
     end record;
 
     type Bomb_State is record
@@ -162,6 +172,7 @@ procedure Game is
                         case Element(Map_Row, Column) is
                             when 'B' =>
                                 Game.Shrek.Position := (Column, Row);
+                                Game.Shrek.Prev_Position := (Column, Row);
                                 Game.Map(Row, Column) := Floor;
                             when '.' => Game.Map(Row, Column) := Floor;
                             when '#' => Game.Map(Row, Column) := Wall;
@@ -177,8 +188,8 @@ procedure Game is
                             when '@' =>
                                 Game.Map(Row, Column) := Floor;
                                 if Update_Player then
-                                    Game.Player.Position.X := Column;
-                                    Game.Player.Position.Y := Row;
+                                    Game.Player.Position := (Column, Row);
+                                    Game.Player.Prev_Position := (Column, Row);
                                 end if;
                             when others => Game.Map(Row, Column) := None;
                         end case;
@@ -352,6 +363,13 @@ procedure Game is
           zoom => 1.0);
     end;
 
+    function Interpolate_Positions(IPrev_Position, IPosition: IVector2; T: Float) return Vector2 is
+        Prev_Position: Vector2 := To_Vector2(IPrev_Position)*Cell_Size;
+        Curr_Position: Vector2 := To_Vector2(IPosition)*Cell_Size;
+    begin
+        return Prev_Position + (Curr_Position - Prev_Position)*C_Float(1.0 - T);
+    end;
+
     procedure Game_Player(Game: in out Game_State) is
     begin
         if Game.Player.Dead then
@@ -366,15 +384,8 @@ procedure Game is
         end if;
 
         if Game.Turn_Animation > 0.0 then
-            declare
-                Prev_Position: Vector2 := To_Vector2(Game.Player.Prev_Position)*Cell_Size;
-                Curr_Position: Vector2 := To_Vector2(Game.Player.Position)*Cell_Size;
-                T: C_Float := C_Float(1.0 - Game.Turn_Animation);
-                Position: Vector2 := Prev_Position + (Curr_Position - Prev_Position)*T;
-            begin
-                Draw_Rectangle_V(Position, Cell_Size, COLOR_PLAYER);
-                return;
-            end;
+            Draw_Rectangle_V(Interpolate_Positions(Game.Player.Prev_Position, Game.Player.Position, Game.Turn_Animation), Cell_Size, COLOR_PLAYER);
+            return;
         end if;
 
         Draw_Rectangle_V(To_Vector2(Game.Player.Position)*Cell_Size, Cell_Size, COLOR_PLAYER);
@@ -432,6 +443,25 @@ procedure Game is
                             end if;
                         end loop;
                     end;
+
+                    Game.Shrek.Prev_Position := Game.Shrek.Position;
+                    if Game.Shrek.Attack_Cooldown <= 0 then
+                        --  TODO: picking the next place to go
+                        declare
+                            Delta_Pos: IVector2 := Game.Player.Position - Game.Shrek.Position;
+                        begin
+                            if Delta_Pos.X in 0..2 then
+                                Game.Shrek.Position.Y := Game.Player.Position.Y;
+                            elsif Delta_Pos.Y in 0..2 then
+                                Game.Shrek.Position.X := Game.Player.Position.X;
+                            else
+                                null;
+                            end if;
+                        end;
+                        Game.Shrek.Attack_Cooldown := 2;
+                    else
+                        Game.Shrek.Attack_Cooldown := Game.Shrek.Attack_Cooldown - 1;
+                    end if;
                 end if;
             end loop;
         end if;
@@ -456,7 +486,7 @@ procedure Game is
                 Draw_Circle_V(Position, Cell_Size.X*0.25, COLOR_KEY);
             end;
         end loop;
-        
+
         for Index in 1..Game.Player.Bombs loop
             declare
                 Position: Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 200.0);
@@ -477,6 +507,17 @@ procedure Game is
                 Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), COLOR_LABEL);
             end;
         end if;
+    end;
+
+    procedure Game_Shrek(Game: in out Game_State) is
+    begin
+        if Game.Turn_Animation > 0.0 then
+            Draw_Rectangle_V(Interpolate_Positions(Game.Shrek.Prev_Position, Game.Shrek.Position, Game.Turn_Animation), Cell_Size*3.0, COLOR_SHREK);
+            return;
+        end if;
+
+        Draw_Rectangle_V(To_Vector2(Game.Shrek.Position)*Cell_Size, Cell_Size*3.0, COLOR_SHREK);
+        Draw_Number(Game.Shrek.Position + (1, 1), Game.Shrek.Attack_Cooldown);
     end;
 
     Game: Game_State;
@@ -504,10 +545,7 @@ begin
                 Game_Cells(Game);
                 Game_Items(Game);
                 Game_Player(Game);
-                Draw_Rectangle_V(To_Vector2(Game.Shrek.Position)*Cell_Size, Cell_Size*3.0, COLOR_FIRST_BOSS);
-                if Game.Shrek.Attack_Cooldown <= 0 then
-                    Game.Shrek.Attack_Cooldown := 0;
-                end if;
+                Game_Shrek(Game);
                 Game_Bombs(Game);
             End_Mode2D;
 
