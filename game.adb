@@ -88,10 +88,11 @@ procedure Game is
         Position: IVector2;
         Keys: Integer := 0;
         Bombs: Integer := 0;
+        Bomb_Slots: Integer := 1;
         Dead: Boolean := False;
     end record;
 
-    type First_Boss_State is record
+    type Shrek_State is record
         Prev_Position: IVector2;
         Position: IVector2;
         Health: Float;
@@ -105,11 +106,10 @@ procedure Game is
 
     type Bomb_State_Array is array (1..10) of Bomb_State;
 
-
     type Game_State is record
         Map: Map_Access := Null;
         Player: Player_State;
-        First_Boss: First_Boss_State;
+        Shrek: Shrek_State;
 
         Turn_Animation: Float := 0.0;
 
@@ -161,7 +161,7 @@ procedure Game is
                     if Column in 1..Length(Map_Row) then
                         case Element(Map_Row, Column) is
                             when 'B' =>
-                                Game.First_Boss.Position := (Column, Row);
+                                Game.Shrek.Position := (Column, Row);
                                 Game.Map(Row, Column) := Floor;
                             when '.' => Game.Map(Row, Column) := Floor;
                             when '#' => Game.Map(Row, Column) := Wall;
@@ -278,7 +278,7 @@ procedure Game is
                           when Key =>
                               Game.Player.Keys := Game.Player.Keys + 1;
                               Game.Items.Delete(C);
-                          when Bomb => if Element(C).Cooldown <= 0 then
+                          when Bomb => if Game.Player.Bombs < Game.Player.Bomb_Slots and then Element(C).Cooldown <= 0 then
                               Game.Player.Bombs := Game.Player.Bombs + 1;
                               Game.Items.Replace_Element(C, (Kind => Bomb, Cooldown => 30));
                           end if;
@@ -456,6 +456,15 @@ procedure Game is
                 Draw_Circle_V(Position, Cell_Size.X*0.25, COLOR_KEY);
             end;
         end loop;
+        
+        for Index in 1..Game.Player.Bombs loop
+            declare
+                Position: Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 200.0);
+            begin
+                Draw_Circle_V(Position, Cell_Size.X*0.5, COLOR_RED);
+            end;
+        end loop;
+
 
         if Game.Player.Dead then
             declare
@@ -495,9 +504,9 @@ begin
                 Game_Cells(Game);
                 Game_Items(Game);
                 Game_Player(Game);
-                Draw_Rectangle_V(To_Vector2(Game.First_Boss.Position)*Cell_Size, Cell_Size*3.0, COLOR_FIRST_BOSS);
-                if Game.First_Boss.Attack_Cooldown <= 0 then
-                    Game.First_Boss.Attack_Cooldown := 0;
+                Draw_Rectangle_V(To_Vector2(Game.Shrek.Position)*Cell_Size, Cell_Size*3.0, COLOR_FIRST_BOSS);
+                if Game.Shrek.Attack_Cooldown <= 0 then
+                    Game.Shrek.Attack_Cooldown := 0;
                 end if;
                 Game_Bombs(Game);
             End_Mode2D;
