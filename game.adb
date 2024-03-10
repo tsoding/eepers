@@ -1,6 +1,5 @@
 with Text_IO; use Text_IO;
 with Interfaces.C; use Interfaces.C;
-with Interfaces.C.Strings; use Interfaces.C.Strings;
 with Raylib; use Raylib;
 with Raymath; use Raymath;
 with Ada.Strings.Unbounded;
@@ -26,10 +25,9 @@ procedure Game is
     COLOR_PURPLE     : constant Color := Get_Color(16#FF00FFFF#);
 
     TURN_DURATION_SECS : constant Float := 0.125;
+    SHREK_ATTACK_COOLDOWN: constant Integer := 3;
 
     type Cell is (None, Floor, Wall, Barricade, Door, Explosion);
-    Width : constant Integer := 20;
-    Height : constant Integer := 10;
     Cell_Size : constant Vector2 := (x => 50.0, y => 50.0);
     Cell_Colors : constant array (Cell) of Color := (
       None => COLOR_BACKGROUND,
@@ -106,7 +104,7 @@ procedure Game is
         Prev_Position: IVector2;
         Position: IVector2;
         Health: Float;
-        Attack_Cooldown: Integer := 2;
+        Attack_Cooldown: Integer := SHREK_ATTACK_COOLDOWN;
     end record;
 
     type Bomb_State is record
@@ -142,7 +140,7 @@ procedure Game is
         Open(F, In_File, File_Name);
         while not End_Of_File(F) loop
             declare
-                Line: String := Get_Line(F);
+                Line: constant String := Get_Line(F);
             begin
                 if Line'Length > Width then
                     Width := Line'Length;
@@ -164,7 +162,7 @@ procedure Game is
         Game.Map := new Map(1..Height, 1..Width);
         for Row in Game.Map'Range(1) loop
             declare
-                Map_Row: Unbounded_String := Map_Rows(Row - 1);
+                Map_Row: constant Unbounded_String := Map_Rows(Row - 1);
             begin
                 Put_Line(To_String(Map_Rows(Row - 1)));
                 for Column in Game.Map'Range(2) loop
@@ -216,7 +214,7 @@ procedure Game is
         for Row in Game.Map'Range(1) loop
             for Column in Game.Map'Range(2) loop
                 declare
-                    Position: Vector2 := To_Vector2((Column, Row))*Cell_Size;
+                    Position: constant Vector2 := To_Vector2((Column, Row))*Cell_Size;
                 begin
                     Draw_Rectangle_V(position, cell_size, Cell_Colors(Game.Map(Row, Column)));
                 end;
@@ -224,14 +222,14 @@ procedure Game is
         end loop;
     end;
 
-    procedure Draw_Number(Cell_Position: IVector2; N: Integer) is
-        Label: Char_Array := To_C(Trim(Integer'Image(N), Ada.Strings.Left));
-        Label_Height: Integer := 32;
-        Label_Width: Integer := Integer(Measure_Text(Label, Int(Label_Height)));
-        Text_Size: Vector2 := To_Vector2((Label_Width, Label_Height));
-        Position: Vector2 := To_Vector2(Cell_Position)*Cell_Size + Cell_Size*0.5 - Text_Size*0.5;
+    procedure Draw_Number(Cell_Position: IVector2; N: Integer; C: Color) is
+        Label: constant Char_Array := To_C(Trim(Integer'Image(N), Ada.Strings.Left));
+        Label_Height: constant Integer := 32;
+        Label_Width: constant Integer := Integer(Measure_Text(Label, Int(Label_Height)));
+        Text_Size: constant Vector2 := To_Vector2((Label_Width, Label_Height));
+        Position: constant Vector2 := To_Vector2(Cell_Position)*Cell_Size + Cell_Size*0.5 - Text_Size*0.5;
     begin
-        Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), COLOR_LABEL);
+        Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), C);
     end;
 
     procedure Game_Items(Game: in Game_State) is
@@ -239,14 +237,14 @@ procedure Game is
     begin
         for C in Game.Items.Iterate loop
             case Element(C).Kind is
-               when Key => Draw_Key(Key(C));
-               when Bomb =>
-                   if Element(C).Cooldown > 0 then
-                       Draw_Bomb(Key(C), Color_Brightness(COLOR_RED, -0.5));
-                       Draw_Number(Key(C), Element(C).Cooldown);
-                   else
-                       Draw_Bomb(Key(C), COLOR_RED);
-                   end if;
+                when Key => Draw_Key(Key(C));
+                when Bomb =>
+                    if Element(C).Cooldown > 0 then
+                        Draw_Bomb(Key(C), Color_Brightness(COLOR_RED, -0.5));
+                        Draw_Number(Key(C), Element(C).Cooldown, COLOR_LABEL);
+                    else
+                        Draw_Bomb(Key(C), COLOR_RED);
+                    end if;
             end case;
         end loop;
     end;
@@ -334,7 +332,7 @@ procedure Game is
         end loop;
     end;
 
-    Keys: array (Direction) of int := (
+    Keys: constant array (Direction) of int := (
         Left  => KEY_A,
         Right => KEY_D,
         Up    => KEY_W,
@@ -347,7 +345,7 @@ procedure Game is
     end;
 
     procedure Game_Update_Camera(Game: in out Game_State) is
-        Camera_Target: Vector2 :=
+        Camera_Target: constant Vector2 :=
           Screen_Size*0.5 - To_Vector2(Game.Player.Position)*Cell_Size - Cell_Size*0.5;
     begin
         Game.Camera_Position := Game.Camera_Position + Game.Camera_Velocity*Get_Frame_Time;
@@ -364,10 +362,38 @@ procedure Game is
     end;
 
     function Interpolate_Positions(IPrev_Position, IPosition: IVector2; T: Float) return Vector2 is
-        Prev_Position: Vector2 := To_Vector2(IPrev_Position)*Cell_Size;
-        Curr_Position: Vector2 := To_Vector2(IPosition)*Cell_Size;
+        Prev_Position: constant Vector2 := To_Vector2(IPrev_Position)*Cell_Size;
+        Curr_Position: constant Vector2 := To_Vector2(IPosition)*Cell_Size;
     begin
         return Prev_Position + (Curr_Position - Prev_Position)*C_Float(1.0 - T);
+    end;
+    
+    Unreachable: exception;
+
+    function Can_Reach(Game: in Game_State; Start, Finish, Size: IVector2) return Boolean is
+        Position: IVector2 := Start;
+        Direction: IVector2 := Finish - Start;
+    begin
+        if Direction.X /= 0 then
+            Direction.X := Direction.X/abs(Direction.X);
+        elsif Direction.Y /= 0 then
+            Direction.Y := Direction.Y/abs(Direction.Y);
+        else
+            raise Unreachable;
+        end if;
+
+        while Position /= Finish loop
+            Position := Position + Direction;
+            for X in Position.X..Position.X+Size.X-1 loop
+                for Y in Position.Y..Position.Y+Size.Y-1 loop
+                    if Game.Map(Y, X) = Wall then
+                        return False;
+                    end if;
+                end loop;
+            end loop;
+        end loop;
+
+        return True;
     end;
 
     procedure Game_Player(Game: in out Game_State) is
@@ -446,21 +472,27 @@ procedure Game is
 
                     Game.Shrek.Prev_Position := Game.Shrek.Position;
                     if Game.Shrek.Attack_Cooldown <= 0 then
-                        --  TODO: picking the next place to go
                         declare
-                            Delta_Pos: IVector2 := Game.Player.Position - Game.Shrek.Position;
+                            Delta_Pos: constant IVector2 := Game.Player.Position - Game.Shrek.Position;
                         begin
-                            if Delta_Pos.X in 0..2 then
-                                Game.Shrek.Position.Y := Game.Player.Position.Y;
-                            elsif Delta_Pos.Y in 0..2 then
-                                Game.Shrek.Position.X := Game.Player.Position.X;
+                            if Delta_Pos.X in 0..3-1 then
+                                if Can_Reach(Game, Game.Shrek.Position, (Game.Shrek.Position.X, Game.Player.Position.Y), (3, 3)) then
+                                    Game.Shrek.Position.Y := Game.Player.Position.Y;
+                                end if;
+                            elsif Delta_Pos.Y in 0..3-1 then
+                                if Can_Reach(Game, Game.Shrek.Position, (Game.Player.Position.X, Game.Shrek.Position.Y), (3, 3)) then
+                                    Game.Shrek.Position.X := Game.Player.Position.X;
+                                end if;
                             else
                                 null;
                             end if;
                         end;
-                        Game.Shrek.Attack_Cooldown := 2;
+                        Game.Shrek.Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
                     else
                         Game.Shrek.Attack_Cooldown := Game.Shrek.Attack_Cooldown - 1;
+                    end if;
+                    if Game.Player.Position.X in Game.Shrek.Position.X..Game.Shrek.Position.X+3-1 and then Game.Player.Position.Y in Game.Shrek.Position.Y..Game.Shrek.Position.Y+3-1 then
+                        Game.Player.Dead := True;
                     end if;
                 end if;
             end loop;
@@ -472,7 +504,7 @@ procedure Game is
         for Bomb of Game.Bombs loop
             if Bomb.Countdown > 0 then
                 Draw_Bomb(Bomb.Position, COLOR_RED);
-                Draw_Number(Bomb.Position, Bomb.Countdown);
+                Draw_Number(Bomb.Position, Bomb.Countdown, COLOR_LABEL);
             end if;
         end loop;
     end;
@@ -481,7 +513,7 @@ procedure Game is
     begin
         for Index in 1..Game.Player.Keys loop
             declare
-                Position: Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 100.0);
+                Position: constant Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 100.0);
             begin
                 Draw_Circle_V(Position, Cell_Size.X*0.25, COLOR_KEY);
             end;
@@ -489,7 +521,7 @@ procedure Game is
 
         for Index in 1..Game.Player.Bombs loop
             declare
-                Position: Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 200.0);
+                Position: constant Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 200.0);
             begin
                 Draw_Circle_V(Position, Cell_Size.X*0.5, COLOR_RED);
             end;
@@ -498,11 +530,11 @@ procedure Game is
 
         if Game.Player.Dead then
             declare
-                Label: Char_Array := To_C("Ded");
-                Label_Height: Integer := 48;
-                Label_Width: Integer := Integer(Measure_Text(Label, Int(Label_Height)));
-                Text_Size: Vector2 := To_Vector2((Label_Width, Label_Height));
-                Position: Vector2 := Screen_Size*0.5 - Text_Size*0.5;
+                Label: constant Char_Array := To_C("Ded");
+                Label_Height: constant Integer := 48;
+                Label_Width: constant Integer := Integer(Measure_Text(Label, Int(Label_Height)));
+                Text_Size: constant Vector2 := To_Vector2((Label_Width, Label_Height));
+                Position: constant Vector2 := Screen_Size*0.5 - Text_Size*0.5;
             begin
                 Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), COLOR_LABEL);
             end;
@@ -517,11 +549,11 @@ procedure Game is
         end if;
 
         Draw_Rectangle_V(To_Vector2(Game.Shrek.Position)*Cell_Size, Cell_Size*3.0, COLOR_SHREK);
-        Draw_Number(Game.Shrek.Position + (1, 1), Game.Shrek.Attack_Cooldown);
+        Draw_Number(Game.Shrek.Position + (1, 1), Game.Shrek.Attack_Cooldown, (A => 255, others => 0));
     end;
 
     Game: Game_State;
-    Title: Char_Array := To_C("Hello, NSA");
+    Title: constant Char_Array := To_C("Hello, NSA");
 begin
     Load_Game_From_File("map.txt", Game, True);
     Put_Line("Keys: " & Integer'Image(Game.Player.Keys));
