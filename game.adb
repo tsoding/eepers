@@ -449,6 +449,7 @@ begin
     Put_Line("Keys: " & Integer'Image(Game.Player.Keys));
     Set_Config_Flags(FLAG_WINDOW_RESIZABLE);
     Init_Window(800, 600, Title);
+    Set_Target_FPS(60);
     while Window_Should_Close = 0 loop
         Begin_Drawing;
             Clear_Background(COLOR_BACKGROUND);
@@ -474,6 +475,7 @@ begin
             End_Mode2D;
 
             Game_Hud(Game);
+            Draw_FPS(10, 10);
         End_Drawing;
     end loop;
     Close_Window;

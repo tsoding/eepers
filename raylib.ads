@@ -131,4 +131,14 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "DrawText";
+    procedure Set_Target_FPS(Fps: int)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "SetTargetFPS";
+    procedure Draw_FPS(PosX, PosY: Int)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "DrawFPS";
 end Raylib;
