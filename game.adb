@@ -29,7 +29,13 @@ procedure Game is
 
     TURN_DURATION_SECS : constant Float := 0.125;
     SHREK_ATTACK_COOLDOWN: constant Integer := 3;
+    SHREK_EXPLOSION_DAMAGE: constant Float := 0.1;
 
+    type IVector2 is record
+        X, Y: Integer;
+    end record;
+
+    Shrek_Size: constant IVector2 := (3, 3);
     type Cell is (None, Floor, Wall, Barricade, Door, Explosion);
     Cell_Size : constant Vector2 := (x => 50.0, y => 50.0);
     Cell_Colors : constant array (Cell) of Color := (
@@ -45,9 +51,15 @@ procedure Game is
     type Map_Access is access Map;
     procedure Delete_Map is new Ada.Unchecked_Deallocation(Map, Map_Access);
 
-    type IVector2 is record
-        X, Y: Integer;
-    end record;
+    function "<="(A, B: IVector2) return Boolean is
+    begin
+        return A.X <= B.X and then A.Y <= B.Y;
+    end;
+
+    function "<"(A, B: IVector2) return Boolean is
+    begin
+        return A.X < B.X and then A.Y < B.Y;
+    end;
 
     function "="(A, B: IVector2) return Boolean is
     begin
@@ -106,7 +118,7 @@ procedure Game is
     type Shrek_State is record
         Prev_Position: IVector2;
         Position: IVector2;
-        Health: Float;
+        Health: Float := 1.0;
         Attack_Cooldown: Integer := SHREK_ATTACK_COOLDOWN;
         Dead: Boolean;
     end record;
@@ -373,6 +385,11 @@ procedure Game is
         end case;
     end;
 
+    function Inside_Of_Rect(Start, Size, Point: in IVector2) return Boolean is
+    begin
+        return Start <= Point and then Point < Start + Size;
+    end;
+
     procedure Explode(Game: in out Game_State; Position: in IVector2) is
         procedure Explode_Line(Dir: Direction) is
             New_Position: IVector2 := Position;
@@ -380,6 +397,12 @@ procedure Game is
             Line: for I in 1..10 loop
                 if New_Position = Game.Player.Position then
                     Game.Player.Dead := True;
+                end if;
+                if Inside_Of_Rect(Game.Shrek.Position, Shrek_Size, New_Position) then
+                    Game.Shrek.Health := Game.Shrek.Health - SHREK_EXPLOSION_DAMAGE;
+                    if Game.Shrek.Health <= 0.0 then
+                        Game.Shrek.Dead := True;
+                    end if;
                 end if;
                 case Game.Map(New_Position.Y, New_Position.X) is
                    when Floor | Explosion =>
@@ -613,7 +636,18 @@ procedure Game is
             return;
         end if;
 
-        Draw_Rectangle_V(To_Vector2(Game.Shrek.Position)*Cell_Size, Cell_Size*3.0, COLOR_SHREK);
+        declare
+            Health_Padding: constant C_Float := 20.0;
+            Health_Height: constant C_Float := 10.0;
+            Health_Width: constant C_Float := C_Float(Shrek_Size.X)*Cell_Size.X*C_Float(Game.Shrek.Health);
+            Position: constant Vector2 := To_Vector2(Game.Shrek.Position)*Cell_Size;
+        begin
+            Draw_Rectangle_V(
+              Position - (0.0, Health_Padding + Health_Height),
+              (Health_Width, Health_Height),
+              COLOR_RED);
+            Draw_Rectangle_V(Position, To_Vector2(Shrek_Size)*Cell_Size, COLOR_SHREK);
+        end;
         Draw_Number(Game.Shrek.Position + (1, 1), Game.Shrek.Attack_Cooldown, (A => 255, others => 0));
     end;
 
@@ -634,6 +668,9 @@ begin
                 if Is_Key_Pressed(KEY_R) then
                     Load_Game_From_File("map.txt", Game, False);
                 end if;
+
+                --  TODO: implement the palette editor
+                --  TODO: save current checkpoint to file for debug purposes
             end if;
 
             if Game.Turn_Animation > 0.0 then
