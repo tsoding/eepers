@@ -12,6 +12,8 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings;
 
 procedure Game is
+    DEVELOPMENT : constant Boolean := True;
+
     COLOR_BACKGROUND : constant Color := Get_Color(16#0b1424ff#);
     COLOR_FLOOR      : constant Color := Get_Color(16#2f2f2fFF#);
     COLOR_WALL       : constant Color := Get_Color(16#000000FF#);
@@ -19,7 +21,8 @@ procedure Game is
     COLOR_DOOR       : constant Color := Get_Color(16#ff9700ff#);
     COLOR_KEY        : constant Color := Get_Color(16#ff9700ff#);
     COLOR_LABEL      : constant Color := Get_Color(16#FFFFFFFF#);
-    COLOR_SHREK : constant Color := Get_Color(16#97FF00FF#);
+    COLOR_SHREK      : constant Color := Get_Color(16#97FF00FF#);
+    COLOR_CHECKPOINT : constant Color := Get_Color(16#FF00FFFF#);
 
     COLOR_RED        : constant Color := Get_Color(16#FF0000FF#);
     COLOR_PURPLE     : constant Color := Get_Color(16#FF00FFFF#);
@@ -72,7 +75,7 @@ procedure Game is
         return Hash_Type(V.X) * M31 + Hash_Type(V.Y);
     end;
 
-    type Item_Kind is (Key, Bomb);
+    type Item_Kind is (Key, Bomb, Checkpoint);
 
     type Item is record
         Kind: Item_Kind;
@@ -105,6 +108,7 @@ procedure Game is
         Position: IVector2;
         Health: Float;
         Attack_Cooldown: Integer := SHREK_ATTACK_COOLDOWN;
+        Dead: Boolean;
     end record;
 
     type Bomb_State is record
@@ -113,6 +117,17 @@ procedure Game is
     end record;
 
     type Bomb_State_Array is array (1..10) of Bomb_State;
+
+    type Checkpoint_State is record
+        Map: Map_Access := Null;
+        Player_Position: IVector2;
+        Player_Keys: Integer;
+        Player_Bombs: Integer;
+        Player_Bomb_Slots: Integer;
+        Shrek_Position: IVector2;
+        Shrek_Dead: Boolean;
+        Items: Hashed_Map_Items.Map;
+    end record;
 
     type Game_State is record
         Map: Map_Access := Null;
@@ -125,7 +140,47 @@ procedure Game is
         Bombs: Bomb_State_Array;
         Camera_Position: Vector2 := (x => 0.0, y => 0.0);
         Camera_Velocity: Vector2 := (x => 0.0, y => 0.0);
+
+        Checkpoint: Checkpoint_State;
     end record;
+
+    function Clone_Map(M0: Map_Access) return Map_Access is
+        M1: Map_Access;
+    begin
+        M1 := new Map(M0'Range(1), M0'Range(2));
+        M1.all := M0.all;
+        return M1;
+    end;
+
+    procedure Game_Save_Checkpoint(Game: in out Game_State) is
+    begin
+        if Game.Checkpoint.Map /= null then
+            Delete_Map(Game.Checkpoint.Map);
+        end if;
+        Game.Checkpoint.Map := Clone_Map(Game.Map);
+        Game.Checkpoint.Player_Position := Game.Player.Position;
+        Game.Checkpoint.Player_Keys := Game.Player.Keys;
+        Game.Checkpoint.Player_Bombs := Game.Player.Bombs;
+        Game.Checkpoint.Player_Bomb_Slots := Game.Player.Bomb_Slots;
+        Game.Checkpoint.Shrek_Position := Game.Shrek.Position;
+        Game.Checkpoint.Shrek_Dead := Game.Shrek.Dead;
+        Game.Checkpoint.Items := Game.Items;
+    end;
+
+    procedure Game_Restore_Checkpoint(Game: in out Game_State) is
+    begin
+        if Game.Map /= null then
+            Delete_Map(Game.Map);
+        end if;
+        Game.Map := Clone_Map(Game.Checkpoint.Map);
+        Game.Player.Position   := Game.Checkpoint.Player_Position;
+        Game.Player.Keys       := Game.Checkpoint.Player_Keys;
+        Game.Player.Bombs      := Game.Checkpoint.Player_Bombs;
+        Game.Player.Bomb_Slots := Game.Checkpoint.Player_Bomb_Slots;
+        Game.Shrek.Position    := Game.Checkpoint.Shrek_Position;
+        Game.Shrek.Dead        := Game.Checkpoint.Shrek_Dead;
+        Game.Items             := Game.Checkpoint.Items;
+    end;
 
     procedure Load_Game_From_File(File_Name: in String; Game: in out Game_State; Update_Player: Boolean) is
         package Rows is new
@@ -175,6 +230,9 @@ procedure Game is
                             when '.' => Game.Map(Row, Column) := Floor;
                             when '#' => Game.Map(Row, Column) := Wall;
                             when '=' => Game.Map(Row, Column) := Door;
+                            when '!' =>
+                                Game.Map(Row, Column) := Floor;
+                                Game.Items.Insert((Column, Row), (Kind => Checkpoint, Cooldown => 0));
                             when '*' =>
                                 Game.Map(Row, Column) := Floor;
                                 Game.Items.Insert((Column, Row), (Kind => Bomb, Cooldown => 0));
@@ -238,6 +296,12 @@ procedure Game is
         for C in Game.Items.Iterate loop
             case Element(C).Kind is
                 when Key => Draw_Key(Key(C));
+                when Checkpoint =>
+                    declare
+                        Checkpoint_Item_Size: constant Vector2 := Cell_Size*0.5;
+                    begin
+                        Draw_Rectangle_V(To_Vector2(Key(C))*Cell_Size + Cell_Size*0.5 - Checkpoint_Item_Size*0.5, Checkpoint_Item_Size, COLOR_CHECKPOINT);
+                    end;
                 when Bomb =>
                     if Element(C).Cooldown > 0 then
                         Draw_Bomb(Key(C), Color_Brightness(COLOR_RED, -0.5));
@@ -291,6 +355,9 @@ procedure Game is
                               Game.Player.Bombs := Game.Player.Bombs + 1;
                               Game.Items.Replace_Element(C, (Kind => Bomb, Cooldown => 30));
                           end if;
+                          when Checkpoint =>
+                              Game.Items.Delete(C);
+                              Game_Save_Checkpoint(Game);
                        end case;
                    end if;
                end;
@@ -367,7 +434,7 @@ procedure Game is
     begin
         return Prev_Position + (Curr_Position - Prev_Position)*C_Float(1.0 - T);
     end;
-    
+
     Unreachable: exception;
 
     function Can_Reach(Game: in Game_State; Start, Finish, Size: IVector2) return Boolean is
@@ -400,9 +467,7 @@ procedure Game is
     begin
         if Game.Player.Dead then
             if Is_Key_Pressed(KEY_SPACE) then
-                --  TODO: better way to reset the state of the game
-                --  Introduce the system of checkpoints
-                Load_Game_From_File("map.txt", Game, Update_Player => True);
+                Game_Restore_Checkpoint(Game);
                 Game.Player.Dead := False;
             end if;
 
@@ -556,6 +621,7 @@ procedure Game is
     Title: constant Char_Array := To_C("Hello, NSA");
 begin
     Load_Game_From_File("map.txt", Game, True);
+    Game_Save_Checkpoint(Game);
     Put_Line("Keys: " & Integer'Image(Game.Player.Keys));
     Set_Config_Flags(FLAG_WINDOW_RESIZABLE);
     Init_Window(800, 600, Title);
@@ -564,8 +630,10 @@ begin
         Begin_Drawing;
             Clear_Background(COLOR_BACKGROUND);
 
-            if Is_Key_Pressed(KEY_R) then
-                Load_Game_From_File("map.txt", Game, False);
+            if DEVELOPMENT then
+                if Is_Key_Pressed(KEY_R) then
+                    Load_Game_From_File("map.txt", Game, False);
+                end if;
             end if;
 
             if Game.Turn_Animation > 0.0 then
@@ -590,3 +658,4 @@ end;
 
 --  TODO: mechanics to skip a turn
 --  TODO: placing a bomb is not a turn (should it be tho?)
+--  TODO: tutorial does not "explain" how to place bomb
