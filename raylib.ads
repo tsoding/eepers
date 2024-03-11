@@ -1,5 +1,4 @@
 with Interfaces.C; use Interfaces.C;
-with Interfaces.C.Strings; use Interfaces.C.Strings;
 with Raymath; use Raymath;
 
 package Raylib is

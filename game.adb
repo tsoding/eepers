@@ -137,6 +137,7 @@ procedure Game is
         Player_Bombs: Integer;
         Player_Bomb_Slots: Integer;
         Shrek_Position: IVector2;
+        Shrek_Health: Float;
         Shrek_Dead: Boolean;
         Items: Hashed_Map_Items.Map;
     end record;
@@ -169,14 +170,15 @@ procedure Game is
         if Game.Checkpoint.Map /= null then
             Delete_Map(Game.Checkpoint.Map);
         end if;
-        Game.Checkpoint.Map := Clone_Map(Game.Map);
-        Game.Checkpoint.Player_Position := Game.Player.Position;
-        Game.Checkpoint.Player_Keys := Game.Player.Keys;
-        Game.Checkpoint.Player_Bombs := Game.Player.Bombs;
+        Game.Checkpoint.Map               := Clone_Map(Game.Map);
+        Game.Checkpoint.Player_Position   := Game.Player.Position;
+        Game.Checkpoint.Player_Keys       := Game.Player.Keys;
+        Game.Checkpoint.Player_Bombs      := Game.Player.Bombs;
         Game.Checkpoint.Player_Bomb_Slots := Game.Player.Bomb_Slots;
-        Game.Checkpoint.Shrek_Position := Game.Shrek.Position;
-        Game.Checkpoint.Shrek_Dead := Game.Shrek.Dead;
-        Game.Checkpoint.Items := Game.Items;
+        Game.Checkpoint.Shrek_Position    := Game.Shrek.Position;
+        Game.Checkpoint.Shrek_Dead        := Game.Shrek.Dead;
+        Game.Checkpoint.Shrek_Health      := Game.Shrek.Health;
+        Game.Checkpoint.Items             := Game.Items;
     end;
 
     procedure Game_Restore_Checkpoint(Game: in out Game_State) is
@@ -191,6 +193,7 @@ procedure Game is
         Game.Player.Bomb_Slots := Game.Checkpoint.Player_Bomb_Slots;
         Game.Shrek.Position    := Game.Checkpoint.Shrek_Position;
         Game.Shrek.Dead        := Game.Checkpoint.Shrek_Dead;
+        Game.Shrek.Health      := Game.Checkpoint.Shrek_Health;
         Game.Items             := Game.Checkpoint.Items;
     end;
 
@@ -292,14 +295,19 @@ procedure Game is
         end loop;
     end;
 
-    procedure Draw_Number(Cell_Position: IVector2; N: Integer; C: Color) is
+    procedure Draw_Number(Start, Size: Vector2; N: Integer; C: Color) is
         Label: constant Char_Array := To_C(Trim(Integer'Image(N), Ada.Strings.Left));
         Label_Height: constant Integer := 32;
         Label_Width: constant Integer := Integer(Measure_Text(Label, Int(Label_Height)));
         Text_Size: constant Vector2 := To_Vector2((Label_Width, Label_Height));
-        Position: constant Vector2 := To_Vector2(Cell_Position)*Cell_Size + Cell_Size*0.5 - Text_Size*0.5;
+        Position: constant Vector2 := Start + Size*0.5 - Text_Size*0.5;
     begin
         Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), C);
+    end;
+
+    procedure Draw_Number(Cell_Position: IVector2; N: Integer; C: Color) is
+    begin
+        Draw_Number(To_Vector2(Cell_Position)*Cell_Size, Cell_Size, N, C);
     end;
 
     procedure Game_Items(Game: in Game_State) is
@@ -629,26 +637,27 @@ procedure Game is
         end if;
     end;
 
-    procedure Game_Shrek(Game: in out Game_State) is
+    procedure Health_Bar(Boundary_Start, Boundary_Size: Vector2; Health: C_Float) is
+        Health_Padding: constant C_Float := 20.0;
+        Health_Height: constant C_Float := 10.0;
+        Health_Width: constant C_Float := Boundary_Size.X*Health;
     begin
-        if Game.Turn_Animation > 0.0 then
-            Draw_Rectangle_V(Interpolate_Positions(Game.Shrek.Prev_Position, Game.Shrek.Position, Game.Turn_Animation), Cell_Size*3.0, COLOR_SHREK);
-            return;
-        end if;
+        Draw_Rectangle_V(
+          Boundary_Start - (0.0, Health_Padding + Health_Height),
+          (Health_Width, Health_Height),
+          COLOR_RED);
+    end;
 
-        declare
-            Health_Padding: constant C_Float := 20.0;
-            Health_Height: constant C_Float := 10.0;
-            Health_Width: constant C_Float := C_Float(Shrek_Size.X)*Cell_Size.X*C_Float(Game.Shrek.Health);
-            Position: constant Vector2 := To_Vector2(Game.Shrek.Position)*Cell_Size;
-        begin
-            Draw_Rectangle_V(
-              Position - (0.0, Health_Padding + Health_Height),
-              (Health_Width, Health_Height),
-              COLOR_RED);
-            Draw_Rectangle_V(Position, To_Vector2(Shrek_Size)*Cell_Size, COLOR_SHREK);
-        end;
-        Draw_Number(Game.Shrek.Position + (1, 1), Game.Shrek.Attack_Cooldown, (A => 255, others => 0));
+    procedure Game_Shrek(Game: in out Game_State) is
+        Position: constant Vector2 :=
+          (if Game.Turn_Animation > 0.0
+           then Interpolate_Positions(Game.Shrek.Prev_Position, Game.Shrek.Position, Game.Turn_Animation)
+           else To_Vector2(Game.Shrek.Position)*Cell_Size);
+        Size: constant Vector2 := To_Vector2(Shrek_Size)*Cell_Size;
+    begin
+        Draw_Rectangle_V(Position, Cell_Size*3.0, COLOR_SHREK);
+        Health_Bar(Position, Size, C_Float(Game.Shrek.Health));
+        Draw_Number(Position, Size, Game.Shrek.Attack_Cooldown, (A => 255, others => 0));
     end;
 
     Game: Game_State;
