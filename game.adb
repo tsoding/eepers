@@ -27,9 +27,12 @@ procedure Game is
     COLOR_RED        : constant Color := Get_Color(16#FF0000FF#);
     COLOR_PURPLE     : constant Color := Get_Color(16#FF00FFFF#);
 
-    TURN_DURATION_SECS : constant Float := 0.125;
-    SHREK_ATTACK_COOLDOWN: constant Integer := 3;
-    SHREK_EXPLOSION_DAMAGE: constant Float := 0.1;
+    --  TODO: move this to a hotreloadable config
+    TURN_DURATION_SECS      : constant Float := 0.125;
+    SHREK_ATTACK_COOLDOWN   : constant Integer := 3;
+    SHREK_EXPLOSION_DAMAGE  : constant Float := 0.2;
+    SHREK_TURN_REGENERATION : constant Float := 0.01;
+    BOMB_GENERATOR_COOLDOWN : constant Integer := 20;
 
     type IVector2 is record
         X, Y: Integer;
@@ -375,7 +378,7 @@ procedure Game is
                               Game.Items.Delete(C);
                           when Bomb => if Game.Player.Bombs < Game.Player.Bomb_Slots and then Element(C).Cooldown <= 0 then
                               Game.Player.Bombs := Game.Player.Bombs + 1;
-                              Game.Items.Replace_Element(C, (Kind => Bomb, Cooldown => 30));
+                              Game.Items.Replace_Element(C, (Kind => Bomb, Cooldown => BOMB_GENERATOR_COOLDOWN));
                           end if;
                           when Checkpoint =>
                               Game.Items.Delete(C);
@@ -584,6 +587,7 @@ procedure Game is
                                         Game.Shrek.Position.X := Game.Player.Position.X;
                                     end if;
                                 else
+                                    -- TODO: Shrek must chase the Player
                                     null;
                                 end if;
                             end;
@@ -593,6 +597,9 @@ procedure Game is
                         end if;
                         if Inside_Of_Rect(Game.Shrek.Position, Shrek_Size, Game.Player.Position) then
                             Game.Player.Dead := True;
+                        end if;
+                        if Game.Shrek.Health < 1.0 then
+                           Game.Shrek.Health := Game.Shrek.Health + SHREK_TURN_REGENERATION;
                         end if;
                     end if;
                 end if;
@@ -684,6 +691,7 @@ begin
             if DEVELOPMENT then
                 if Is_Key_Pressed(KEY_R) then
                     Load_Game_From_File("map.txt", Game, False);
+                    Game_Save_Checkpoint(Game);
                 end if;
 
                 --  TODO: implement the palette editor
@@ -713,3 +721,8 @@ end;
 --  TODO: mechanics to skip a turn
 --  TODO: placing a bomb is not a turn (should it be tho?)
 --  TODO: tutorial does not "explain" how to place bomb
+--  TODO: keep steping while you are holding a certain direction
+--    Cause constantly tapping it feels like ass
+--  TODO: count the player's turns towards the final score of the game
+--    We can even collect different stats, like bombs collected, bombs used,
+--    times deid etc.
