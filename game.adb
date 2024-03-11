@@ -241,6 +241,8 @@ procedure Game is
                             when 'B' =>
                                 Game.Shrek.Position := (Column, Row);
                                 Game.Shrek.Prev_Position := (Column, Row);
+                                Game.Shrek.Health := 1.0;
+                                Game.Shrek.Dead := False;
                                 Game.Map(Row, Column) := Floor;
                             when '.' => Game.Map(Row, Column) := Floor;
                             when '#' => Game.Map(Row, Column) := Wall;
@@ -406,7 +408,7 @@ procedure Game is
                 if New_Position = Game.Player.Position then
                     Game.Player.Dead := True;
                 end if;
-                if Inside_Of_Rect(Game.Shrek.Position, Shrek_Size, New_Position) then
+                if not Game.Shrek.Dead and then Inside_Of_Rect(Game.Shrek.Position, Shrek_Size, New_Position) then
                     Game.Shrek.Health := Game.Shrek.Health - SHREK_EXPLOSION_DAMAGE;
                     if Game.Shrek.Health <= 0.0 then
                         Game.Shrek.Dead := True;
@@ -566,29 +568,32 @@ procedure Game is
                         end loop;
                     end;
 
-                    Game.Shrek.Prev_Position := Game.Shrek.Position;
-                    if Game.Shrek.Attack_Cooldown <= 0 then
-                        declare
-                            Delta_Pos: constant IVector2 := Game.Player.Position - Game.Shrek.Position;
-                        begin
-                            if Delta_Pos.X in 0..3-1 then
-                                if Can_Reach(Game, Game.Shrek.Position, (Game.Shrek.Position.X, Game.Player.Position.Y), (3, 3)) then
-                                    Game.Shrek.Position.Y := Game.Player.Position.Y;
+                    if not Game.Shrek.Dead then
+                        Game.Shrek.Prev_Position := Game.Shrek.Position;
+                        -- TODO: Shrek should attack on zero just like a bomb.
+                        if Game.Shrek.Attack_Cooldown <= 0 then
+                            declare
+                                Delta_Pos: constant IVector2 := Game.Player.Position - Game.Shrek.Position;
+                            begin
+                                if Delta_Pos.X in 0..3-1 then
+                                    if Can_Reach(Game, Game.Shrek.Position, (Game.Shrek.Position.X, Game.Player.Position.Y), (3, 3)) then
+                                        Game.Shrek.Position.Y := Game.Player.Position.Y;
+                                    end if;
+                                elsif Delta_Pos.Y in 0..3-1 then
+                                    if Can_Reach(Game, Game.Shrek.Position, (Game.Player.Position.X, Game.Shrek.Position.Y), (3, 3)) then
+                                        Game.Shrek.Position.X := Game.Player.Position.X;
+                                    end if;
+                                else
+                                    null;
                                 end if;
-                            elsif Delta_Pos.Y in 0..3-1 then
-                                if Can_Reach(Game, Game.Shrek.Position, (Game.Player.Position.X, Game.Shrek.Position.Y), (3, 3)) then
-                                    Game.Shrek.Position.X := Game.Player.Position.X;
-                                end if;
-                            else
-                                null;
-                            end if;
-                        end;
-                        Game.Shrek.Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
-                    else
-                        Game.Shrek.Attack_Cooldown := Game.Shrek.Attack_Cooldown - 1;
-                    end if;
-                    if Game.Player.Position.X in Game.Shrek.Position.X..Game.Shrek.Position.X+3-1 and then Game.Player.Position.Y in Game.Shrek.Position.Y..Game.Shrek.Position.Y+3-1 then
-                        Game.Player.Dead := True;
+                            end;
+                            Game.Shrek.Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
+                        else
+                            Game.Shrek.Attack_Cooldown := Game.Shrek.Attack_Cooldown - 1;
+                        end if;
+                        if Inside_Of_Rect(Game.Shrek.Position, Shrek_Size, Game.Player.Position) then
+                            Game.Player.Dead := True;
+                        end if;
                     end if;
                 end if;
             end loop;
@@ -655,6 +660,9 @@ procedure Game is
            else To_Vector2(Game.Shrek.Position)*Cell_Size);
         Size: constant Vector2 := To_Vector2(Shrek_Size)*Cell_Size;
     begin
+        if Game.Shrek.Dead then
+            return;
+        end if;
         Draw_Rectangle_V(Position, Cell_Size*3.0, COLOR_SHREK);
         Health_Bar(Position, Size, C_Float(Game.Shrek.Health));
         Draw_Number(Position, Size, Game.Shrek.Attack_Cooldown, (A => 255, others => 0));
