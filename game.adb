@@ -398,19 +398,6 @@ procedure Game is
         Draw_Circle_V(To_Vector2(Position)*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.25, COLOR_KEY);
     end;
 
-    procedure Game_Cells(Game: in Game_State) is
-    begin
-        for Row in Game.Map'Range(1) loop
-            for Column in Game.Map'Range(2) loop
-                declare
-                    Position: constant Vector2 := To_Vector2((Column, Row))*Cell_Size;
-                begin
-                    Draw_Rectangle_V(position, cell_size, Cell_Colors(Game.Map(Row, Column)));
-                end;
-            end loop;
-        end loop;
-    end;
-
     procedure Draw_Number(Start, Size: Vector2; N: Integer; C: Color) is
         Label: constant Char_Array := To_C(Trim(Integer'Image(N), Ada.Strings.Left));
         Label_Height: constant Integer := 32;
@@ -424,6 +411,24 @@ procedure Game is
     procedure Draw_Number(Cell_Position: IVector2; N: Integer; C: Color) is
     begin
         Draw_Number(To_Vector2(Cell_Position)*Cell_Size, Cell_Size, N, C);
+    end;
+
+    procedure Game_Cells(Game: in Game_State) is
+    begin
+        for Row in Game.Map'Range(1) loop
+            for Column in Game.Map'Range(2) loop
+                declare
+                    Position: constant Vector2 := To_Vector2((Column, Row))*Cell_Size;
+                begin
+                    Draw_Rectangle_V(position, cell_size, Cell_Colors(Game.Map(Row, Column)));
+                    if DEVELOPMENT then
+                        if Is_Key_Down(KEY_P) then
+                            Draw_Number((Column, Row), Game.Shrek.Path(Row, Column), (A => 255, others => 0));
+                        end if;
+                    end if;
+                end;
+            end loop;
+        end loop;
     end;
 
     procedure Game_Items(Game: in Game_State) is
@@ -555,30 +560,6 @@ procedure Game is
         return Prev_Position + (Curr_Position - Prev_Position)*C_Float(1.0 - T);
     end;
 
-    Unreachable: exception;
-
-    function Can_Reach(Game: in Game_State; Start, Finish, Size: IVector2) return Boolean is
-        Position: IVector2 := Start;
-        Direction: IVector2 := Finish - Start;
-    begin
-        if Direction.X /= 0 then
-            Direction.X := Direction.X/abs(Direction.X);
-        elsif Direction.Y /= 0 then
-            Direction.Y := Direction.Y/abs(Direction.Y);
-        else
-            raise Unreachable;
-        end if;
-
-        while Position /= Finish loop
-            Position := Position + Direction;
-            if Contains_Walls(Game, Position, Size) then
-                return False;
-            end if;
-        end loop;
-
-        return True;
-    end;
-
     procedure Game_Player(Game: in out Game_State) is
     begin
         if Game.Player.Dead then
@@ -629,6 +610,7 @@ procedure Game is
                     end loop;
 
                     Player_Step(Game, Dir);
+                    Recompute_Shrek_Path(Game);
 
                     for Bomb of Game.Bombs loop
                         if Bomb.Countdown > 0 then
@@ -656,48 +638,25 @@ procedure Game is
                         -- TODO: Shrek should attack on zero just like a bomb.
                         if Game.Shrek.Attack_Cooldown <= 0 then
                             declare
-                                Delta_Pos: constant IVector2 := Game.Player.Position - Game.Shrek.Position;
-
-                                procedure Try_Move_Shrek_To(New_Position: IVector2) is
-                                begin
-                                    if Can_Reach(Game, Game.Shrek.Position, New_Position, Shrek_Size) then
-                                        Game.Shrek.Position := New_Position;
-                                    end if;
-                                end;
-
-                                procedure Shrek_Try_Attack_Horizontally is
-                                begin
-                                    if Delta_Pos.X < 0 then
-                                        Try_Move_Shrek_To((Game.Player.Position.X, Game.Shrek.Position.Y));
-                                    else
-                                        Try_Move_Shrek_To((Game.Player.Position.X - Shrek_Size.X + 1, Game.Shrek.Position.Y));
-                                    end if;
-                                end;
-
-                                procedure Shrek_Try_Attack_Vertically is
-                                begin
-                                    if Delta_Pos.Y < 0 then
-                                        Try_Move_Shrek_To((Game.Shrek.Position.X, Game.Player.Position.Y));
-                                    else
-                                        Try_Move_Shrek_To((Game.Shrek.Position.X, Game.Player.Position.Y - Shrek_Size.Y + 1));
-                                    end if;
-                                end;
+                                Current : constant Integer := Game.Shrek.Path(Game.Shrek.Position.Y, Game.Shrek.Position.X);
                             begin
-                                if Delta_Pos.X in 0..Shrek_Size.X-1 then
-                                    Shrek_Try_Attack_Vertically;
-                                elsif Delta_Pos.Y in 0..Shrek_Size.Y-1 then
-                                    Shrek_Try_Attack_Horizontally;
-                                else
-                                    -- TODO: maybe pick the alignment
-                                    --  randomly to introduce a bit of
-                                    --  RNG into this pretty
-                                    --  deterministic game
-                                    if abs(Delta_Pos.X) < abs(Delta_Pos.Y) then
-                                        Shrek_Try_Attack_Horizontally;
-                                    else
-                                        Shrek_Try_Attack_Vertically;
-                                    end if;
-                                end if;
+                                -- TODO: maybe pick the paths
+                                --  randomly to introduce a bit of
+                                --  RNG into this pretty
+                                --  deterministic game
+                                Search: for Dir in Direction loop
+                                    declare
+                                        Position: IVector2 := Game.Shrek.Position;
+                                    begin
+                                        while not Contains_Walls(Game, Position, Shrek_Size) loop
+                                            Step(Dir, Position);
+                                            if Game.Shrek.Path(Position.Y, Position.X) = Current - 1 then
+                                                Game.Shrek.Position := Position;
+                                                exit Search;
+                                            end if;
+                                        end loop;
+                                    end;
+                                end loop Search;
                             end;
                             Game.Shrek.Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
                         else
@@ -800,17 +759,6 @@ begin
                 if Is_Key_Pressed(KEY_R) then
                     Load_Game_From_File("map.txt", Game, False);
                     Game_Save_Checkpoint(Game);
-                end if;
-
-                if Is_Key_Pressed(KEY_P) then
-                    Recompute_Shrek_Path(Game);
-                    for Y in Game.Shrek.Path'Range(1) loop
-                        for X in Game.Shrek.Path'Range(2) loop
-                            Put(Game.Shrek.Path(Y, X)'Image);
-                            Put(" ");
-                        end loop;
-                        Put_Line("");
-                    end loop;
                 end if;
 
                 --  TODO(tool): implement the palette editor
