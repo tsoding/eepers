@@ -29,8 +29,8 @@ procedure Game is
 
     --  TODO(tool): move this to a hotreloadable config
     TURN_DURATION_SECS      : constant Float := 0.125;
-    SHREK_ATTACK_COOLDOWN   : constant Integer := 3;
-    SHREK_EXPLOSION_DAMAGE  : constant Float := 0.2;
+    SHREK_ATTACK_COOLDOWN   : constant Integer := 10;
+    SHREK_EXPLOSION_DAMAGE  : constant Float := 0.15;
     SHREK_TURN_REGENERATION : constant Float := 0.01;
     BOMB_GENERATOR_COOLDOWN : constant Integer := 20;
 
@@ -500,6 +500,7 @@ procedure Game is
                 if New_Position = Game.Player.Position then
                     Game.Player.Dead := True;
                 end if;
+                -- TODO: explosion should not damage Shrek repeatedly
                 if not Game.Shrek.Dead and then Inside_Of_Rect(Game.Shrek.Position, Shrek_Size, New_Position) then
                     Game.Shrek.Health := Game.Shrek.Health - SHREK_EXPLOSION_DAMAGE;
                     if Game.Shrek.Health <= 0.0 then
