@@ -27,7 +27,7 @@ procedure Game is
     COLOR_RED        : constant Color := Get_Color(16#FF0000FF#);
     COLOR_PURPLE     : constant Color := Get_Color(16#FF00FFFF#);
 
-    --  TODO: move this to a hotreloadable config
+    --  TODO(tool): move this to a hotreloadable config
     TURN_DURATION_SECS      : constant Float := 0.125;
     SHREK_ATTACK_COOLDOWN   : constant Integer := 3;
     SHREK_EXPLOSION_DAMAGE  : constant Float := 0.2;
@@ -113,7 +113,7 @@ procedure Game is
         Prev_Position: IVector2;
         Position: IVector2;
         Keys: Integer := 0;
-        Bombs: Integer := 0;
+        Bombs: Integer := 1;
         Bomb_Slots: Integer := 1;
         Dead: Boolean := False;
     end record;
@@ -577,18 +577,47 @@ procedure Game is
                         if Game.Shrek.Attack_Cooldown <= 0 then
                             declare
                                 Delta_Pos: constant IVector2 := Game.Player.Position - Game.Shrek.Position;
+                                
+                                procedure Try_Move_Shrek_To(New_Position: IVector2) is
+                                begin
+                                    if Can_Reach(Game, Game.Shrek.Position, New_Position, Shrek_Size) then
+                                        Game.Shrek.Position := New_Position;
+                                    end if;
+                                end;
+
+                                procedure Shrek_Try_Attack_Horizontally is
+                                begin
+                                    if Delta_Pos.X < 0 then
+                                        Try_Move_Shrek_To((Game.Player.Position.X, Game.Shrek.Position.Y));
+                                    else
+                                        Try_Move_Shrek_To((Game.Player.Position.X - Shrek_Size.X + 1, Game.Shrek.Position.Y));
+                                    end if;
+                                end;
+
+                                procedure Shrek_Try_Attack_Vertically is
+                                begin
+                                    if Delta_Pos.Y < 0 then
+                                        Try_Move_Shrek_To((Game.Shrek.Position.X, Game.Player.Position.Y));
+                                    else 
+                                        Try_Move_Shrek_To((Game.Shrek.Position.X, Game.Player.Position.Y - Shrek_Size.Y + 1));
+                                    end if;
+                                end;
                             begin
                                 if Delta_Pos.X in 0..3-1 then
-                                    if Can_Reach(Game, Game.Shrek.Position, (Game.Shrek.Position.X, Game.Player.Position.Y), (3, 3)) then
-                                        Game.Shrek.Position.Y := Game.Player.Position.Y;
-                                    end if;
+                                    Put_Line("Align_Shrek_Vertically");
+                                    Shrek_Try_Attack_Vertically;
                                 elsif Delta_Pos.Y in 0..3-1 then
-                                    if Can_Reach(Game, Game.Shrek.Position, (Game.Player.Position.X, Game.Shrek.Position.Y), (3, 3)) then
-                                        Game.Shrek.Position.X := Game.Player.Position.X;
-                                    end if;
+                                    Put_Line("Align_Shrek_Horizontally");
+                                    Shrek_Try_Attack_Horizontally;
                                 else
-                                    -- TODO: Shrek must chase the Player
-                                    null;
+                                    Put_Line("Diagonal");
+                                    if abs(Delta_Pos.X) < abs(Delta_Pos.Y) then
+                                        Put_Line("Diagonal: Align_Shrek_Horizontally");
+                                        Shrek_Try_Attack_Horizontally;
+                                    else
+                                        Put_Line("Diagonal: Align_Shrek_Vertial");
+                                        Shrek_Try_Attack_Vertically;
+                                    end if;
                                 end if;
                             end;
                             Game.Shrek.Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
@@ -694,8 +723,8 @@ begin
                     Game_Save_Checkpoint(Game);
                 end if;
 
-                --  TODO: implement the palette editor
-                --  TODO: save current checkpoint to file for debug purposes
+                --  TODO(tool): implement the palette editor
+                --  TODO(tool): save current checkpoint to file for debug purposes
             end if;
 
             if Game.Turn_Animation > 0.0 then
