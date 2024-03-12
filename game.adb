@@ -50,6 +50,9 @@ procedure Game is
       Explosion => COLOR_PURPLE
     );
 
+    type Shrek_Path is array (Positive range <>, Positive range <>) of Integer;
+    type Shrek_Path_Access is access Shrek_Path;
+    procedure Delete_Shrek_Path is new Ada.Unchecked_Deallocation(Shrek_Path, Shrek_Path_Access);
     type Map is array (Positive range <>, Positive range <>) of Cell;
     type Map_Access is access Map;
     procedure Delete_Map is new Ada.Unchecked_Deallocation(Map, Map_Access);
@@ -123,6 +126,7 @@ procedure Game is
         Position: IVector2;
         Health: Float := 1.0;
         Attack_Cooldown: Integer := SHREK_ATTACK_COOLDOWN;
+        Path: Shrek_Path_Access;
         Dead: Boolean;
     end record;
 
@@ -166,6 +170,107 @@ procedure Game is
         M1 := new Map(M0'Range(1), M0'Range(2));
         M1.all := M0.all;
         return M1;
+    end;
+
+    function Inside_Of_Rect(Start, Size, Point: in IVector2) return Boolean is
+    begin
+        return Start <= Point and then Point < Start + Size;
+    end;
+
+    type Direction is (Left, Right, Up, Down);
+
+    procedure Step(D: in Direction; Position: in out IVector2) is
+    begin
+        case D is
+            when Left  => Position.X := Position.X - 1;
+            when Right => Position.X := Position.X + 1;
+            when Up    => Position.Y := Position.Y - 1;
+            when Down  => Position.Y := Position.Y + 1;
+        end case;
+    end;
+
+    function Opposite(D: Direction) return Direction is
+    begin
+        case D is
+            when Left  => return Right;
+            when Right => return Left;
+            when Up    => return Down;
+            when Down  => return Up;
+        end case;
+    end;
+
+    function Contains_Walls(Game: Game_State; Start, Size: IVector2) return Boolean is
+    begin
+        for X in Start.X..Start.X+Size.X-1 loop
+            for Y in Start.Y..Start.Y+Size.Y-1 loop
+                if Game.Map(Y, X) = Wall then
+                    return True;
+                end if;
+            end loop;
+        end loop;
+        return False;
+    end;
+
+    procedure Recompute_Shrek_Path(Game: in out Game_State) is
+        package Queue is new
+          Ada.Containers.Vectors(Index_Type => Natural, Element_Type => IVector2);
+
+        Q: Queue.Vector;
+    begin
+        for Y in Game.Shrek.Path'Range(1) loop
+            for X in Game.Shrek.Path'Range(2) loop
+                Game.Shrek.Path(Y, X) := -1;
+            end loop;
+        end loop;
+
+        for Dy in 0..Shrek_Size.Y-1 loop
+            for Dx in 0..Shrek_Size.X-1 loop
+                declare
+                    Position: constant IVector2 := (Game.Player.Position.X - Dx, Game.Player.Position.Y - Dy);
+                begin
+                    if not Contains_Walls(Game, Position, Shrek_Size) then
+                        Game.Shrek.Path(Position.Y, Position.X) := 0;
+                        Q.Append(Position);
+                    end if;
+                end;
+            end loop;
+        end loop;
+
+        while not Q.Is_Empty loop
+            declare
+                SHREK_STEPS_LIMIT: constant Integer := 4;
+                SHREK_STEP_LENGTH_LIMIT: constant Integer := 10;
+                Position: constant IVector2 := Q(0);
+            begin
+                Q.Delete_First;
+
+                if Position = Game.Shrek.Position then
+                    exit;
+                end if;
+
+                if Game.Shrek.Path(Position.Y, Position.X) >= SHREK_STEPS_LIMIT then
+                    exit;
+                end if;
+
+                for Dir in Direction loop
+                    declare
+                        New_Position: IVector2 := Position;
+                    begin
+                        Step(Dir, New_Position);
+                        for Limit in 1..SHREK_STEP_LENGTH_LIMIT loop
+                            if Contains_Walls(Game, New_Position, Shrek_Size) then
+                                exit;
+                            end if;
+                            if Game.Shrek.Path(New_Position.Y, New_Position.X) < 0 then
+                                Game.Shrek.Path(New_Position.Y, New_Position.X) := Game.Shrek.Path(Position.Y, Position.X) + 1;
+                                Q.Append(New_Position);
+                            end if;
+                            Step(Dir, New_Position);
+                        end loop;
+                    end;
+                end loop;
+            end;
+        end loop;
     end;
 
     procedure Game_Save_Checkpoint(Game: in out Game_State) is
@@ -224,15 +329,21 @@ procedure Game is
         end loop;
         Close(F);
 
-        if Game.Map /= Null then
+        if Game.Map /= null then
             Delete_Map(Game.Map);
         end if;
+        Game.Map := new Map(1..Height, 1..Width);
+
+        if Game.Shrek.Path /= null then
+            Delete_Shrek_Path(Game.Shrek.Path);
+        end if;
+        Game.Shrek.Path := new Shrek_Path(1..Height, 1..Width);
+
         Game.Items.Clear;
         for Bomb of Game.Bombs loop
             Bomb.Countdown := 0;
         end loop;
 
-        Game.Map := new Map(1..Height, 1..Width);
         for Row in Game.Map'Range(1) loop
             declare
                 Map_Row: constant Unbounded_String := Map_Rows(Row - 1);
@@ -338,28 +449,6 @@ procedure Game is
         end loop;
     end;
 
-    type Direction is (Left, Right, Up, Down);
-
-    procedure Step(D: in Direction; Position: in out IVector2) is
-    begin
-        case D is
-            when Left  => Position.X := Position.X - 1;
-            when Right => Position.X := Position.X + 1;
-            when Up    => Position.Y := Position.Y - 1;
-            when Down  => Position.Y := Position.Y + 1;
-        end case;
-    end;
-
-    function Opposite(D: Direction) return Direction is
-    begin
-        case D is
-            when Left  => return Right;
-            when Right => return Left;
-            when Up    => return Down;
-            when Down  => return Up;
-        end case;
-    end;
-
     procedure Player_Step(Game: in out Game_State; Dir: Direction) is
     begin
         Game.Player.Prev_Position := Game.Player.Position;
@@ -396,11 +485,6 @@ procedure Game is
            when others =>
                Step(Opposite(Dir), Game.Player.Position);
         end case;
-    end;
-
-    function Inside_Of_Rect(Start, Size, Point: in IVector2) return Boolean is
-    begin
-        return Start <= Point and then Point < Start + Size;
     end;
 
     procedure Explode(Game: in out Game_State; Position: in IVector2) is
@@ -487,13 +571,9 @@ procedure Game is
 
         while Position /= Finish loop
             Position := Position + Direction;
-            for X in Position.X..Position.X+Size.X-1 loop
-                for Y in Position.Y..Position.Y+Size.Y-1 loop
-                    if Game.Map(Y, X) = Wall then
-                        return False;
-                    end if;
-                end loop;
-            end loop;
+            if Contains_Walls(Game, Position, Size) then
+                return False;
+            end if;
         end loop;
 
         return True;
@@ -577,7 +657,7 @@ procedure Game is
                         if Game.Shrek.Attack_Cooldown <= 0 then
                             declare
                                 Delta_Pos: constant IVector2 := Game.Player.Position - Game.Shrek.Position;
-                                
+
                                 procedure Try_Move_Shrek_To(New_Position: IVector2) is
                                 begin
                                     if Can_Reach(Game, Game.Shrek.Position, New_Position, Shrek_Size) then
@@ -598,24 +678,23 @@ procedure Game is
                                 begin
                                     if Delta_Pos.Y < 0 then
                                         Try_Move_Shrek_To((Game.Shrek.Position.X, Game.Player.Position.Y));
-                                    else 
+                                    else
                                         Try_Move_Shrek_To((Game.Shrek.Position.X, Game.Player.Position.Y - Shrek_Size.Y + 1));
                                     end if;
                                 end;
                             begin
-                                if Delta_Pos.X in 0..3-1 then
-                                    Put_Line("Align_Shrek_Vertically");
+                                if Delta_Pos.X in 0..Shrek_Size.X-1 then
                                     Shrek_Try_Attack_Vertically;
-                                elsif Delta_Pos.Y in 0..3-1 then
-                                    Put_Line("Align_Shrek_Horizontally");
+                                elsif Delta_Pos.Y in 0..Shrek_Size.Y-1 then
                                     Shrek_Try_Attack_Horizontally;
                                 else
-                                    Put_Line("Diagonal");
+                                    -- TODO: maybe pick the alignment
+                                    --  randomly to introduce a bit of
+                                    --  RNG into this pretty
+                                    --  deterministic game
                                     if abs(Delta_Pos.X) < abs(Delta_Pos.Y) then
-                                        Put_Line("Diagonal: Align_Shrek_Horizontally");
                                         Shrek_Try_Attack_Horizontally;
                                     else
-                                        Put_Line("Diagonal: Align_Shrek_Vertial");
                                         Shrek_Try_Attack_Vertically;
                                     end if;
                                 end if;
@@ -721,6 +800,17 @@ begin
                 if Is_Key_Pressed(KEY_R) then
                     Load_Game_From_File("map.txt", Game, False);
                     Game_Save_Checkpoint(Game);
+                end if;
+
+                if Is_Key_Pressed(KEY_P) then
+                    Recompute_Shrek_Path(Game);
+                    for Y in Game.Shrek.Path'Range(1) loop
+                        for X in Game.Shrek.Path'Range(2) loop
+                            Put(Game.Shrek.Path(Y, X)'Image);
+                            Put(" ");
+                        end loop;
+                        Put_Line("");
+                    end loop;
                 end if;
 
                 --  TODO(tool): implement the palette editor

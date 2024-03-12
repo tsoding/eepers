@@ -65,6 +65,7 @@ package Raylib is
     KEY_W: constant int := 87;
     KEY_A: constant int := 65;
     KEY_D: constant int := 68;
+    KEY_P: constant int := 80;
     KEY_SPACE: constant int := 32;
     function Is_Key_Pressed(key: int) return C_bool
         with
