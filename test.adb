@@ -4,15 +4,20 @@ with Ada.Strings; use Ada.Strings;
 with Ada.Containers.Vectors;
 
 procedure Test is
-    package Queue is new
-        Ada.Containers.Vectors(Index_Type => Natural, Element_Type => Integer);
-    Q: Queue.Vector;
+    type Item_Kind is (Key, Bomb, Checkpoint);
+    type Item(Kind: Item_Kind := Key) is record
+        case Kind is
+            when Key | Checkpoint => null;
+            when Bomb =>
+                Cooldown: Integer;
+        end case;
+    end record;
+    type Map is array (Natural range <>) of Item;
+    type Map_Access is access Map;
+
+    Items: Map_Access := null;
 begin
-    for Index in 1..10 loop
-        Q.Append(Index);
-    end loop;
-    while not Q.Is_Empty loop
-        Put_Line(Integer'Image(Q(0)));
-        Q.Delete_First;
-    end loop;
+    Items := new Map(1..10);
+    Items(1) := (Kind => Bomb, Cooldown => 10);
+    Put_Line(Items.all'Image);
 end;

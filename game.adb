@@ -33,6 +33,8 @@ procedure Game is
     SHREK_EXPLOSION_DAMAGE  : constant Float := 0.15;
     SHREK_TURN_REGENERATION : constant Float := 0.01;
     BOMB_GENERATOR_COOLDOWN : constant Integer := 20;
+    SHREK_STEPS_LIMIT       : constant Integer := 4;
+    SHREK_STEP_LENGTH_LIMIT : constant Integer := 100;
 
     type IVector2 is record
         X, Y: Integer;
@@ -95,9 +97,12 @@ procedure Game is
 
     type Item_Kind is (Key, Bomb, Checkpoint);
 
-    type Item is record
-        Kind: Item_Kind;
-        Cooldown: Integer;
+    type Item(Kind: Item_Kind := Key) is record
+        case Kind is
+            when Bomb =>
+                Cooldown: Integer;
+            when others => null;
+        end case;
     end record;
 
     package Hashed_Map_Items is new
@@ -238,8 +243,6 @@ procedure Game is
 
         while not Q.Is_Empty loop
             declare
-                SHREK_STEPS_LIMIT: constant Integer := 4;
-                SHREK_STEP_LENGTH_LIMIT: constant Integer := 10;
                 Position: constant IVector2 := Q(0);
             begin
                 Q.Delete_First;
@@ -363,7 +366,7 @@ procedure Game is
                             when '=' => Game.Map(Row, Column) := Door;
                             when '!' =>
                                 Game.Map(Row, Column) := Floor;
-                                Game.Items.Insert((Column, Row), (Kind => Checkpoint, Cooldown => 0));
+                                Game.Items.Insert((Column, Row), (Kind => Checkpoint));
                             when '*' =>
                                 Game.Map(Row, Column) := Floor;
                                 Game.Items.Insert((Column, Row), (Kind => Bomb, Cooldown => 0));
@@ -371,7 +374,7 @@ procedure Game is
                                 Game.Map(Row, Column) := Barricade;
                             when '%' =>
                                 Game.Map(Row, Column) := Floor;
-                                Game.Items.Insert((Column, Row), (Kind => Key, Cooldown => 0));
+                                Game.Items.Insert((Column, Row), (Kind => Key));
                             when '@' =>
                                 Game.Map(Row, Column) := Floor;
                                 if Update_Player then
@@ -794,3 +797,5 @@ end;
 --  TODO: count the player's turns towards the final score of the game
 --    We can even collect different stats, like bombs collected, bombs used,
 --    times deid etc.
+--  TODO: animate key when you pick it up
+--    Smoothly move it into the HUD.
