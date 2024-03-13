@@ -66,6 +66,7 @@ package Raylib is
     KEY_A: constant int := 65;
     KEY_D: constant int := 68;
     KEY_P: constant int := 80;
+    KEY_O: constant int := 79;
     KEY_SPACE: constant int := 32;
     function Is_Key_Pressed(key: int) return C_bool
         with
@@ -146,4 +147,14 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "ColorBrightness";
+    function Color_To_HSV(C: Color) return Vector3
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "ColorToHSV";
+    function Color_From_HSV(Hue, Saturation, Value: C_Float) return Color
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "ColorFromHSV";
 end Raylib;

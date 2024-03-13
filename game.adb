@@ -1,3 +1,4 @@
+with Ada.Text_IO;
 with Text_IO; use Text_IO;
 with Interfaces.C; use Interfaces.C;
 with Raylib; use Raylib;
@@ -14,18 +15,129 @@ with Ada.Strings;
 procedure Game is
     DEVELOPMENT : constant Boolean := True;
 
-    COLOR_BACKGROUND : constant Color := Get_Color(16#0b1424ff#);
-    COLOR_FLOOR      : constant Color := Get_Color(16#2f2f2fFF#);
-    COLOR_WALL       : constant Color := Get_Color(16#000000FF#);
-    COLOR_PLAYER     : constant Color := Get_Color(16#3e89ffff#);
-    COLOR_DOOR       : constant Color := Get_Color(16#ff9700ff#);
-    COLOR_KEY        : constant Color := Get_Color(16#ff9700ff#);
-    COLOR_LABEL      : constant Color := Get_Color(16#FFFFFFFF#);
-    COLOR_SHREK      : constant Color := Get_Color(16#97FF00FF#);
-    COLOR_CHECKPOINT : constant Color := Get_Color(16#FF00FFFF#);
+    type Palette is (
+      COLOR_BACKGROUND,
+      COLOR_FLOOR,
+      COLOR_WALL,
+      COLOR_BARRICADE,
+      COLOR_PLAYER,
+      COLOR_DOOR,
+      COLOR_KEY,
+      COLOR_BOMB,
+      COLOR_LABEL,
+      COLOR_SHREK,
+      COLOR_CHECKPOINT,
+      COLOR_EXPLOSION,
+      COLOR_HEALTHBAR);
 
-    COLOR_RED        : constant Color := Get_Color(16#FF0000FF#);
-    COLOR_PURPLE     : constant Color := Get_Color(16#FF00FFFF#);
+    Palette_Names: constant array (Palette) of Unbounded_String := [
+      COLOR_BACKGROUND => To_Unbounded_String("Background"),
+      COLOR_FLOOR      => To_Unbounded_String("Floor"),
+      COLOR_WALL       => To_Unbounded_String("Wall"),
+      COLOR_Barricade  => To_Unbounded_String("Barricade"),
+      COLOR_PLAYER     => To_Unbounded_String("Player"),
+      COLOR_DOOR       => To_Unbounded_String("Door"),
+      COLOR_KEY        => To_Unbounded_String("Key"),
+      COLOR_BOMB       => To_Unbounded_String("Bomb"),
+      COLOR_LABEL      => To_Unbounded_String("Label"),
+      COLOR_SHREK      => To_Unbounded_String("Shrek"),
+      COLOR_CHECKPOINT => To_Unbounded_String("Checkpoint"),
+      COLOR_EXPLOSION  => To_Unbounded_String("Explosion"),
+      COLOR_HEALTHBAR  => To_Unbounded_String("Healthbar")
+      ];
+    
+    Palette_RGB: array (Palette) of Color := [others => (A => 255, others => 0)];
+    Palette_HSV: array (Palette) of Vector3 := [others => (others => 0.0)];
+    
+    procedure Save_Colors(File_Name: String) is
+        F: File_Type;
+
+        procedure Put_HSV(HSV: Vector3) is
+            package Float_IO is new Ada.Text_IO.Float_IO (C_Float);
+        begin
+            Float_IO.Put(F, Item => HSV.X, Exp => 0);
+            Put(F, " ");
+            Float_IO.Put(F, Item => HSV.Y, Exp => 0);
+            Put(F, " ");
+            Float_IO.Put(F, Item => HSV.Z, Exp => 0);
+        end;
+    begin
+        Create(F, Out_File, File_Name);
+        for C in Palette loop
+            Put(F, To_String(Palette_Names(C)) & " ");
+            Put_HSV(Color_To_HSV(Palette_RGB(C)));
+            Put_Line(F, "");
+        end loop;
+        Close(F);
+    end;
+
+    procedure Load_Colors(File_Name: String) is
+        F: File_Type;
+        Line_Number : Integer := 0;
+    begin
+        Open(F, In_File, File_Name);
+        while not End_Of_File(F) loop
+            Line_Number := Line_Number + 1;
+            declare
+                Line: Unbounded_String := To_Unbounded_String(Get_Line(F));
+                
+                function Chop_By(Src: in out Unbounded_String; Pattern: String) return Unbounded_String is
+                    Space_Index: constant Integer := Index(Src, Pattern);
+                    Result: Unbounded_String;
+                begin
+                    if Space_Index = 0 then
+                        Result := Src;
+                        Src := Null_Unbounded_String;
+                    else
+                        Result := Unbounded_Slice(Src, 1, Space_Index - 1);
+                        Src := Unbounded_Slice(Src, Space_Index + 1, Length(Src));
+                    end if;
+
+                    return Result;
+                end;
+                function Find_Color_By_Key(Key: Unbounded_String; Co: out Palette) return Boolean is
+                begin
+                    for C in Palette loop
+                        if Key = Palette_Names(C) then
+                            Co := C;
+                            return True;
+                        end if;
+                    end loop;
+                    return False;
+                end;
+                C: Palette;
+                Key: constant Unbounded_String := Chop_By(Line, " ");
+            begin
+                Line := Trim(Line, Ada.Strings.Left);
+                if Find_Color_By_Key(Key, C) then
+                    Line := Trim(Line, Ada.Strings.Left);
+                    Palette_HSV(C).X := C_Float'Value(To_String(Chop_By(Line, " ")));
+                    Line := Trim(Line, Ada.Strings.Left);
+                    Palette_HSV(C).Y := C_Float'Value(To_String(Chop_By(Line, " ")));
+                    Line := Trim(Line, Ada.Strings.Left);
+                    Palette_HSV(C).Z := C_Float'Value(To_String(Chop_By(Line, " ")));
+                    Palette_RGB(C) := Color_From_HSV(Palette_HSV(C).X, Palette_HSV(C).Y, Palette_HSV(C).Z);
+                else
+                    Put_Line(File_Name & ":" & Line_Number'Image & "WARNING: Unknown Palette Color: """ & To_String(Key) & """");
+                end if;
+            end;
+        end loop;
+        Close(F);
+    end;
+
+    --  TODO(tool): implement the palette editor
+    --  COLOR_BACKGROUND : constant Color := Get_Color(16#0b1424ff#);
+    --  COLOR_FLOOR      : constant Color := Get_Color(16#2f2f2fFF#);
+    --  COLOR_WALL       : constant Color := Get_Color(16#000000FF#);
+    --  COLOR_PLAYER     : constant Color := Get_Color(16#3e89ffff#);
+    --  COLOR_DOOR       : constant Color := Get_Color(16#ff9700ff#);
+    --  COLOR_KEY        : constant Color := Get_Color(16#ff9700ff#);
+    --  COLOR_LABEL      : constant Color := Get_Color(16#FFFFFFFF#);
+    --  COLOR_SHREK      : constant Color := Get_Color(16#97FF00FF#);
+    --  COLOR_CHECKPOINT : constant Color := Get_Color(16#FF00FFFF#);
+
+    --  COLOR_RED        : constant Color := Get_Color(16#FF0000FF#);
+    --  COLOR_PURPLE     : constant Color := Get_Color(16#FF00FFFF#);
 
     --  TODO(tool): move this to a hotreloadable config
     TURN_DURATION_SECS      : constant Float := 0.125;
@@ -43,14 +155,18 @@ procedure Game is
     Shrek_Size: constant IVector2 := (3, 3);
     type Cell is (None, Floor, Wall, Barricade, Door, Explosion);
     Cell_Size : constant Vector2 := (x => 50.0, y => 50.0);
-    Cell_Colors : constant array (Cell) of Color := (
-      None => COLOR_BACKGROUND,
-      Floor => COLOR_FLOOR,
-      Wall => COLOR_WALL,
-      Barricade => COLOR_RED,
-      Door => COLOR_DOOR,
-      Explosion => COLOR_PURPLE
-    );
+
+    function Cell_Colors(C: Cell) return Color is
+    begin
+        case C is
+            when None      => return Palette_RGB(COLOR_BACKGROUND);
+            when Floor     => return Palette_RGB(COLOR_FLOOR);
+            when Wall      => return Palette_RGB(COLOR_WALL);
+            when Barricade => return Palette_RGB(COLOR_BARRICADE);
+            when Door      => return Palette_RGB(COLOR_DOOR);
+            when Explosion => return Palette_RGB(COLOR_EXPLOSION);
+        end case;
+    end;
 
     type Shrek_Path is array (Positive range <>, Positive range <>) of Integer;
     type Shrek_Path_Access is access Shrek_Path;
@@ -72,11 +188,6 @@ procedure Game is
     function "="(A, B: IVector2) return Boolean is
     begin
         return A.X = B.X and then A.Y = B.Y;
-    end;
-
-    function "-"(A, B: IVector2) return IVector2 is
-    begin
-        return (A.X - B.X, A.Y - B.Y);
     end;
 
     function "+"(A, B: IVector2) return IVector2 is
@@ -398,7 +509,7 @@ procedure Game is
 
     procedure Draw_Key(Position: IVector2) is
     begin
-        Draw_Circle_V(To_Vector2(Position)*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.25, COLOR_KEY);
+        Draw_Circle_V(To_Vector2(Position)*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.25, Palette_RGB(COLOR_KEY));
     end;
 
     procedure Draw_Number(Start, Size: Vector2; N: Integer; C: Color) is
@@ -444,14 +555,14 @@ procedure Game is
                     declare
                         Checkpoint_Item_Size: constant Vector2 := Cell_Size*0.5;
                     begin
-                        Draw_Rectangle_V(To_Vector2(Key(C))*Cell_Size + Cell_Size*0.5 - Checkpoint_Item_Size*0.5, Checkpoint_Item_Size, COLOR_CHECKPOINT);
+                        Draw_Rectangle_V(To_Vector2(Key(C))*Cell_Size + Cell_Size*0.5 - Checkpoint_Item_Size*0.5, Checkpoint_Item_Size, Palette_RGB(COLOR_CHECKPOINT));
                     end;
                 when Bomb =>
                     if Element(C).Cooldown > 0 then
-                        Draw_Bomb(Key(C), Color_Brightness(COLOR_RED, -0.5));
-                        Draw_Number(Key(C), Element(C).Cooldown, COLOR_LABEL);
+                        Draw_Bomb(Key(C), Color_Brightness(Palette_RGB(COLOR_BOMB), -0.5));
+                        Draw_Number(Key(C), Element(C).Cooldown, Palette_RGB(COLOR_LABEL));
                     else
-                        Draw_Bomb(Key(C), COLOR_RED);
+                        Draw_Bomb(Key(C), Palette_RGB(COLOR_BOMB));
                     end if;
             end case;
         end loop;
@@ -528,12 +639,12 @@ procedure Game is
         end loop;
     end;
 
-    Keys: constant array (Direction) of int := (
+    Keys: constant array (Direction) of int := [
         Left  => KEY_A,
         Right => KEY_D,
         Up    => KEY_W,
         Down  => KEY_S
-    );
+    ];
 
     function Screen_Size return Vector2 is
     begin
@@ -576,11 +687,11 @@ procedure Game is
         end if;
 
         if Game.Turn_Animation > 0.0 then
-            Draw_Rectangle_V(Interpolate_Positions(Game.Player.Prev_Position, Game.Player.Position, Game.Turn_Animation), Cell_Size, COLOR_PLAYER);
+            Draw_Rectangle_V(Interpolate_Positions(Game.Player.Prev_Position, Game.Player.Position, Game.Turn_Animation), Cell_Size, Palette_RGB(COLOR_PLAYER));
             return;
         end if;
 
-        Draw_Rectangle_V(To_Vector2(Game.Player.Position)*Cell_Size, Cell_Size, COLOR_PLAYER);
+        Draw_Rectangle_V(To_Vector2(Game.Player.Position)*Cell_Size, Cell_Size, Palette_RGB(COLOR_PLAYER));
         if Boolean(Is_Key_Down(KEY_SPACE)) and then Game.Player.Bombs > 0 then
             for Dir in Direction loop
                 declare
@@ -588,7 +699,7 @@ procedure Game is
                 begin
                     Step(Dir, Position);
                     if Game.Map(Position.Y, Position.X) = Floor then
-                        Draw_Bomb(Position, COLOR_RED);
+                        Draw_Bomb(Position, Palette_RGB(COLOR_BOMB));
                         if Is_Key_Pressed(Keys(Dir)) then
                             for Bomb of Game.Bombs loop
                                 if Bomb.Countdown <= 0 then
@@ -682,8 +793,8 @@ procedure Game is
     begin
         for Bomb of Game.Bombs loop
             if Bomb.Countdown > 0 then
-                Draw_Bomb(Bomb.Position, COLOR_RED);
-                Draw_Number(Bomb.Position, Bomb.Countdown, COLOR_LABEL);
+                Draw_Bomb(Bomb.Position, Palette_RGB(COLOR_BOMB));
+                Draw_Number(Bomb.Position, Bomb.Countdown, Palette_RGB(COLOR_LABEL));
             end if;
         end loop;
     end;
@@ -694,7 +805,7 @@ procedure Game is
             declare
                 Position: constant Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 100.0);
             begin
-                Draw_Circle_V(Position, Cell_Size.X*0.25, COLOR_KEY);
+                Draw_Circle_V(Position, Cell_Size.X*0.25, Palette_RGB(COLOR_KEY));
             end;
         end loop;
 
@@ -702,10 +813,9 @@ procedure Game is
             declare
                 Position: constant Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 200.0);
             begin
-                Draw_Circle_V(Position, Cell_Size.X*0.5, COLOR_RED);
+                Draw_Circle_V(Position, Cell_Size.X*0.5, Palette_RGB(COLOR_BOMB));
             end;
         end loop;
-
 
         if Game.Player.Dead then
             declare
@@ -715,7 +825,7 @@ procedure Game is
                 Text_Size: constant Vector2 := To_Vector2((Label_Width, Label_Height));
                 Position: constant Vector2 := Screen_Size*0.5 - Text_Size*0.5;
             begin
-                Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), COLOR_LABEL);
+                Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), Palette_RGB(COLOR_LABEL));
             end;
         end if;
     end;
@@ -728,7 +838,7 @@ procedure Game is
         Draw_Rectangle_V(
           Boundary_Start - (0.0, Health_Padding + Health_Height),
           (Health_Width, Health_Height),
-          COLOR_RED);
+          Palette_RGB(COLOR_HEALTHBAR));
     end;
 
     procedure Game_Shrek(Game: in out Game_State) is
@@ -741,14 +851,30 @@ procedure Game is
         if Game.Shrek.Dead then
             return;
         end if;
-        Draw_Rectangle_V(Position, Cell_Size*3.0, COLOR_SHREK);
+        Draw_Rectangle_V(Position, Cell_Size*3.0, Palette_RGB(COLOR_SHREK));
         Health_Bar(Position, Size, C_Float(Game.Shrek.Health));
         Draw_Number(Position, Size, Game.Shrek.Attack_Cooldown, (A => 255, others => 0));
     end;
 
     Game: Game_State;
     Title: constant Char_Array := To_C("Hello, NSA");
+    
+    Palette_Editor: Boolean := False;
+    Palette_Editor_Choice: Palette := Palette'First;
+
 begin
+    --  Put("Background"); Put_HSV(Color_To_HSV(COLOR_BACKGROUND)); Put_Line("");
+    --  Put("Floor");      Put_HSV(Color_To_HSV(COLOR_FLOOR));      Put_Line("");
+    --  Put("Wall");       Put_HSV(Color_To_HSV(COLOR_WALL));       Put_Line("");
+    --  Put("Player");     Put_HSV(Color_To_HSV(COLOR_PLAYER));     Put_Line("");
+    --  Put("Door");       Put_HSV(Color_To_HSV(COLOR_DOOR));       Put_Line("");
+    --  Put("Key");        Put_HSV(Color_To_HSV(COLOR_KEY));        Put_Line("");
+    --  Put("Label");      Put_HSV(Color_To_HSV(COLOR_LABEL));      Put_Line("");
+    --  Put("Shrek");      Put_HSV(Color_To_HSV(COLOR_SHREK));      Put_Line("");
+    --  Put("Checkpoint"); Put_HSV(Color_To_HSV(COLOR_CHECKPOINT)); Put_Line("");
+    --  return;
+
+    Load_Colors("colors.txt");
     Load_Game_From_File("map.txt", Game, True);
     Game_Save_Checkpoint(Game);
     Put_Line("Keys: " & Integer'Image(Game.Player.Keys));
@@ -757,7 +883,7 @@ begin
     Set_Target_FPS(60);
     while Window_Should_Close = 0 loop
         Begin_Drawing;
-            Clear_Background(COLOR_BACKGROUND);
+            Clear_Background(Palette_RGB(COLOR_BACKGROUND));
 
             if DEVELOPMENT then
                 if Is_Key_Pressed(KEY_R) then
@@ -765,7 +891,13 @@ begin
                     Game_Save_Checkpoint(Game);
                 end if;
 
-                --  TODO(tool): implement the palette editor
+                if Is_Key_Pressed(KEY_O) then
+                    Palette_Editor := not Palette_Editor;
+                    if not Palette_Editor then
+                        Save_Colors("colors.txt");
+                    end if;
+                end if;
+                
                 --  TODO(tool): save current checkpoint to file for debug purposes
             end if;
 
@@ -784,6 +916,42 @@ begin
 
             Game_Hud(Game);
             Draw_FPS(10, 10);
+
+            if Palette_Editor then
+                if Is_Key_Pressed(KEY_S) then
+                    if Palette_Editor_Choice /= Palette'Last then
+                        Palette_Editor_Choice := Palette'Succ(Palette_Editor_Choice);
+                    end if;
+                end if;
+
+                if Is_Key_Pressed(KEY_W) then
+                    if Palette_Editor_Choice /= Palette'First then
+                        Palette_Editor_Choice := Palette'Pred(Palette_Editor_Choice);
+                    end if;
+                end if;
+                
+                if Is_Key_Pressed(KEY_D) then
+                    declare
+                        C: Palette := Palette_Editor_Choice;
+                    begin
+                        Palette_HSV(C).X := Palette_HSV(C).X + 5.0;
+                        Palette_RGB(C) := Color_From_HSV(Palette_HSV(C).X, Palette_HSV(C).Y, Palette_HSV(C).Z);
+                    end;
+                end if;
+
+                for C in Palette loop
+                    declare
+                        Label: constant Char_Array := To_C(To_String(Palette_Names(C)));
+                        Label_Height: constant Integer := 32;
+                        Position: constant Vector2 := (200.0, 200.0 + C_Float(Palette'Pos(C))*C_Float(Label_Height));
+                    begin
+                        Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height),
+                          (if C = Palette_Editor_Choice
+                           then (R => 255, A => 255, others => 0)
+                           else (others => 255)));
+                    end;
+                end loop;
+            end if;
         End_Drawing;
     end loop;
     Close_Window;

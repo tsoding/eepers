@@ -26,4 +26,10 @@ package Raymath is
             Import => True,
             Convention => C,
             External_Name => "Vector2Scale";
+    type Vector3 is record
+        x: C_float;
+        y: C_float;
+        z: C_float;
+    end record
+        with Convention => C_Pass_By_Copy;
 end;
