@@ -45,9 +45,13 @@ procedure Game is
       COLOR_EXPLOSION  => To_Unbounded_String("Explosion"),
       COLOR_HEALTHBAR  => To_Unbounded_String("Healthbar")
       ];
+    
+    type HSV_Comp is (Hue, Sat, Value);
+    type HSV is array (HSV_Comp) of Float;
 
+    HSV_Comp_Step: constant array (HSV_Comp) of Float := [ Hue => 5.0, Sat => 0.05, Value => 0.05];
     Palette_RGB: array (Palette) of Color := [others => (A => 255, others => 0)];
-    Palette_HSV: array (Palette) of Vector3 := [others => (others => 0.0)];
+    Palette_HSV: array (Palette) of HSV := [others => [others => 0.0]];
 
     procedure Save_Colors(File_Name: String) is
         F: File_Type;
@@ -111,12 +115,12 @@ procedure Game is
                 Line := Trim(Line, Ada.Strings.Left);
                 if Find_Color_By_Key(Key, C) then
                     Line := Trim(Line, Ada.Strings.Left);
-                    Palette_HSV(C).X := C_Float'Value(To_String(Chop_By(Line, " ")));
+                    Palette_HSV(C)(Hue) := Float'Value(To_String(Chop_By(Line, " ")));
                     Line := Trim(Line, Ada.Strings.Left);
-                    Palette_HSV(C).Y := C_Float'Value(To_String(Chop_By(Line, " ")));
+                    Palette_HSV(C)(Sat) := Float'Value(To_String(Chop_By(Line, " ")));
                     Line := Trim(Line, Ada.Strings.Left);
-                    Palette_HSV(C).Z := C_Float'Value(To_String(Chop_By(Line, " ")));
-                    Palette_RGB(C) := Color_From_HSV(Palette_HSV(C).X, Palette_HSV(C).Y, Palette_HSV(C).Z);
+                    Palette_HSV(C)(Value) := Float'Value(To_String(Chop_By(Line, " ")));
+                    Palette_RGB(C) := Color_From_HSV(C_Float(Palette_HSV(C)(Hue)), C_Float(Palette_HSV(C)(Sat)), C_Float(Palette_HSV(C)(Value)));
                 else
                     Put_Line(File_Name & ":" & Line_Number'Image & "WARNING: Unknown Palette Color: """ & To_String(Key) & """");
                 end if;
@@ -677,6 +681,12 @@ procedure Game is
 
     Space_Down: Boolean := False;
     Dir_Pressed: array (Direction) of Boolean := [others => False];
+    
+    procedure Swallow_Player_Input is
+    begin
+        Space_Down := False;
+        Dir_Pressed := [others => False];
+    end;
 
     procedure Game_Player(Game: in out Game_State) is
     begin
@@ -863,10 +873,11 @@ procedure Game is
 
     Game: Game_State;
     Title: constant Char_Array := To_C("Hello, NSA");
-
+    
     Palette_Editor: Boolean := False;
     Palette_Editor_Choice: Palette := Palette'First;
-
+    Palette_Editor_Selected: Boolean := False;
+    Palette_Editor_Component: HSV_Comp := Hue;
 begin
     --  Put("Background"); Put_HSV(Color_To_HSV(COLOR_BACKGROUND)); Put_Line("");
     --  Put("Floor");      Put_HSV(Color_To_HSV(COLOR_FLOOR));      Put_Line("");
@@ -886,6 +897,7 @@ begin
     Set_Config_Flags(FLAG_WINDOW_RESIZABLE);
     Init_Window(800, 600, Title);
     Set_Target_FPS(60);
+    Set_Exit_Key(KEY_NULL);
     while Window_Should_Close = 0 loop
         Begin_Drawing;
             Clear_Background(Palette_RGB(COLOR_BACKGROUND));
@@ -909,29 +921,55 @@ begin
                 end if;
 
                 if Palette_Editor then
-                    if Is_Key_Pressed(KEY_S) then
-                        if Palette_Editor_Choice /= Palette'Last then
-                            Palette_Editor_Choice := Palette'Succ(Palette_Editor_Choice);
+                    if Palette_Editor_Selected then
+                        if Is_Key_Pressed(KEY_ESCAPE) then
+                            Palette_Editor_Selected := False;
+                        end if;
+
+                        if Is_Key_Pressed(Keys(Left)) then
+                            if Palette_Editor_Component /= HSV_Comp'First then
+                                Palette_Editor_Component := HSV_Comp'Pred(Palette_Editor_Component);
+                            end if;
+                        end if;
+
+                        if Is_Key_Pressed(Keys(Right)) then
+                            if Palette_Editor_Component /= HSV_Comp'Last then
+                                Palette_Editor_Component := HSV_Comp'Succ(Palette_Editor_Component);
+                            end if;
+                        end if;
+                        
+                        if Is_Key_Pressed(Keys(Up)) then
+                            Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) := Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) + HSV_Comp_Step(Palette_Editor_Component);
+                            Palette_RGB(Palette_Editor_Choice) := Color_From_HSV(C_Float(Palette_HSV(Palette_Editor_Choice)(Hue)), C_Float(Palette_HSV(Palette_Editor_Choice)(Sat)), C_Float(Palette_HSV(Palette_Editor_Choice)(Value)));
+                        end if;
+                        
+                        if Is_Key_Pressed(Keys(Down)) then
+                            Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) := Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) - HSV_Comp_Step(Palette_Editor_Component);
+                            Palette_RGB(Palette_Editor_Choice) := Color_From_HSV(C_Float(Palette_HSV(Palette_Editor_Choice)(Hue)), C_Float(Palette_HSV(Palette_Editor_Choice)(Sat)), C_Float(Palette_HSV(Palette_Editor_Choice)(Value)));
+                        end if;
+                    else 
+                        if Is_Key_Pressed(Keys(Down)) then
+                            if Palette_Editor_Choice /= Palette'Last then
+                                Palette_Editor_Choice := Palette'Succ(Palette_Editor_Choice);
+                            end if;
+                        end if;
+
+                        if Is_Key_Pressed(Keys(Up)) then
+                            if Palette_Editor_Choice /= Palette'First then
+                                Palette_Editor_Choice := Palette'Pred(Palette_Editor_Choice);
+                            end if;
+                        end if;
+
+                        if Is_Key_Pressed(KEY_ESCAPE) then
+                            Palette_Editor := False;
+                        end if;
+                        
+                        if Is_Key_Pressed(KEY_ENTER) then
+                            Palette_Editor_Selected := True;
                         end if;
                     end if;
-
-                    if Is_Key_Pressed(KEY_W) then
-                        if Palette_Editor_Choice /= Palette'First then
-                            Palette_Editor_Choice := Palette'Pred(Palette_Editor_Choice);
-                        end if;
-                    end if;
-
-                    if Is_Key_Pressed(KEY_D) then
-                        declare
-                            C: cPalette := Palette_Editor_Choice;
-                        begin
-                            Palette_HSV(C).X := Palette_HSV(C).X + 5.0;
-                            Palette_RGB(C) := Color_From_HSV(Palette_HSV(C).X, Palette_HSV(C).Y, Palette_HSV(C).Z);
-                        end;
-                    end if;
-
-                    Space_Down := False;
-                    Dir_Pressed := (others => False);
+                    
+                    Swallow_Player_Input;
                 end if;
 
                 --  TODO(tool): save current checkpoint to file for debug purposes
@@ -954,7 +992,6 @@ begin
             Draw_FPS(10, 10);
 
             if Palette_Editor then
-
                 for C in Palette loop
                     declare
                         Label: constant Char_Array := To_C(To_String(Palette_Names(C)));
@@ -967,6 +1004,23 @@ begin
                            else (others => 255)));
                     end;
                 end loop;
+                if Palette_Editor_Selected then
+                    for Comp in HSV_Comp loop
+                        declare
+                            Label: constant Char_Array := To_C(Comp'Image);
+                            Label_Height: constant Integer := 32;
+                            Position: constant Vector2 := (
+                                X => 600.0 + 200.0*C_Float(HSV_Comp'Pos(Comp)),
+                                Y => 200.0 + C_Float(Palette'Pos(Palette_Editor_Choice))*C_Float(Label_Height)
+                            );
+                        begin
+                            Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height),
+                              (if Comp = Palette_Editor_Component
+                               then (R => 255, A => 255, others => 0)
+                               else (others => 255)));
+                        end;
+                    end loop;
+                end if;
             end if;
         End_Drawing;
     end loop;

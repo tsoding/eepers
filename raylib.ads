@@ -60,14 +60,17 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "SetConfigFlags";
-    KEY_R: constant int := 82;
-    KEY_S: constant int := 83;
-    KEY_W: constant int := 87;
-    KEY_A: constant int := 65;
-    KEY_D: constant int := 68;
-    KEY_P: constant int := 80;
-    KEY_O: constant int := 79;
-    KEY_SPACE: constant int := 32;
+    KEY_NULL:   constant int := 0;
+    KEY_R:      constant int := 82;
+    KEY_S:      constant int := 83;
+    KEY_W:      constant int := 87;
+    KEY_A:      constant int := 65;
+    KEY_D:      constant int := 68;
+    KEY_P:      constant int := 80;
+    KEY_O:      constant int := 79;
+    KEY_SPACE:  constant int := 32;
+    KEY_ESCAPE: constant int := 256;
+    KEY_ENTER: constant Int := 257;
     function Is_Key_Pressed(key: int) return C_bool
         with
             Import => True,
@@ -157,4 +160,9 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "ColorFromHSV";
+    procedure Set_Exit_Key(Key: Int) 
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "SetExitKey";
 end Raylib;
