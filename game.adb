@@ -45,10 +45,10 @@ procedure Game is
       COLOR_EXPLOSION  => To_Unbounded_String("Explosion"),
       COLOR_HEALTHBAR  => To_Unbounded_String("Healthbar")
       ];
-    
+
     Palette_RGB: array (Palette) of Color := [others => (A => 255, others => 0)];
     Palette_HSV: array (Palette) of Vector3 := [others => (others => 0.0)];
-    
+
     procedure Save_Colors(File_Name: String) is
         F: File_Type;
 
@@ -80,7 +80,7 @@ procedure Game is
             Line_Number := Line_Number + 1;
             declare
                 Line: Unbounded_String := To_Unbounded_String(Get_Line(F));
-                
+
                 function Chop_By(Src: in out Unbounded_String; Pattern: String) return Unbounded_String is
                     Space_Index: constant Integer := Index(Src, Pattern);
                     Result: Unbounded_String;
@@ -675,10 +675,15 @@ procedure Game is
         return Prev_Position + (Curr_Position - Prev_Position)*C_Float(1.0 - T);
     end;
 
+    Space_Down: Boolean := False;
+    Dir_Pressed: array (Direction) of Boolean := [others => False];
+
     procedure Game_Player(Game: in out Game_State) is
     begin
         if Game.Player.Dead then
-            if Is_Key_Pressed(KEY_SPACE) then
+            --  TODO: when the player revives themselves they are
+            --  being put into bomb selection mode which is weird
+            if Space_Down then
                 Game_Restore_Checkpoint(Game);
                 Game.Player.Dead := False;
             end if;
@@ -692,7 +697,7 @@ procedure Game is
         end if;
 
         Draw_Rectangle_V(To_Vector2(Game.Player.Position)*Cell_Size, Cell_Size, Palette_RGB(COLOR_PLAYER));
-        if Boolean(Is_Key_Down(KEY_SPACE)) and then Game.Player.Bombs > 0 then
+        if Space_Down and then Game.Player.Bombs > 0 then
             for Dir in Direction loop
                 declare
                     Position: IVector2 := Game.Player.Position;
@@ -700,7 +705,7 @@ procedure Game is
                     Step(Dir, Position);
                     if Game.Map(Position.Y, Position.X) = Floor then
                         Draw_Bomb(Position, Palette_RGB(COLOR_BOMB));
-                        if Is_Key_Pressed(Keys(Dir)) then
+                        if Dir_Pressed(Dir) then
                             for Bomb of Game.Bombs loop
                                 if Bomb.Countdown <= 0 then
                                     Bomb.Countdown := 3;
@@ -715,7 +720,7 @@ procedure Game is
             end loop;
         else
             for Dir in Direction loop
-                if Is_Key_Pressed(Keys(Dir)) then
+                if Dir_Pressed(Dir) then
                     for Y in Game.Map'Range(1) loop
                         for X in Game.Map'Range(2) loop
                             if Game.Map(Y, X) = Explosion then
@@ -858,7 +863,7 @@ procedure Game is
 
     Game: Game_State;
     Title: constant Char_Array := To_C("Hello, NSA");
-    
+
     Palette_Editor: Boolean := False;
     Palette_Editor_Choice: Palette := Palette'First;
 
@@ -885,6 +890,11 @@ begin
         Begin_Drawing;
             Clear_Background(Palette_RGB(COLOR_BACKGROUND));
 
+            Space_Down := Boolean(Is_Key_Down(KEY_SPACE));
+            for Dir in Direction loop
+                Dir_Pressed(Dir) := Boolean(Is_Key_Pressed(Keys(Dir)));
+            end loop;
+
             if DEVELOPMENT then
                 if Is_Key_Pressed(KEY_R) then
                     Load_Game_From_File("map.txt", Game, False);
@@ -897,7 +907,33 @@ begin
                         Save_Colors("colors.txt");
                     end if;
                 end if;
-                
+
+                if Palette_Editor then
+                    if Is_Key_Pressed(KEY_S) then
+                        if Palette_Editor_Choice /= Palette'Last then
+                            Palette_Editor_Choice := Palette'Succ(Palette_Editor_Choice);
+                        end if;
+                    end if;
+
+                    if Is_Key_Pressed(KEY_W) then
+                        if Palette_Editor_Choice /= Palette'First then
+                            Palette_Editor_Choice := Palette'Pred(Palette_Editor_Choice);
+                        end if;
+                    end if;
+
+                    if Is_Key_Pressed(KEY_D) then
+                        declare
+                            C: cPalette := Palette_Editor_Choice;
+                        begin
+                            Palette_HSV(C).X := Palette_HSV(C).X + 5.0;
+                            Palette_RGB(C) := Color_From_HSV(Palette_HSV(C).X, Palette_HSV(C).Y, Palette_HSV(C).Z);
+                        end;
+                    end if;
+
+                    Space_Down := False;
+                    Dir_Pressed := (others => False);
+                end if;
+
                 --  TODO(tool): save current checkpoint to file for debug purposes
             end if;
 
@@ -918,26 +954,6 @@ begin
             Draw_FPS(10, 10);
 
             if Palette_Editor then
-                if Is_Key_Pressed(KEY_S) then
-                    if Palette_Editor_Choice /= Palette'Last then
-                        Palette_Editor_Choice := Palette'Succ(Palette_Editor_Choice);
-                    end if;
-                end if;
-
-                if Is_Key_Pressed(KEY_W) then
-                    if Palette_Editor_Choice /= Palette'First then
-                        Palette_Editor_Choice := Palette'Pred(Palette_Editor_Choice);
-                    end if;
-                end if;
-                
-                if Is_Key_Pressed(KEY_D) then
-                    declare
-                        C: Palette := Palette_Editor_Choice;
-                    begin
-                        Palette_HSV(C).X := Palette_HSV(C).X + 5.0;
-                        Palette_RGB(C) := Color_From_HSV(Palette_HSV(C).X, Palette_HSV(C).Y, Palette_HSV(C).Z);
-                    end;
-                end if;
 
                 for C in Palette loop
                     declare
