@@ -675,7 +675,7 @@ procedure Game is
         Prev_Position: constant Vector2 := To_Vector2(IPrev_Position)*Cell_Size;
         Curr_Position: constant Vector2 := To_Vector2(IPosition)*Cell_Size;
     begin
-        return Prev_Position + (Curr_Position - Prev_Position)*C_Float(1.0 - T);
+        return Prev_Position + (Curr_Position - Prev_Position)*C_Float(1.0 - T*T);
     end;
 
     Space_Down: Boolean := False;
