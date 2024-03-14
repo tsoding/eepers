@@ -124,20 +124,6 @@ procedure Game is
             Put_Line("WARNING: could not load colors from file " & File_Name & ": " & Exception_Message(E));
     end;
 
-    --  TODO(tool): implement the palette editor
-    --  COLOR_BACKGROUND : constant Color := Get_Color(16#0b1424ff#);
-    --  COLOR_FLOOR      : constant Color := Get_Color(16#2f2f2fFF#);
-    --  COLOR_WALL       : constant Color := Get_Color(16#000000FF#);
-    --  COLOR_PLAYER     : constant Color := Get_Color(16#3e89ffff#);
-    --  COLOR_DOOR       : constant Color := Get_Color(16#ff9700ff#);
-    --  COLOR_KEY        : constant Color := Get_Color(16#ff9700ff#);
-    --  COLOR_LABEL      : constant Color := Get_Color(16#FFFFFFFF#);
-    --  COLOR_SHREK      : constant Color := Get_Color(16#97FF00FF#);
-    --  COLOR_CHECKPOINT : constant Color := Get_Color(16#FF00FFFF#);
-
-    --  COLOR_RED        : constant Color := Get_Color(16#FF0000FF#);
-    --  COLOR_PURPLE     : constant Color := Get_Color(16#FF00FFFF#);
-
     --  TODO(tool): move this to a hotreloadable config
     TURN_DURATION_SECS      : constant Float := 0.125;
     SHREK_ATTACK_COOLDOWN   : constant Integer := 10;
@@ -146,6 +132,7 @@ procedure Game is
     BOMB_GENERATOR_COOLDOWN : constant Integer := 20;
     SHREK_STEPS_LIMIT       : constant Integer := 4;
     SHREK_STEP_LENGTH_LIMIT : constant Integer := 100;
+    EXPLOSION_LENGTH        : constant Integer := 10;
 
     type IVector2 is record
         X, Y: Integer;
@@ -278,6 +265,11 @@ procedure Game is
 
         Checkpoint: Checkpoint_State;
     end record;
+    
+    function Within_Map(Game: Game_State; Position: IVector2) return Boolean is
+    begin
+        return Position.Y in Game.Map'Range(1) and then Position.X in Game.Map'Range(2);
+    end;
 
     function Clone_Map(M0: Map_Access) return Map_Access is
         M1: Map_Access;
@@ -318,7 +310,7 @@ procedure Game is
     begin
         for X in Start.X..Start.X+Size.X-1 loop
             for Y in Start.Y..Start.Y+Size.Y-1 loop
-                if Game.Map(Y, X) = Wall then
+                if Within_Map(Game, (X, Y)) and then Game.Map(Y, X) = Wall then
                     return True;
                 end if;
             end loop;
@@ -343,7 +335,7 @@ procedure Game is
                 declare
                     Position: constant IVector2 := (Game.Player.Position.X - Dx, Game.Player.Position.Y - Dy);
                 begin
-                    if not Contains_Walls(Game, Position, Shrek_Size) then
+                    if Within_Map(Game, Position) and then not Contains_Walls(Game, Position, Shrek_Size) then
                         Game.Shrek.Path(Position.Y, Position.X) := 0;
                         Q.Append(Position);
                     end if;
@@ -371,6 +363,9 @@ procedure Game is
                     begin
                         Step(Dir, New_Position);
                         for Limit in 1..SHREK_STEP_LENGTH_LIMIT loop
+                            if not Within_Map(Game, New_Position) then
+                                exit;
+                            end if;
                             if Contains_Walls(Game, New_Position, Shrek_Size) then
                                 exit;
                             end if;
@@ -572,6 +567,12 @@ procedure Game is
         Game.Player.Prev_Position := Game.Player.Position;
         Game.Turn_Animation := 1.0;
         Step(Dir, Game.Player.Position);
+        
+        if not Within_Map(Game, Game.Player.Position) then
+            Step(Opposite(Dir), Game.Player.Position);
+            return;
+        end if;
+
         case Game.Map(Game.Player.Position.Y, Game.Player.Position.X) is
            when Floor =>
                declare
@@ -609,7 +610,10 @@ procedure Game is
         procedure Explode_Line(Dir: Direction) is
             New_Position: IVector2 := Position;
         begin
-            Line: for I in 1..10 loop
+            Line: for I in 1..EXPLOSION_LENGTH loop
+                if not Within_Map(Game, New_Position) then
+                    return;
+                end if;
                 if New_Position = Game.Player.Position then
                     Game.Player.Dead := True;
                 end if;
@@ -708,7 +712,7 @@ procedure Game is
                     Position: IVector2 := Game.Player.Position;
                 begin
                     Step(Dir, Position);
-                    if Game.Map(Position.Y, Position.X) = Floor then
+                    if Within_Map(Game, Position) and then Game.Map(Position.Y, Position.X) = Floor then
                         Draw_Bomb(Position, Palette_RGB(COLOR_BOMB));
                         if Dir_Pressed(Dir) then
                             for Bomb of Game.Bombs loop
@@ -773,7 +777,7 @@ procedure Game is
                                     declare
                                         Position: IVector2 := Game.Shrek.Position;
                                     begin
-                                        while not Contains_Walls(Game, Position, Shrek_Size) loop
+                                        while Within_Map(Game, Position) and then not Contains_Walls(Game, Position, Shrek_Size) loop
                                             Step(Dir, Position);
                                             if Game.Shrek.Path(Position.Y, Position.X) = Current - 1 then
                                                 Game.Shrek.Position := Position;
@@ -874,17 +878,6 @@ procedure Game is
     Palette_Editor_Selected: Boolean := False;
     Palette_Editor_Component: HSV_Comp := Hue;
 begin
-    --  Put("Background"); Put_HSV(Color_To_HSV(COLOR_BACKGROUND)); Put_Line("");
-    --  Put("Floor");      Put_HSV(Color_To_HSV(COLOR_FLOOR));      Put_Line("");
-    --  Put("Wall");       Put_HSV(Color_To_HSV(COLOR_WALL));       Put_Line("");
-    --  Put("Player");     Put_HSV(Color_To_HSV(COLOR_PLAYER));     Put_Line("");
-    --  Put("Door");       Put_HSV(Color_To_HSV(COLOR_DOOR));       Put_Line("");
-    --  Put("Key");        Put_HSV(Color_To_HSV(COLOR_KEY));        Put_Line("");
-    --  Put("Label");      Put_HSV(Color_To_HSV(COLOR_LABEL));      Put_Line("");
-    --  Put("Shrek");      Put_HSV(Color_To_HSV(COLOR_SHREK));      Put_Line("");
-    --  Put("Checkpoint"); Put_HSV(Color_To_HSV(COLOR_CHECKPOINT)); Put_Line("");
-    --  return;
-
     Load_Colors("colors.txt");
     Load_Game_From_File("map.txt", Game, True);
     Game_Save_Checkpoint(Game);
@@ -905,7 +898,6 @@ begin
             if DEVELOPMENT then
                 if Is_Key_Pressed(KEY_R) then
                     Load_Game_From_File("map.txt", Game, False);
-                    Game_Save_Checkpoint(Game);
                 end if;
 
                 if Is_Key_Pressed(KEY_O) then
