@@ -1,4 +1,3 @@
-with Ada.Text_IO;
 with Text_IO; use Text_IO;
 with Interfaces.C; use Interfaces.C;
 with Raylib; use Raylib;
@@ -11,6 +10,7 @@ with Ada.Containers.Hashed_Maps;
 use Ada.Containers;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings;
+with Ada.Exceptions; use Ada.Exceptions;
 
 procedure Game is
     DEVELOPMENT : constant Boolean := True;
@@ -46,30 +46,22 @@ procedure Game is
       COLOR_HEALTHBAR  => To_Unbounded_String("Healthbar")
       ];
     
+    type Byte is mod 256;
     type HSV_Comp is (Hue, Sat, Value);
-    type HSV is array (HSV_Comp) of Float;
+    type HSV is array (HSV_Comp) of Byte;
 
-    HSV_Comp_Step: constant array (HSV_Comp) of Float := [ Hue => 5.0, Sat => 0.05, Value => 0.05];
     Palette_RGB: array (Palette) of Color := [others => (A => 255, others => 0)];
-    Palette_HSV: array (Palette) of HSV := [others => [others => 0.0]];
+    Palette_HSV: array (Palette) of HSV := [others => [others => 0]];
 
     procedure Save_Colors(File_Name: String) is
         F: File_Type;
-
-        procedure Put_HSV(HSV: Vector3) is
-            package Float_IO is new Ada.Text_IO.Float_IO (C_Float);
-        begin
-            Float_IO.Put(F, Item => HSV.X, Exp => 0);
-            Put(F, " ");
-            Float_IO.Put(F, Item => HSV.Y, Exp => 0);
-            Put(F, " ");
-            Float_IO.Put(F, Item => HSV.Z, Exp => 0);
-        end;
     begin
         Create(F, Out_File, File_Name);
         for C in Palette loop
-            Put(F, To_String(Palette_Names(C)) & " ");
-            Put_HSV(Color_To_HSV(Palette_RGB(C)));
+            Put(F, To_String(Palette_Names(C)));
+            for Comp in HSV_Comp loop
+                Put(F, Palette_HSV(C)(Comp)'Image);
+            end loop;
             Put_Line(F, "");
         end loop;
         Close(F);
@@ -115,18 +107,21 @@ procedure Game is
                 Line := Trim(Line, Ada.Strings.Left);
                 if Find_Color_By_Key(Key, C) then
                     Line := Trim(Line, Ada.Strings.Left);
-                    Palette_HSV(C)(Hue) := Float'Value(To_String(Chop_By(Line, " ")));
+                    Palette_HSV(C)(Hue) := Byte'Value(To_String(Chop_By(Line, " ")));
                     Line := Trim(Line, Ada.Strings.Left);
-                    Palette_HSV(C)(Sat) := Float'Value(To_String(Chop_By(Line, " ")));
+                    Palette_HSV(C)(Sat) := Byte'Value(To_String(Chop_By(Line, " ")));
                     Line := Trim(Line, Ada.Strings.Left);
-                    Palette_HSV(C)(Value) := Float'Value(To_String(Chop_By(Line, " ")));
-                    Palette_RGB(C) := Color_From_HSV(C_Float(Palette_HSV(C)(Hue)), C_Float(Palette_HSV(C)(Sat)), C_Float(Palette_HSV(C)(Value)));
+                    Palette_HSV(C)(Value) := Byte'Value(To_String(Chop_By(Line, " ")));
+                    Palette_RGB(C) := Color_From_HSV(C_Float(Palette_HSV(C)(Hue))/255.0*360.0, C_Float(Palette_HSV(C)(Sat))/255.0, C_Float(Palette_HSV(C)(Value))/255.0);
                 else
                     Put_Line(File_Name & ":" & Line_Number'Image & "WARNING: Unknown Palette Color: """ & To_String(Key) & """");
                 end if;
             end;
         end loop;
         Close(F);
+    exception
+        when E: Name_Error =>
+            Put_Line("WARNING: could not load colors from file " & File_Name & ": " & Exception_Message(E));
     end;
 
     --  TODO(tool): implement the palette editor
@@ -938,14 +933,14 @@ begin
                             end if;
                         end if;
                         
-                        if Is_Key_Pressed(Keys(Up)) then
-                            Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) := Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) + HSV_Comp_Step(Palette_Editor_Component);
-                            Palette_RGB(Palette_Editor_Choice) := Color_From_HSV(C_Float(Palette_HSV(Palette_Editor_Choice)(Hue)), C_Float(Palette_HSV(Palette_Editor_Choice)(Sat)), C_Float(Palette_HSV(Palette_Editor_Choice)(Value)));
+                        if Is_Key_Down(Keys(Up)) then
+                            Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) := Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) + 1;
+                            Palette_RGB(Palette_Editor_Choice) := Color_From_HSV(C_Float(Palette_HSV(Palette_Editor_Choice)(Hue))/255.0*360.0, C_Float(Palette_HSV(Palette_Editor_Choice)(Sat))/255.0, C_Float(Palette_HSV(Palette_Editor_Choice)(Value))/255.0);
                         end if;
                         
-                        if Is_Key_Pressed(Keys(Down)) then
-                            Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) := Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) - HSV_Comp_Step(Palette_Editor_Component);
-                            Palette_RGB(Palette_Editor_Choice) := Color_From_HSV(C_Float(Palette_HSV(Palette_Editor_Choice)(Hue)), C_Float(Palette_HSV(Palette_Editor_Choice)(Sat)), C_Float(Palette_HSV(Palette_Editor_Choice)(Value)));
+                        if Is_Key_Down(Keys(Down)) then
+                            Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) := Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) - 1;
+                            Palette_RGB(Palette_Editor_Choice) := Color_From_HSV(C_Float(Palette_HSV(Palette_Editor_Choice)(Hue))/255.0*360.0, C_Float(Palette_HSV(Palette_Editor_Choice)(Sat))/255.0, C_Float(Palette_HSV(Palette_Editor_Choice)(Value))/255.0);
                         end if;
                     else 
                         if Is_Key_Pressed(Keys(Down)) then
@@ -999,28 +994,27 @@ begin
                         Position: constant Vector2 := (200.0, 200.0 + C_Float(Palette'Pos(C))*C_Float(Label_Height));
                     begin
                         Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height),
-                          (if C = Palette_Editor_Choice
+                          (if not Palette_Editor_Selected and C = Palette_Editor_Choice
                            then (R => 255, A => 255, others => 0)
                            else (others => 255)));
+                           
+                        for Comp in HSV_Comp loop
+                            declare
+                                Label: constant Char_Array := To_C(Comp'Image & ": " & Palette_HSV(C)(Comp)'Image);
+                                Label_Height: constant Integer := 32;
+                                Position: constant Vector2 := (
+                                    X => 600.0 + 200.0*C_Float(HSV_Comp'Pos(Comp)),
+                                    Y => 200.0 + C_Float(Palette'Pos(C))*C_Float(Label_Height)
+                                );
+                            begin
+                                Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height),
+                                  (if Palette_Editor_Selected and C = Palette_Editor_Choice and Comp = Palette_Editor_Component
+                                   then (R => 255, A => 255, others => 0)
+                                   else (others => 255)));
+                            end;
+                        end loop;
                     end;
                 end loop;
-                if Palette_Editor_Selected then
-                    for Comp in HSV_Comp loop
-                        declare
-                            Label: constant Char_Array := To_C(Comp'Image);
-                            Label_Height: constant Integer := 32;
-                            Position: constant Vector2 := (
-                                X => 600.0 + 200.0*C_Float(HSV_Comp'Pos(Comp)),
-                                Y => 200.0 + C_Float(Palette'Pos(Palette_Editor_Choice))*C_Float(Label_Height)
-                            );
-                        begin
-                            Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height),
-                              (if Comp = Palette_Editor_Component
-                               then (R => 255, A => 255, others => 0)
-                               else (others => 255)));
-                        end;
-                    end loop;
-                end if;
             end if;
         End_Drawing;
     end loop;
