@@ -306,16 +306,19 @@ procedure Game is
         end case;
     end;
 
-    function Contains_Walls(Game: Game_State; Start, Size: IVector2) return Boolean is
+    function Body_Can_Stand_Here(Game: Game_State; Start, Size: IVector2) return Boolean is
     begin
         for X in Start.X..Start.X+Size.X-1 loop
             for Y in Start.Y..Start.Y+Size.Y-1 loop
-                if Within_Map(Game, (X, Y)) and then Game.Map(Y, X) = Wall then
-                    return True;
+                if not Within_Map(Game, (X, Y)) then
+                    return False;
+                end if;
+                if Game.Map(Y, X) /= Floor then
+                    return False;
                 end if;
             end loop;
         end loop;
-        return False;
+        return True;
     end;
 
     procedure Recompute_Shrek_Path(Game: in out Game_State) is
@@ -335,7 +338,7 @@ procedure Game is
                 declare
                     Position: constant IVector2 := (Game.Player.Position.X - Dx, Game.Player.Position.Y - Dy);
                 begin
-                    if Within_Map(Game, Position) and then not Contains_Walls(Game, Position, Shrek_Size) then
+                    if Body_Can_Stand_Here(Game, Position, Shrek_Size) then
                         Game.Shrek.Path(Position.Y, Position.X) := 0;
                         Q.Append(Position);
                     end if;
@@ -363,10 +366,7 @@ procedure Game is
                     begin
                         Step(Dir, New_Position);
                         for Limit in 1..SHREK_STEP_LENGTH_LIMIT loop
-                            if not Within_Map(Game, New_Position) then
-                                exit;
-                            end if;
-                            if Contains_Walls(Game, New_Position, Shrek_Size) then
+                            if not Body_Can_Stand_Here(Game, New_Position, Shrek_Size) then
                                 exit;
                             end if;
                             if Game.Shrek.Path(New_Position.Y, New_Position.X) < 0 then
@@ -777,7 +777,7 @@ procedure Game is
                                     declare
                                         Position: IVector2 := Game.Shrek.Position;
                                     begin
-                                        while Within_Map(Game, Position) and then not Contains_Walls(Game, Position, Shrek_Size) loop
+                                        while Body_Can_Stand_Here(Game, Position, Shrek_Size) loop
                                             Step(Dir, Position);
                                             if Game.Shrek.Path(Position.Y, Position.X) = Current - 1 then
                                                 Game.Shrek.Position := Position;
