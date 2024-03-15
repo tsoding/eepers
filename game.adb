@@ -127,7 +127,7 @@ procedure Game is
     --  TODO(tool): move this to a hotreloadable config
     TURN_DURATION_SECS      : constant Float := 0.125;
     SHREK_ATTACK_COOLDOWN   : constant Integer := 10;
-    SHREK_EXPLOSION_DAMAGE  : constant Float := 0.15;
+    BOSS_EXPLOSION_DAMAGE  : constant Float := 0.15;
     SHREK_TURN_REGENERATION : constant Float := 0.01;
     BOMB_GENERATOR_COOLDOWN : constant Integer := 20;
     SHREK_STEPS_LIMIT       : constant Integer := 4;
@@ -228,6 +228,7 @@ procedure Game is
     end record;
 
     type Boss_State is record
+        Dead: Boolean := True;
         Prev_Position: IVector2;
         Position: IVector2;
         Background: Color;
@@ -235,7 +236,6 @@ procedure Game is
         Health: Float := 1.0;
         Attack_Cooldown: Integer := SHREK_ATTACK_COOLDOWN;
         Path: Path_Map_Access;
-        Dead: Boolean;
     end record;
 
     type Bomb_State is record
@@ -245,22 +245,23 @@ procedure Game is
 
     type Bomb_State_Array is array (1..10) of Bomb_State;
 
+    type Boss_Array is array (1..10) of Boss_State;
+
     type Checkpoint_State is record
         Map: Map_Access := Null;
         Player_Position: IVector2;
         Player_Keys: Integer;
         Player_Bombs: Integer;
         Player_Bomb_Slots: Integer;
-        Shrek_Position: IVector2;
-        Shrek_Health: Float;
-        Shrek_Dead: Boolean;
+        Bosses: Boss_Array;
         Items: Hashed_Map_Items.Map;
     end record;
 
     type Game_State is record
         Map: Map_Access := Null;
         Player: Player_State;
-        Shrek: Boss_State;
+        Bosses: Boss_Array;
+        --  Shrek: Boss_State;
         --  Urmom: Shrek_State := (
         --    Size => (6, 6));
 
@@ -405,9 +406,7 @@ procedure Game is
         Game.Checkpoint.Player_Keys       := Game.Player.Keys;
         Game.Checkpoint.Player_Bombs      := Game.Player.Bombs;
         Game.Checkpoint.Player_Bomb_Slots := Game.Player.Bomb_Slots;
-        Game.Checkpoint.Shrek_Position    := Game.Shrek.Position;
-        Game.Checkpoint.Shrek_Dead        := Game.Shrek.Dead;
-        Game.Checkpoint.Shrek_Health      := Game.Shrek.Health;
+        Game.Checkpoint.Bosses            := Game.Bosses;
         Game.Checkpoint.Items             := Game.Items;
     end;
 
@@ -416,14 +415,12 @@ procedure Game is
         if Game.Map /= null then
             Delete_Map(Game.Map);
         end if;
-        Game.Map := Clone_Map(Game.Checkpoint.Map);
+        Game.Map               := Clone_Map(Game.Checkpoint.Map);
         Game.Player.Position   := Game.Checkpoint.Player_Position;
         Game.Player.Keys       := Game.Checkpoint.Player_Keys;
         Game.Player.Bombs      := Game.Checkpoint.Player_Bombs;
         Game.Player.Bomb_Slots := Game.Checkpoint.Player_Bomb_Slots;
-        Game.Shrek.Position    := Game.Checkpoint.Shrek_Position;
-        Game.Shrek.Dead        := Game.Checkpoint.Shrek_Dead;
-        Game.Shrek.Health      := Game.Checkpoint.Shrek_Health;
+        Game.Bosses            := Game.Checkpoint.Bosses;
         Game.Items             := Game.Checkpoint.Items;
     end;
 
@@ -456,10 +453,12 @@ procedure Game is
         end if;
         Game.Map := new Map(1..Height, 1..Width);
 
-        if Game.Shrek.Path /= null then
-            Delete_Path_Map(Game.Shrek.Path);
-        end if;
-        Game.Shrek.Path := new Path_Map(1..Height, 1..Width);
+        for Boss of Game.Bosses loop
+            if Boss.Path /= null then
+                Delete_Path_Map(Boss.Path);
+            end if;
+            Boss.Path := new Path_Map(1..Height, 1..Width);
+        end loop;
 
         Game.Items.Clear;
         for Bomb of Game.Bombs loop
@@ -474,11 +473,29 @@ procedure Game is
                 for Column in Game.Map'Range(2) loop
                     if Column in 1..Length(Map_Row) then
                         case Element(Map_Row, Column) is
+                            when 'M' =>
+                                for Boss of Game.Bosses loop
+                                    if Boss.Dead then
+                                        Boss.Dead := False;
+                                        Boss.Position := (Column, Row);
+                                        Boss.Prev_Position := (Column, Row);
+                                        Boss.Health := 1.0;
+                                        Boss.Size := (6, 6);
+                                        exit;
+                                    end if;
+                                end loop;
+                                Game.Map(Row, Column) := Floor;
                             when 'B' =>
-                                Game.Shrek.Position := (Column, Row);
-                                Game.Shrek.Prev_Position := (Column, Row);
-                                Game.Shrek.Health := 1.0;
-                                Game.Shrek.Dead := False;
+                                for Boss of Game.Bosses loop
+                                    if Boss.Dead then
+                                        Boss.Dead := False;
+                                        Boss.Position := (Column, Row);
+                                        Boss.Prev_Position := (Column, Row);
+                                        Boss.Health := 1.0;
+                                        Boss.Size := (3, 3);
+                                        exit;
+                                    end if;
+                                end loop;
                                 Game.Map(Row, Column) := Floor;
                             when '.' => Game.Map(Row, Column) := Floor;
                             when '#' => Game.Map(Row, Column) := Wall;
@@ -543,11 +560,6 @@ procedure Game is
                     Position: constant Vector2 := To_Vector2((Column, Row))*Cell_Size;
                 begin
                     Draw_Rectangle_V(position, cell_size, Cell_Colors(Game.Map(Row, Column)));
-                    if DEVELOPMENT then
-                        if Is_Key_Down(KEY_P) then
-                            Draw_Number((Column, Row), Game.Shrek.Path(Row, Column), (A => 255, others => 0));
-                        end if;
-                    end if;
                 end;
             end loop;
         end loop;
@@ -631,13 +643,15 @@ procedure Game is
                 if New_Position = Game.Player.Position then
                     Game.Player.Dead := True;
                 end if;
-                -- TODO: explosion should not damage Shrek repeatedly
-                if not Game.Shrek.Dead and then Inside_Of_Rect(Game.Shrek.Position, Game.Shrek.Size, New_Position) then
-                    Game.Shrek.Health := Game.Shrek.Health - SHREK_EXPLOSION_DAMAGE;
-                    if Game.Shrek.Health <= 0.0 then
-                        Game.Shrek.Dead := True;
+                -- TODO: explosion should not damage Bosses repeatedly
+                for Boss of Game.Bosses loop
+                    if not Boss.Dead and then Inside_Of_Rect(Boss.Position, Boss.Size, New_Position) then
+                        Boss.Health := Boss.Health - BOSS_EXPLOSION_DAMAGE;
+                        if Boss.Health <= 0.0 then
+                            Boss.Dead := True;
+                        end if;
                     end if;
-                end if;
+                end loop;
                 case Game.Map(New_Position.Y, New_Position.X) is
                    when Floor | Explosion =>
                        Game.Map(New_Position.Y, New_Position.X) := Explosion;
@@ -753,7 +767,6 @@ procedure Game is
                     end loop;
 
                     Player_Step(Game, Dir);
-                    Recompute_Path_For_Body(Game, Game.Shrek.Path.all, Game.Shrek.Position, Game.Shrek.Size, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
 
                     for Bomb of Game.Bombs loop
                         if Bomb.Countdown > 0 then
@@ -776,42 +789,45 @@ procedure Game is
                         end loop;
                     end;
 
-                    if not Game.Shrek.Dead then
-                        Game.Shrek.Prev_Position := Game.Shrek.Position;
-                        -- TODO: Shrek should attack on zero just like a bomb.
-                        if Game.Shrek.Attack_Cooldown <= 0 then
-                            declare
-                                Current : constant Integer := Game.Shrek.Path(Game.Shrek.Position.Y, Game.Shrek.Position.X);
-                            begin
-                                -- TODO: maybe pick the paths
-                                --  randomly to introduce a bit of
-                                --  RNG into this pretty
-                                --  deterministic game
-                                Search: for Dir in Direction loop
-                                    declare
-                                        Position: IVector2 := Game.Shrek.Position;
-                                    begin
-                                        while Body_Can_Stand_Here(Game, Position, Game.Shrek.Size) loop
-                                            Step(Dir, Position);
-                                            if Game.Shrek.Path(Position.Y, Position.X) = Current - 1 then
-                                                Game.Shrek.Position := Position;
-                                                exit Search;
-                                            end if;
-                                        end loop;
-                                    end;
-                                end loop Search;
-                            end;
-                            Game.Shrek.Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
-                        else
-                            Game.Shrek.Attack_Cooldown := Game.Shrek.Attack_Cooldown - 1;
+                    for Boss of Game.Bosses loop
+                        if not Boss.Dead then
+                            Recompute_Path_For_Body(Game, Boss.Path.all, Boss.Position, Boss.Size, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
+                            Boss.Prev_Position := Boss.Position;
+                            -- TODO: Shrek should attack on zero just like a bomb.
+                            if Boss.Attack_Cooldown <= 0 then
+                                declare
+                                    Current : constant Integer := Boss.Path(Boss.Position.Y, Boss.Position.X);
+                                begin
+                                    -- TODO: maybe pick the paths
+                                    --  randomly to introduce a bit of
+                                    --  RNG into this pretty
+                                    --  deterministic game
+                                    Search: for Dir in Direction loop
+                                        declare
+                                            Position: IVector2 := Boss.Position;
+                                        begin
+                                            while Body_Can_Stand_Here(Game, Position, Boss.Size) loop
+                                                Step(Dir, Position);
+                                                if Boss.Path(Position.Y, Position.X) = Current - 1 then
+                                                    Boss.Position := Position;
+                                                    exit Search;
+                                                end if;
+                                            end loop;
+                                        end;
+                                    end loop Search;
+                                end;
+                                Boss.Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
+                            else
+                                Boss.Attack_Cooldown := Boss.Attack_Cooldown - 1;
+                            end if;
+                            if Inside_Of_Rect(Boss.Position, Boss.Size, Game.Player.Position) then
+                                Game.Player.Dead := True;
+                            end if;
+                            if Boss.Health < 1.0 then
+                               Boss.Health := Boss.Health + SHREK_TURN_REGENERATION;
+                            end if;
                         end if;
-                        if Inside_Of_Rect(Game.Shrek.Position, Game.Shrek.Size, Game.Player.Position) then
-                            Game.Player.Dead := True;
-                        end if;
-                        if Game.Shrek.Health < 1.0 then
-                           Game.Shrek.Health := Game.Shrek.Health + SHREK_TURN_REGENERATION;
-                        end if;
-                    end if;
+                    end loop;
                 end if;
             end loop;
         end if;
@@ -869,19 +885,23 @@ procedure Game is
           Palette_RGB(COLOR_HEALTHBAR));
     end;
 
-    procedure Game_Shrek(Game: in out Game_State) is
-        Position: constant Vector2 :=
-          (if Game.Turn_Animation > 0.0
-           then Interpolate_Positions(Game.Shrek.Prev_Position, Game.Shrek.Position, Game.Turn_Animation)
-           else To_Vector2(Game.Shrek.Position)*Cell_Size);
-        Size: constant Vector2 := To_Vector2(Game.Shrek.Size)*Cell_Size;
+    procedure Game_Bosses(Game: in out Game_State) is
     begin
-        if Game.Shrek.Dead then
-            return;
-        end if;
-        Draw_Rectangle_V(Position, Cell_Size*3.0, Palette_RGB(COLOR_SHREK));
-        Health_Bar(Position, Size, C_Float(Game.Shrek.Health));
-        Draw_Number(Position, Size, Game.Shrek.Attack_Cooldown, (A => 255, others => 0));
+        for Boss of Game.Bosses loop
+            declare
+                Position: constant Vector2 :=
+                  (if Game.Turn_Animation > 0.0
+                   then Interpolate_Positions(Boss.Prev_Position, Boss.Position, Game.Turn_Animation)
+                   else To_Vector2(Boss.Position)*Cell_Size);
+                Size: constant Vector2 := To_Vector2(Boss.Size)*Cell_Size;
+            begin
+                if not Boss.Dead then
+                    Draw_Rectangle_V(Position, Cell_Size*To_Vector2(Boss.Size), Palette_RGB(COLOR_SHREK));
+                    Health_Bar(Position, Size, C_Float(Boss.Health));
+                    Draw_Number(Position, Size, Boss.Attack_Cooldown, (A => 255, others => 0));
+                end if;
+            end;
+        end loop;
     end;
 
     Game: Game_State;
@@ -985,7 +1005,7 @@ begin
                 Game_Cells(Game);
                 Game_Items(Game);
                 Game_Player(Game);
-                Game_Shrek(Game);
+                Game_Bosses(Game);
                 Game_Bombs(Game);
             End_Mode2D;
 
