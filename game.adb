@@ -1023,3 +1023,18 @@ end;
 --    times deid etc.
 --  TODO: animate key when you pick it up
 --    Smoothly move it into the HUD.
+--  TODO: Different palettes depending on the area
+--    Or maybe different palette for each NG+
+--  TODO: Path finding considers explosion impenetrable
+--  TODO: Wide doors for the first boss
+--  TODO: Sounds
+--  TODO(polish): Player Death animation
+--  TODO(polish): Boss Death animation
+--  TODO(polish): Cool effects when you pick up items and checkpoints
+--  TODO: Initial position of the camera in map.txt
+--  TODO: Inidicate how many bomb slots we have in HUD
+--  TODO: Windows Build
+--    https://www.adacore.com/download/more
+--  TODO: Menu
+--    resolution, volume, etc.
+--  TODO: Primed bombs should be barriers
