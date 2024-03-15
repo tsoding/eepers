@@ -26,6 +26,7 @@ procedure Game is
       COLOR_BOMB,
       COLOR_LABEL,
       COLOR_SHREK,
+      COLOR_URMOM,
       COLOR_CHECKPOINT,
       COLOR_EXPLOSION,
       COLOR_HEALTHBAR);
@@ -41,6 +42,7 @@ procedure Game is
       COLOR_BOMB       => To_Unbounded_String("Bomb"),
       COLOR_LABEL      => To_Unbounded_String("Label"),
       COLOR_SHREK      => To_Unbounded_String("Shrek"),
+      COLOR_URMOM      => To_Unbounded_String("Urmom"),
       COLOR_CHECKPOINT => To_Unbounded_String("Checkpoint"),
       COLOR_EXPLOSION  => To_Unbounded_String("Explosion"),
       COLOR_HEALTHBAR  => To_Unbounded_String("Healthbar")
@@ -231,7 +233,7 @@ procedure Game is
         Dead: Boolean := True;
         Prev_Position: IVector2;
         Position: IVector2;
-        Background: Color;
+        Background: Palette;
         Size: IVector2 := (3, 3);
         Health: Float := 1.0;
         Attack_Cooldown: Integer := SHREK_ATTACK_COOLDOWN;
@@ -477,6 +479,7 @@ procedure Game is
                                 for Boss of Game.Bosses loop
                                     if Boss.Dead then
                                         Boss.Dead := False;
+                                        Boss.Background := COLOR_URMOM;
                                         Boss.Position := (Column, Row);
                                         Boss.Prev_Position := (Column, Row);
                                         Boss.Health := 1.0;
@@ -488,6 +491,7 @@ procedure Game is
                             when 'B' =>
                                 for Boss of Game.Bosses loop
                                     if Boss.Dead then
+                                        Boss.Background := COLOR_SHREK;
                                         Boss.Dead := False;
                                         Boss.Position := (Column, Row);
                                         Boss.Prev_Position := (Column, Row);
@@ -896,7 +900,7 @@ procedure Game is
                 Size: constant Vector2 := To_Vector2(Boss.Size)*Cell_Size;
             begin
                 if not Boss.Dead then
-                    Draw_Rectangle_V(Position, Cell_Size*To_Vector2(Boss.Size), Palette_RGB(COLOR_SHREK));
+                    Draw_Rectangle_V(Position, Cell_Size*To_Vector2(Boss.Size), Palette_RGB(Boss.Background));
                     Health_Bar(Position, Size, C_Float(Boss.Health));
                     Draw_Number(Position, Size, Boss.Attack_Cooldown, (A => 255, others => 0));
                 end if;

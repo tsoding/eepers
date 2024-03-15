@@ -8,6 +8,7 @@ Key 25 255 255
 Bomb 0 255 255
 Label 0 0 255
 Shrek 60 255 255
+Urmom 242 196 212
 Checkpoint 213 255 255
 Explosion 213 255 255
 Healthbar 0 255 255
