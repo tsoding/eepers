@@ -129,7 +129,7 @@ procedure Game is
     --  TODO(tool): move this to a hotreloadable config
     TURN_DURATION_SECS      : constant Float := 0.125;
     SHREK_ATTACK_COOLDOWN   : constant Integer := 10;
-    BOSS_EXPLOSION_DAMAGE  : constant Float := 0.15;
+    BOSS_EXPLOSION_DAMAGE  : constant Float := 0.45;
     SHREK_TURN_REGENERATION : constant Float := 0.01;
     BOMB_GENERATOR_COOLDOWN : constant Integer := 20;
     SHREK_STEPS_LIMIT       : constant Integer := 4;
@@ -649,21 +649,26 @@ procedure Game is
                 if not Within_Map(Game, New_Position) then
                     return;
                 end if;
-                if New_Position = Game.Player.Position then
-                    Game.Player.Dead := True;
-                end if;
-                -- TODO: explosion should not damage Bosses repeatedly
-                for Boss of Game.Bosses loop
-                    if not Boss.Dead and then Inside_Of_Rect(Boss.Position, Boss.Size, New_Position) then
-                        Boss.Health := Boss.Health - BOSS_EXPLOSION_DAMAGE;
-                        if Boss.Health <= 0.0 then
-                            Boss.Dead := True;
-                        end if;
-                    end if;
-                end loop;
+
                 case Game.Map(New_Position.Y, New_Position.X) is
                    when Floor | Explosion =>
                        Game.Map(New_Position.Y, New_Position.X) := Explosion;
+
+                       if New_Position = Game.Player.Position then
+                           Game.Player.Dead := True;
+                           return;
+                       end if;
+
+                       for Boss of Game.Bosses loop
+                           if not Boss.Dead and then Inside_Of_Rect(Boss.Position, Boss.Size, New_Position) then
+                               Boss.Health := Boss.Health - BOSS_EXPLOSION_DAMAGE;
+                               if Boss.Health <= 0.0 then
+                                   Boss.Dead := True;
+                               end if;
+                               return;
+                           end if;
+                       end loop;
+
                        Step(Dir, New_Position);
                    when Barricade =>
                        Game.Map(New_Position.Y, New_Position.X) := Explosion;
@@ -1081,3 +1086,7 @@ end;
 --  TODO: Menu
 --    resolution, volume, etc.
 --  TODO: Primed bombs should be barriers
+--    Be careful with the order of Path Finding Map Recomputation
+--    and the Player Bomb Placement. Map must be recomputed only after
+--    the bombs are placed for the turn. This is related to making placement
+--    of the bombs a legit turn.
