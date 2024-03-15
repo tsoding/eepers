@@ -229,7 +229,10 @@ procedure Game is
         Dead: Boolean := False;
     end record;
 
+    type Boss_Behavior is (Shrek, Urmom);
+
     type Boss_State is record
+        Behavior: Boss_Behavior;
         Dead: Boolean := True;
         Prev_Position: IVector2;
         Position: IVector2;
@@ -478,6 +481,7 @@ procedure Game is
                             when 'M' =>
                                 for Boss of Game.Bosses loop
                                     if Boss.Dead then
+                                        Boss.Behavior := Urmom;
                                         Boss.Dead := False;
                                         Boss.Background := COLOR_URMOM;
                                         Boss.Position := (Column, Row);
@@ -491,6 +495,7 @@ procedure Game is
                             when 'B' =>
                                 for Boss of Game.Bosses loop
                                     if Boss.Dead then
+                                        Boss.Behavior := Shrek;
                                         Boss.Background := COLOR_SHREK;
                                         Boss.Dead := False;
                                         Boss.Position := (Column, Row);
