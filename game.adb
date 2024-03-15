@@ -138,7 +138,6 @@ procedure Game is
         X, Y: Integer;
     end record;
 
-    Shrek_Size: constant IVector2 := (3, 3);
     type Cell is (None, Floor, Wall, Barricade, Door, Explosion);
     Cell_Size : constant Vector2 := (x => 50.0, y => 50.0);
 
@@ -228,9 +227,11 @@ procedure Game is
         Dead: Boolean := False;
     end record;
 
-    type Shrek_State is record
+    type Boss_State is record
         Prev_Position: IVector2;
         Position: IVector2;
+        Background: Color;
+        Size: IVector2 := (3, 3);
         Health: Float := 1.0;
         Attack_Cooldown: Integer := SHREK_ATTACK_COOLDOWN;
         Path: Path_Map_Access;
@@ -259,7 +260,9 @@ procedure Game is
     type Game_State is record
         Map: Map_Access := Null;
         Player: Player_State;
-        Shrek: Shrek_State;
+        Shrek: Boss_State;
+        --  Urmom: Shrek_State := (
+        --    Size => (6, 6));
 
         Turn_Animation: Float := 0.0;
 
@@ -629,7 +632,7 @@ procedure Game is
                     Game.Player.Dead := True;
                 end if;
                 -- TODO: explosion should not damage Shrek repeatedly
-                if not Game.Shrek.Dead and then Inside_Of_Rect(Game.Shrek.Position, Shrek_Size, New_Position) then
+                if not Game.Shrek.Dead and then Inside_Of_Rect(Game.Shrek.Position, Game.Shrek.Size, New_Position) then
                     Game.Shrek.Health := Game.Shrek.Health - SHREK_EXPLOSION_DAMAGE;
                     if Game.Shrek.Health <= 0.0 then
                         Game.Shrek.Dead := True;
@@ -750,7 +753,7 @@ procedure Game is
                     end loop;
 
                     Player_Step(Game, Dir);
-                    Recompute_Path_For_Body(Game, Game.Shrek.Path.all, Game.Shrek.Position, Shrek_Size, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
+                    Recompute_Path_For_Body(Game, Game.Shrek.Path.all, Game.Shrek.Position, Game.Shrek.Size, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
 
                     for Bomb of Game.Bombs loop
                         if Bomb.Countdown > 0 then
@@ -788,7 +791,7 @@ procedure Game is
                                     declare
                                         Position: IVector2 := Game.Shrek.Position;
                                     begin
-                                        while Body_Can_Stand_Here(Game, Position, Shrek_Size) loop
+                                        while Body_Can_Stand_Here(Game, Position, Game.Shrek.Size) loop
                                             Step(Dir, Position);
                                             if Game.Shrek.Path(Position.Y, Position.X) = Current - 1 then
                                                 Game.Shrek.Position := Position;
@@ -802,7 +805,7 @@ procedure Game is
                         else
                             Game.Shrek.Attack_Cooldown := Game.Shrek.Attack_Cooldown - 1;
                         end if;
-                        if Inside_Of_Rect(Game.Shrek.Position, Shrek_Size, Game.Player.Position) then
+                        if Inside_Of_Rect(Game.Shrek.Position, Game.Shrek.Size, Game.Player.Position) then
                             Game.Player.Dead := True;
                         end if;
                         if Game.Shrek.Health < 1.0 then
@@ -871,7 +874,7 @@ procedure Game is
           (if Game.Turn_Animation > 0.0
            then Interpolate_Positions(Game.Shrek.Prev_Position, Game.Shrek.Position, Game.Turn_Animation)
            else To_Vector2(Game.Shrek.Position)*Cell_Size);
-        Size: constant Vector2 := To_Vector2(Shrek_Size)*Cell_Size;
+        Size: constant Vector2 := To_Vector2(Game.Shrek.Size)*Cell_Size;
     begin
         if Game.Shrek.Dead then
             return;
