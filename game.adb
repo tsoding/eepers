@@ -250,7 +250,8 @@ procedure Game is
 
     type Bomb_State_Array is array (1..10) of Bomb_State;
 
-    type Boss_Array is array (1..10) of Boss_State;
+    type Boss_Index is range 1..10;
+    type Boss_Array is array (Boss_Index) of Boss_State;
 
     type Checkpoint_State is record
         Map: Map_Access := Null;
@@ -293,11 +294,6 @@ procedure Game is
         return M1;
     end;
 
-    function Inside_Of_Rect(Start, Size, Point: in IVector2) return Boolean is
-    begin
-        return Start <= Point and then Point < Start + Size;
-    end;
-
     type Direction is (Left, Right, Up, Down);
 
     procedure Step(D: in Direction; Position: in out IVector2) is
@@ -320,7 +316,13 @@ procedure Game is
         end case;
     end;
 
-    function Body_Can_Stand_Here(Game: Game_State; Start, Size: IVector2) return Boolean is
+    function Inside_Of_Rect(Start, Size, Point: in IVector2) return Boolean is
+    begin
+        return Start <= Point and then Point < Start + Size;
+    end;
+
+    function Boss_Can_Stand_Here(Game: Game_State; Start: IVector2; Me: Boss_Index) return Boolean is
+        Size: constant IVector2 := Game.Bosses(Me).Size;
     begin
         for X in Start.X..Start.X+Size.X-1 loop
             for Y in Start.Y..Start.Y+Size.Y-1 loop
@@ -330,15 +332,25 @@ procedure Game is
                 if Game.Map(Y, X) /= Floor then
                     return False;
                 end if;
+                for Index in Boss_Index loop
+                    if not Game.Bosses(Index).Dead and then Index /= Me then
+                        declare
+                            Boss : constant Boss_State := Game.Bosses(Index);
+                        begin
+                            if Inside_Of_Rect(Boss.Position, Boss.Size, (X, Y)) then
+                                return False;
+                            end if;
+                        end;
+                    end if;
+                end loop;
             end loop;
         end loop;
         return True;
     end;
 
-    procedure Recompute_Path_For_Body
-      (Game: in Game_State;
-       Path: out Path_Map;
-       Start, Size: IVector2;
+    procedure Recompute_Path_For_Boss
+      (Game: in out Game_State;
+       Me: Boss_Index;
        Steps_Limit: Integer;
        Step_Length_Limit: Integer)
     is
@@ -347,19 +359,19 @@ procedure Game is
 
         Q: Queue.Vector;
     begin
-        for Y in Path'Range(1) loop
-            for X in Path'Range(2) loop
-                Path(Y, X) := -1;
+        for Y in Game.Bosses(Me).Path'Range(1) loop
+            for X in Game.Bosses(Me).Path'Range(2) loop
+                Game.Bosses(Me).Path(Y, X) := -1;
             end loop;
         end loop;
 
-        for Dy in 0..Size.Y-1 loop
-            for Dx in 0..Size.X-1 loop
+        for Dy in 0..Game.Bosses(Me).Size.Y-1 loop
+            for Dx in 0..Game.Bosses(Me).Size.X-1 loop
                 declare
                     Position: constant IVector2 := Game.Player.Position - (Dx, Dy);
                 begin
-                    if Body_Can_Stand_Here(Game, Position, Size) then
-                        Path(Position.Y, Position.X) := 0;
+                    if Boss_Can_Stand_Here(Game, Position, Me) then
+                        Game.Bosses(Me).Path(Position.Y, Position.X) := 0;
                         Q.Append(Position);
                     end if;
                 end;
@@ -372,11 +384,11 @@ procedure Game is
             begin
                 Q.Delete_First;
 
-                if Position = Start then
+                if Position = Game.Bosses(Me).Position then
                     exit;
                 end if;
 
-                if Path(Position.Y, Position.X) >= Steps_Limit then
+                if Game.Bosses(Me).Path(Position.Y, Position.X) >= Steps_Limit then
                     exit;
                 end if;
 
@@ -386,11 +398,11 @@ procedure Game is
                     begin
                         Step(Dir, New_Position);
                         for Limit in 1..Step_Length_Limit loop
-                            if not Body_Can_Stand_Here(Game, New_Position, Size) then
+                            if not Boss_Can_Stand_Here(Game, New_Position, Me) then
                                 exit;
                             end if;
-                            if Path(New_Position.Y, New_Position.X) < 0 then
-                                Path(New_Position.Y, New_Position.X) := Path(Position.Y, Position.X) + 1;
+                            if Game.Bosses(Me).Path(New_Position.Y, New_Position.X) < 0 then
+                                Game.Bosses(Me).Path(New_Position.Y, New_Position.X) := Game.Bosses(Me).Path(Position.Y, Position.X) + 1;
                                 Q.Append(New_Position);
                             end if;
                             Step(Dir, New_Position);
@@ -427,6 +439,23 @@ procedure Game is
         Game.Player.Bomb_Slots := Game.Checkpoint.Player_Bomb_Slots;
         Game.Bosses            := Game.Checkpoint.Bosses;
         Game.Items             := Game.Checkpoint.Items;
+    end;
+
+    procedure Spawn_Shrek(Game: in out Game_State; Position: IVector2) is
+    begin
+        for Boss of Game.Bosses loop
+            if Boss.Dead then
+                Boss.Behavior := Shrek;
+                Boss.Background := COLOR_SHREK;
+                Boss.Dead := False;
+                Boss.Position := Position;
+                Boss.Prev_Position := Position;
+                Boss.Health := 1.0;
+                Boss.Size := (3, 3);
+                Boss.Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
+                exit;
+            end if;
+        end loop;
     end;
 
     procedure Load_Game_From_File(File_Name: in String; Game: in out Game_State; Update_Player: Boolean) is
@@ -493,18 +522,7 @@ procedure Game is
                                 end loop;
                                 Game.Map(Row, Column) := Floor;
                             when 'B' =>
-                                for Boss of Game.Bosses loop
-                                    if Boss.Dead then
-                                        Boss.Behavior := Shrek;
-                                        Boss.Background := COLOR_SHREK;
-                                        Boss.Dead := False;
-                                        Boss.Position := (Column, Row);
-                                        Boss.Prev_Position := (Column, Row);
-                                        Boss.Health := 1.0;
-                                        Boss.Size := (3, 3);
-                                        exit;
-                                    end if;
-                                end loop;
+                                Spawn_Shrek(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
                             when '.' => Game.Map(Row, Column) := Floor;
                             when '#' => Game.Map(Row, Column) := Wall;
@@ -569,6 +587,9 @@ procedure Game is
                     Position: constant Vector2 := To_Vector2((Column, Row))*Cell_Size;
                 begin
                     Draw_Rectangle_V(position, cell_size, Cell_Colors(Game.Map(Row, Column)));
+                    if Is_Key_Down(KEY_P) then
+                        Draw_Number((Column, Row), Game.Bosses(1).Path(Row, Column), (A => 255, others => 0));
+                    end if;
                 end;
             end loop;
         end loop;
@@ -661,10 +682,23 @@ procedure Game is
 
                        for Boss of Game.Bosses loop
                            if not Boss.Dead and then Inside_Of_Rect(Boss.Position, Boss.Size, New_Position) then
-                               Boss.Health := Boss.Health - BOSS_EXPLOSION_DAMAGE;
-                               if Boss.Health <= 0.0 then
-                                   Boss.Dead := True;
-                               end if;
+                               case Boss.Behavior is
+                                   when Shrek =>
+                                       Boss.Health := Boss.Health - BOSS_EXPLOSION_DAMAGE;
+                                       if Boss.Health <= 0.0 then
+                                           Boss.Dead := True;
+                                       end if;
+                                   when Urmom =>
+                                       declare
+                                           Position: constant IVector2 := Boss.Position;
+                                       begin
+                                           Boss.Dead := True;
+                                           Spawn_Shrek(Game, Position + (0, 0));
+                                           Spawn_Shrek(Game, Position + (3, 0));
+                                           Spawn_Shrek(Game, Position + (0, 3));
+                                           Spawn_Shrek(Game, Position + (3, 3));
+                                       end;
+                               end case;
                                return;
                            end if;
                        end loop;
@@ -803,14 +837,14 @@ procedure Game is
                         end loop;
                     end;
 
-                    for Boss of Game.Bosses loop
-                        if not Boss.Dead then
-                            Recompute_Path_For_Body(Game, Boss.Path.all, Boss.Position, Boss.Size, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
-                            Boss.Prev_Position := Boss.Position;
+                    for Me in Boss_Index loop
+                        if not Game.Bosses(Me).Dead then
+                            Recompute_Path_For_Boss(Game, Me, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
+                            Game.Bosses(Me).Prev_Position := Game.Bosses(Me).Position;
                             -- TODO: Shrek should attack on zero just like a bomb.
-                            if Boss.Attack_Cooldown <= 0 then
+                            if Game.Bosses(Me).Attack_Cooldown <= 0 then
                                 declare
-                                    Current : constant Integer := Boss.Path(Boss.Position.Y, Boss.Position.X);
+                                    Current : constant Integer := Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X);
                                 begin
                                     -- TODO: maybe pick the paths
                                     --  randomly to introduce a bit of
@@ -818,27 +852,27 @@ procedure Game is
                                     --  deterministic game
                                     Search: for Dir in Direction loop
                                         declare
-                                            Position: IVector2 := Boss.Position;
+                                            Position: IVector2 := Game.Bosses(Me).Position;
                                         begin
-                                            while Body_Can_Stand_Here(Game, Position, Boss.Size) loop
+                                            while Boss_Can_Stand_Here(Game, Position, Me) loop
                                                 Step(Dir, Position);
-                                                if Boss.Path(Position.Y, Position.X) = Current - 1 then
-                                                    Boss.Position := Position;
+                                                if Game.Bosses(Me).Path(Position.Y, Position.X) = Current - 1 then
+                                                    Game.Bosses(Me).Position := Position;
                                                     exit Search;
                                                 end if;
                                             end loop;
                                         end;
                                     end loop Search;
                                 end;
-                                Boss.Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
+                                Game.Bosses(Me).Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
                             else
-                                Boss.Attack_Cooldown := Boss.Attack_Cooldown - 1;
+                                Game.Bosses(Me).Attack_Cooldown := Game.Bosses(Me).Attack_Cooldown - 1;
                             end if;
-                            if Inside_Of_Rect(Boss.Position, Boss.Size, Game.Player.Position) then
+                            if Inside_Of_Rect(Game.Bosses(Me).Position, Game.Bosses(Me).Size, Game.Player.Position) then
                                 Game.Player.Dead := True;
                             end if;
-                            if Boss.Health < 1.0 then
-                               Boss.Health := Boss.Health + SHREK_TURN_REGENERATION;
+                            if Game.Bosses(Me).Health < 1.0 then
+                               Game.Bosses(Me).Health := Game.Bosses(Me).Health + SHREK_TURN_REGENERATION;
                             end if;
                         end if;
                     end loop;
@@ -911,7 +945,12 @@ procedure Game is
             begin
                 if not Boss.Dead then
                     Draw_Rectangle_V(Position, Cell_Size*To_Vector2(Boss.Size), Palette_RGB(Boss.Background));
-                    Health_Bar(Position, Size, C_Float(Boss.Health));
+                    case Boss.Behavior is
+                        when Shrek =>
+                            Health_Bar(Position, Size, C_Float(Boss.Health));
+                        when Urmom =>
+                            null;
+                    end case;
                     Draw_Number(Position, Size, Boss.Attack_Cooldown, (A => 255, others => 0));
                 end if;
             end;
