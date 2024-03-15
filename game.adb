@@ -154,9 +154,9 @@ procedure Game is
         end case;
     end;
 
-    type Shrek_Path is array (Positive range <>, Positive range <>) of Integer;
-    type Shrek_Path_Access is access Shrek_Path;
-    procedure Delete_Shrek_Path is new Ada.Unchecked_Deallocation(Shrek_Path, Shrek_Path_Access);
+    type Path_Map is array (Positive range <>, Positive range <>) of Integer;
+    type Path_Map_Access is access Path_Map;
+    procedure Delete_Path_Map is new Ada.Unchecked_Deallocation(Path_Map, Path_Map_Access);
     type Map is array (Positive range <>, Positive range <>) of Cell;
     type Map_Access is access Map;
     procedure Delete_Map is new Ada.Unchecked_Deallocation(Map, Map_Access);
@@ -228,7 +228,7 @@ procedure Game is
         Position: IVector2;
         Health: Float := 1.0;
         Attack_Cooldown: Integer := SHREK_ATTACK_COOLDOWN;
-        Path: Shrek_Path_Access;
+        Path: Path_Map_Access;
         Dead: Boolean;
     end record;
 
@@ -320,7 +320,8 @@ procedure Game is
         end loop;
         return True;
     end;
-
+    
+    --  procedure Recompute_Path_For_Body(Game: in Game_State; Path: Shrek_Path_Access);
     procedure Recompute_Shrek_Path(Game: in out Game_State) is
         package Queue is new
           Ada.Containers.Vectors(Index_Type => Natural, Element_Type => IVector2);
@@ -443,9 +444,9 @@ procedure Game is
         Game.Map := new Map(1..Height, 1..Width);
 
         if Game.Shrek.Path /= null then
-            Delete_Shrek_Path(Game.Shrek.Path);
+            Delete_Path_Map(Game.Shrek.Path);
         end if;
-        Game.Shrek.Path := new Shrek_Path(1..Height, 1..Width);
+        Game.Shrek.Path := new Path_Map(1..Height, 1..Width);
 
         Game.Items.Clear;
         for Bomb of Game.Bombs loop
