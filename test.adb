@@ -6,10 +6,19 @@ with Ada.Containers.Vectors;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 
 procedure Test is
-    Map: array (1..10, 1..20) of Integer := [others => [others => 0]];
-    Index: array (1..2) of Integer;
+    type State is record
+        X: Integer;
+        Y: Integer;
+    end record;
+
+    procedure Foo(S: in State; V: out Integer) is
+    begin
+        V := S.X*2;
+    end;
+
+    S: State := (X => 69, Y => 420);
 begin
-    if Index in Map then
-        Map() := 1;
-    end if;
+    Put_Line(S'Image);
+    Foo(S, S.Y);
+    Put_Line(S'Image);
 end;

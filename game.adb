@@ -45,7 +45,7 @@ procedure Game is
       COLOR_EXPLOSION  => To_Unbounded_String("Explosion"),
       COLOR_HEALTHBAR  => To_Unbounded_String("Healthbar")
       ];
-    
+
     type Byte is mod 256;
     type HSV_Comp is (Hue, Sat, Value);
     type HSV is array (HSV_Comp) of Byte;
@@ -181,6 +181,11 @@ procedure Game is
         return (A.X + B.X, A.Y + B.Y);
     end;
 
+    function "-"(A, B: IVector2) return IVector2 is
+    begin
+        return (A.X - B.X, A.Y - B.Y);
+    end;
+
     function Equivalent_IVector2(Left, Right: IVector2) return Boolean is
     begin
         return Left.X = Right.X and then Left.Y = Right.Y;
@@ -265,7 +270,7 @@ procedure Game is
 
         Checkpoint: Checkpoint_State;
     end record;
-    
+
     function Within_Map(Game: Game_State; Position: IVector2) return Boolean is
     begin
         return Position.Y in Game.Map'Range(1) and then Position.X in Game.Map'Range(2);
@@ -320,27 +325,32 @@ procedure Game is
         end loop;
         return True;
     end;
-    
-    --  procedure Recompute_Path_For_Body(Game: in Game_State; Path: Shrek_Path_Access);
-    procedure Recompute_Shrek_Path(Game: in out Game_State) is
+
+    procedure Recompute_Path_For_Body
+      (Game: in Game_State;
+       Path: out Path_Map;
+       Start, Size: IVector2;
+       Steps_Limit: Integer;
+       Step_Length_Limit: Integer)
+    is
         package Queue is new
           Ada.Containers.Vectors(Index_Type => Natural, Element_Type => IVector2);
 
         Q: Queue.Vector;
     begin
-        for Y in Game.Shrek.Path'Range(1) loop
-            for X in Game.Shrek.Path'Range(2) loop
-                Game.Shrek.Path(Y, X) := -1;
+        for Y in Path'Range(1) loop
+            for X in Path'Range(2) loop
+                Path(Y, X) := -1;
             end loop;
         end loop;
 
-        for Dy in 0..Shrek_Size.Y-1 loop
-            for Dx in 0..Shrek_Size.X-1 loop
+        for Dy in 0..Size.Y-1 loop
+            for Dx in 0..Size.X-1 loop
                 declare
-                    Position: constant IVector2 := (Game.Player.Position.X - Dx, Game.Player.Position.Y - Dy);
+                    Position: constant IVector2 := Game.Player.Position - (Dx, Dy);
                 begin
-                    if Body_Can_Stand_Here(Game, Position, Shrek_Size) then
-                        Game.Shrek.Path(Position.Y, Position.X) := 0;
+                    if Body_Can_Stand_Here(Game, Position, Size) then
+                        Path(Position.Y, Position.X) := 0;
                         Q.Append(Position);
                     end if;
                 end;
@@ -353,11 +363,11 @@ procedure Game is
             begin
                 Q.Delete_First;
 
-                if Position = Game.Shrek.Position then
+                if Position = Start then
                     exit;
                 end if;
 
-                if Game.Shrek.Path(Position.Y, Position.X) >= SHREK_STEPS_LIMIT then
+                if Path(Position.Y, Position.X) >= Steps_Limit then
                     exit;
                 end if;
 
@@ -366,12 +376,12 @@ procedure Game is
                         New_Position: IVector2 := Position;
                     begin
                         Step(Dir, New_Position);
-                        for Limit in 1..SHREK_STEP_LENGTH_LIMIT loop
-                            if not Body_Can_Stand_Here(Game, New_Position, Shrek_Size) then
+                        for Limit in 1..Step_Length_Limit loop
+                            if not Body_Can_Stand_Here(Game, New_Position, Size) then
                                 exit;
                             end if;
-                            if Game.Shrek.Path(New_Position.Y, New_Position.X) < 0 then
-                                Game.Shrek.Path(New_Position.Y, New_Position.X) := Game.Shrek.Path(Position.Y, Position.X) + 1;
+                            if Path(New_Position.Y, New_Position.X) < 0 then
+                                Path(New_Position.Y, New_Position.X) := Path(Position.Y, Position.X) + 1;
                                 Q.Append(New_Position);
                             end if;
                             Step(Dir, New_Position);
@@ -568,7 +578,7 @@ procedure Game is
         Game.Player.Prev_Position := Game.Player.Position;
         Game.Turn_Animation := 1.0;
         Step(Dir, Game.Player.Position);
-        
+
         if not Within_Map(Game, Game.Player.Position) then
             Step(Opposite(Dir), Game.Player.Position);
             return;
@@ -681,7 +691,7 @@ procedure Game is
 
     Space_Down: Boolean := False;
     Dir_Pressed: array (Direction) of Boolean := [others => False];
-    
+
     procedure Swallow_Player_Input is
     begin
         Space_Down := False;
@@ -740,7 +750,7 @@ procedure Game is
                     end loop;
 
                     Player_Step(Game, Dir);
-                    Recompute_Shrek_Path(Game);
+                    Recompute_Path_For_Body(Game, Game.Shrek.Path.all, Game.Shrek.Position, Shrek_Size, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
 
                     for Bomb of Game.Bombs loop
                         if Bomb.Countdown > 0 then
@@ -873,7 +883,7 @@ procedure Game is
 
     Game: Game_State;
     Title: constant Char_Array := To_C("Hello, NSA");
-    
+
     Palette_Editor: Boolean := False;
     Palette_Editor_Choice: Palette := Palette'First;
     Palette_Editor_Selected: Boolean := False;
@@ -925,17 +935,17 @@ begin
                                 Palette_Editor_Component := HSV_Comp'Succ(Palette_Editor_Component);
                             end if;
                         end if;
-                        
+
                         if Is_Key_Down(Keys(Up)) then
                             Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) := Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) + 1;
                             Palette_RGB(Palette_Editor_Choice) := Color_From_HSV(C_Float(Palette_HSV(Palette_Editor_Choice)(Hue))/255.0*360.0, C_Float(Palette_HSV(Palette_Editor_Choice)(Sat))/255.0, C_Float(Palette_HSV(Palette_Editor_Choice)(Value))/255.0);
                         end if;
-                        
+
                         if Is_Key_Down(Keys(Down)) then
                             Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) := Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) - 1;
                             Palette_RGB(Palette_Editor_Choice) := Color_From_HSV(C_Float(Palette_HSV(Palette_Editor_Choice)(Hue))/255.0*360.0, C_Float(Palette_HSV(Palette_Editor_Choice)(Sat))/255.0, C_Float(Palette_HSV(Palette_Editor_Choice)(Value))/255.0);
                         end if;
-                    else 
+                    else
                         if Is_Key_Pressed(Keys(Down)) then
                             if Palette_Editor_Choice /= Palette'Last then
                                 Palette_Editor_Choice := Palette'Succ(Palette_Editor_Choice);
@@ -951,12 +961,12 @@ begin
                         if Is_Key_Pressed(KEY_ESCAPE) then
                             Palette_Editor := False;
                         end if;
-                        
+
                         if Is_Key_Pressed(KEY_ENTER) then
                             Palette_Editor_Selected := True;
                         end if;
                     end if;
-                    
+
                     Swallow_Player_Input;
                 end if;
 
@@ -990,7 +1000,7 @@ begin
                           (if not Palette_Editor_Selected and C = Palette_Editor_Choice
                            then (R => 255, A => 255, others => 0)
                            else (others => 255)));
-                           
+
                         for Comp in HSV_Comp loop
                             declare
                                 Label: constant Char_Array := To_C(Comp'Image & ": " & Palette_HSV(C)(Comp)'Image);
@@ -1021,7 +1031,7 @@ end;
 --    Cause constantly tapping it feels like ass
 --  TODO: count the player's turns towards the final score of the game
 --    We can even collect different stats, like bombs collected, bombs used,
---    times deid etc.
+--    times died etc.
 --  TODO: animate key when you pick it up
 --    Smoothly move it into the HUD.
 --  TODO: Different palettes depending on the area
