@@ -865,7 +865,7 @@ procedure Game is
                                             begin
                                                 while Boss_Can_Stand_Here(Game, Position, Me) loop
                                                     Step(Dir, Position);
-                                                    if Game.Bosses(Me).Path(Position.Y, Position.X) = Current - 1 then
+                                                    if Within_Map(Game, Position) and then Game.Bosses(Me).Path(Position.Y, Position.X) = Current - 1 then
                                                         Game.Bosses(Me).Position := Position;
                                                         exit Search;
                                                     end if;
