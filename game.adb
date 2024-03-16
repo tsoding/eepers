@@ -1149,6 +1149,7 @@ end;
 --    https://www.adacore.com/download/more
 --  TODO: Menu
 --    resolution, volume, etc.
+--  TODO: Allow moving with arrows too
 --  TODO: Primed bombs should be barriers
 --    Be careful with the order of Path Finding Map Recomputation
 --    and the Player Bomb Placement. Map must be recomputed only after
