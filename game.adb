@@ -1,3 +1,4 @@
+with Ada.Text_IO;
 with Text_IO; use Text_IO;
 with Interfaces.C; use Interfaces.C;
 with Raylib; use Raylib;
@@ -54,6 +55,8 @@ procedure Game is
 
     Palette_RGB: array (Palette) of Color := [others => (A => 255, others => 0)];
     Palette_HSV: array (Palette) of HSV := [others => [others => 0]];
+
+    package Double_IO is new Ada.Text_IO.Float_IO(Double);
 
     procedure Save_Colors(File_Name: String) is
         F: File_Type;
