@@ -1119,6 +1119,7 @@ begin
 end;
 
 --  TODO(content): Side-room after first boss with Gnomes that drop keys to unlock bombs for the Second Boss
+--  TODO: Use the same color for Doors and Keys
 --  TODO: Smarter Path Finding
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
 --    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.
