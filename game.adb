@@ -129,7 +129,6 @@ procedure Game is
             Put_Line("WARNING: could not load colors from file " & File_Name & ": " & Exception_Message(E));
     end;
 
-    --  TODO(tool): move this to a hotreloadable config
     TURN_DURATION_SECS      : constant Float := 0.125;
     SHREK_ATTACK_COOLDOWN   : constant Integer := 10;
     BOSS_EXPLOSION_DAMAGE  : constant Float := 0.45;
@@ -773,7 +772,8 @@ procedure Game is
     begin
         if Game.Player.Dead then
             --  TODO: when the player revives themselves they are
-            --  being put into bomb selection mode which is weird
+            --  being put into bomb selection mode if they hold the
+            --  space key which is weird
             if Space_Down then
                 Game_Restore_Checkpoint(Game);
                 Game.Player.Dead := False;
@@ -850,7 +850,7 @@ procedure Game is
                             if not Game.Bosses(Me).Dead then
                                 Recompute_Path_For_Boss(Game, Me, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
                                 Game.Bosses(Me).Prev_Position := Game.Bosses(Me).Position;
-                                -- TODO: Shrek should attack on zero just like a bomb.
+                                -- TODO: Boss should attack on zero just like a bomb.
                                 if Game.Bosses(Me).Attack_Cooldown <= 0 then
                                     declare
                                         Current : constant Integer := Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X);
@@ -1057,8 +1057,6 @@ begin
 
                     Swallow_Player_Input;
                 end if;
-
-                --  TODO(tool): save current checkpoint to file for debug purposes
             end if;
 
             if Game.Turn_Animation > 0.0 then
@@ -1120,14 +1118,20 @@ begin
     Close_Window;
 end;
 
---  TODO: mechanics to skip a turn
---  TODO: placing a bomb is not a turn (should it be tho?)
---  TODO: tutorial does not "explain" how to place bomb
+--  TODO(content): Side-room after first boss with Gnomes that drop keys to unlock bombs for the Second Boss
+--  TODO: Smarter Path Finding
+--    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
+--    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.
+--  TODO: Third Boss
+--  TODO: Visual Clue that the Boss is about to kill the Player (only one step in Path Map)
+--  TODO: Show Boss Cooldown timer outside of the screen somehow
+--  TODO(content): "tutorial" does not "explain" how to place bomb
 --  TODO: keep steping while you are holding a certain direction
---    Cause constantly tapping it feels like ass
+--    Cause constantly tapping it feels like ass.
 --  TODO: count the player's turns towards the final score of the game
 --    We can even collect different stats, like bombs collected, bombs used,
 --    times died etc.
+--  TODO: Player pushing bombs mechanic
 --  TODO: animate key when you pick it up
 --    Smoothly move it into the HUD.
 --  TODO: Different palettes depending on the area
@@ -1139,7 +1143,7 @@ end;
 --  TODO(polish): Boss Death animation
 --  TODO(polish): Cool effects when you pick up items and checkpoints
 --  TODO: Initial position of the camera in map.txt
---  TODO: Inidicate how many bomb slots we have in HUD
+--  TODO: Indicate how many bomb slots we have in HUD
 --  TODO: Windows Build
 --    https://www.adacore.com/download/more
 --  TODO: Menu
@@ -1149,3 +1153,5 @@ end;
 --    and the Player Bomb Placement. Map must be recomputed only after
 --    the bombs are placed for the turn. This is related to making placement
 --    of the bombs a legit turn.
+--  TODO: placing a bomb is not a turn (should it be tho?)
+--  TODO: NG+ which rounds you back to the beginning
