@@ -12,7 +12,6 @@ use Ada.Containers;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings;
 with Ada.Exceptions; use Ada.Exceptions;
-with Queue;
 
 procedure Game is
     DEVELOPMENT : constant Boolean := True;
@@ -267,9 +266,6 @@ procedure Game is
         Items: Hashed_Map_Items.Map;
     end record;
 
-    package IVector2_Queue is new Queue(Item => IVector2);
-    use IVector2_Queue;
-
     type Game_State is record
         Map: Map_Access := Null;
         Player: Player_State;
@@ -287,7 +283,6 @@ procedure Game is
 
         Checkpoint: Checkpoint_State;
 
-        Q: IVector2_Queue.Queue;
         Duration_Of_Last_Turn: Double;
     end record;
 
@@ -411,10 +406,11 @@ procedure Game is
                             if not Boss_Can_Stand_Here(Game, New_Position, Me) then
                                 exit;
                             end if;
-                            if Game.Bosses(Me).Path(New_Position.Y, New_Position.X) < 0 then
-                                Game.Bosses(Me).Path(New_Position.Y, New_Position.X) := Game.Bosses(Me).Path(Position.Y, Position.X) + 1;
-                                Q.Append(New_Position);
+                            if Game.Bosses(Me).Path(New_Position.Y, New_Position.X) >= 0 then
+                                exit;
                             end if;
+                            Game.Bosses(Me).Path(New_Position.Y, New_Position.X) := Game.Bosses(Me).Path(Position.Y, Position.X) + 1;
+                            Q.Append(New_Position);
                             Step(Dir, New_Position);
                         end loop;
                     end;
