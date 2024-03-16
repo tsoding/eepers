@@ -3,9 +3,9 @@ with Raymath; use Raymath;
 
 package Raylib is
     procedure Init_Window(Width, Height: int; Title: in char_array)
-        with 
-            Import => True, 
-            Convention => C, 
+        with
+            Import => True,
+            Convention => C,
             External_Name => "InitWindow";
     procedure Close_Window
         with
@@ -161,9 +161,14 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "ColorFromHSV";
-    procedure Set_Exit_Key(Key: Int) 
+    procedure Set_Exit_Key(Key: Int)
         with
             Import => True,
             Convention => C,
             External_Name => "SetExitKey";
+    function Get_Time return Double
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "GetTime";
 end Raylib;

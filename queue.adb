@@ -4,7 +4,7 @@ package body Queue is
     procedure Delete_Items_Array is new Ada.Unchecked_Deallocation(Items_Array, Items_Array_Access);
 
     procedure Grow(Q: in out Queue) is
-        New_Items: Items_Array_Access := new Items_Array(0..Q.Items'Length*2-1);
+        New_Items: constant Items_Array_Access := new Items_Array(0..Q.Items'Length*2-1);
     begin
         for Offset in Q.Items'Range loop
             New_Items(Offset) := Q.Items((Q.Start + Offset) mod Q.Items'Length);

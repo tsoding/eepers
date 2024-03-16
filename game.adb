@@ -279,6 +279,7 @@ procedure Game is
         Camera_Velocity: Vector2 := (x => 0.0, y => 0.0);
 
         Checkpoint: Checkpoint_State;
+        Duration_Of_Last_Turn: Double;
     end record;
 
     function Within_Map(Game: Game_State; Position: IVector2) return Boolean is
@@ -806,76 +807,82 @@ procedure Game is
         else
             for Dir in Direction loop
                 if Dir_Pressed(Dir) then
-                    for Y in Game.Map'Range(1) loop
-                        for X in Game.Map'Range(2) loop
-                            if Game.Map(Y, X) = Explosion then
-                                Game.Map(Y, X) := Floor;
-                            end if;
-                        end loop;
-                    end loop;
-
-                    Player_Step(Game, Dir);
-
-                    for Bomb of Game.Bombs loop
-                        if Bomb.Countdown > 0 then
-                            Bomb.Countdown := Bomb.Countdown - 1;
-                            if Bomb.Countdown <= 0 then
-                                Explode(Game, Bomb.Position);
-                            end if;
-                        end if;
-                    end loop;
-
                     declare
-                        use Hashed_Map_Items;
+                        Start_Of_Turn: constant Double := Get_Time;
                     begin
-                        for C in Game.Items.Iterate loop
-                            if Element(C).Kind = Bomb then
-                                if Element(C).Cooldown > 0 then
-                                    Game.Items.Replace_Element(C, (Kind => Bomb, Cooldown => Element(C).Cooldown - 1));
+                        for Y in Game.Map'Range(1) loop
+                            for X in Game.Map'Range(2) loop
+                                if Game.Map(Y, X) = Explosion then
+                                    Game.Map(Y, X) := Floor;
+                                end if;
+                            end loop;
+                        end loop;
+
+                        Player_Step(Game, Dir);
+
+                        for Bomb of Game.Bombs loop
+                            if Bomb.Countdown > 0 then
+                                Bomb.Countdown := Bomb.Countdown - 1;
+                                if Bomb.Countdown <= 0 then
+                                    Explode(Game, Bomb.Position);
                                 end if;
                             end if;
                         end loop;
-                    end;
 
-                    for Me in Boss_Index loop
-                        if not Game.Bosses(Me).Dead then
-                            Recompute_Path_For_Boss(Game, Me, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
-                            Game.Bosses(Me).Prev_Position := Game.Bosses(Me).Position;
-                            -- TODO: Shrek should attack on zero just like a bomb.
-                            if Game.Bosses(Me).Attack_Cooldown <= 0 then
-                                declare
-                                    Current : constant Integer := Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X);
-                                begin
-                                    -- TODO: maybe pick the paths
-                                    --  randomly to introduce a bit of
-                                    --  RNG into this pretty
-                                    --  deterministic game
-                                    Search: for Dir in Direction loop
-                                        declare
-                                            Position: IVector2 := Game.Bosses(Me).Position;
-                                        begin
-                                            while Boss_Can_Stand_Here(Game, Position, Me) loop
-                                                Step(Dir, Position);
-                                                if Game.Bosses(Me).Path(Position.Y, Position.X) = Current - 1 then
-                                                    Game.Bosses(Me).Position := Position;
-                                                    exit Search;
-                                                end if;
-                                            end loop;
-                                        end;
-                                    end loop Search;
-                                end;
-                                Game.Bosses(Me).Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
-                            else
-                                Game.Bosses(Me).Attack_Cooldown := Game.Bosses(Me).Attack_Cooldown - 1;
+                        declare
+                            use Hashed_Map_Items;
+                        begin
+                            for C in Game.Items.Iterate loop
+                                if Element(C).Kind = Bomb then
+                                    if Element(C).Cooldown > 0 then
+                                        Game.Items.Replace_Element(C, (Kind => Bomb, Cooldown => Element(C).Cooldown - 1));
+                                    end if;
+                                end if;
+                            end loop;
+                        end;
+
+                        for Me in Boss_Index loop
+                            if not Game.Bosses(Me).Dead then
+                                Recompute_Path_For_Boss(Game, Me, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
+                                Game.Bosses(Me).Prev_Position := Game.Bosses(Me).Position;
+                                -- TODO: Shrek should attack on zero just like a bomb.
+                                if Game.Bosses(Me).Attack_Cooldown <= 0 then
+                                    declare
+                                        Current : constant Integer := Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X);
+                                    begin
+                                        -- TODO: maybe pick the paths
+                                        --  randomly to introduce a bit of
+                                        --  RNG into this pretty
+                                        --  deterministic game
+                                        Search: for Dir in Direction loop
+                                            declare
+                                                Position: IVector2 := Game.Bosses(Me).Position;
+                                            begin
+                                                while Boss_Can_Stand_Here(Game, Position, Me) loop
+                                                    Step(Dir, Position);
+                                                    if Game.Bosses(Me).Path(Position.Y, Position.X) = Current - 1 then
+                                                        Game.Bosses(Me).Position := Position;
+                                                        exit Search;
+                                                    end if;
+                                                end loop;
+                                            end;
+                                        end loop Search;
+                                    end;
+                                    Game.Bosses(Me).Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
+                                else
+                                    Game.Bosses(Me).Attack_Cooldown := Game.Bosses(Me).Attack_Cooldown - 1;
+                                end if;
+                                if Inside_Of_Rect(Game.Bosses(Me).Position, Game.Bosses(Me).Size, Game.Player.Position) then
+                                    Game.Player.Dead := True;
+                                end if;
+                                if Game.Bosses(Me).Health < 1.0 then
+                                   Game.Bosses(Me).Health := Game.Bosses(Me).Health + SHREK_TURN_REGENERATION;
+                                end if;
                             end if;
-                            if Inside_Of_Rect(Game.Bosses(Me).Position, Game.Bosses(Me).Size, Game.Player.Position) then
-                                Game.Player.Dead := True;
-                            end if;
-                            if Game.Bosses(Me).Health < 1.0 then
-                               Game.Bosses(Me).Health := Game.Bosses(Me).Health + SHREK_TURN_REGENERATION;
-                            end if;
-                        end if;
-                    end loop;
+                        end loop;
+
+                        Game.Duration_Of_Last_Turn := Get_Time - Start_Of_Turn;
+                    end;
                 end if;
             end loop;
         end if;
@@ -1063,7 +1070,15 @@ begin
             End_Mode2D;
 
             Game_Hud(Game);
-            Draw_FPS(10, 10);
+            if DEVELOPMENT then
+                Draw_FPS(10, 10);
+                declare
+                    S: String(1..20);
+                begin
+                    Double_IO.Put(S, Game.Duration_Of_Last_Turn, Exp => 0);
+                    Draw_Text(To_C(S), 100, 10, 32, (others => 255));
+                end;
+            end if;
 
             if Palette_Editor then
                 for C in Palette loop
