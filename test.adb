@@ -4,21 +4,24 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings; use Ada.Strings;
 with Ada.Containers.Vectors;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
+with Queue;
 
 procedure Test is
-    type State is record
-        X: Integer;
-        Y: Integer;
-    end record;
-
-    procedure Foo(S: in State; V: out Integer) is
-    begin
-        V := S.X*2;
-    end;
-
-    S: State := (X => 69, Y => 420);
+    package String_Queue is new Queue(Item => Unbounded_String);
+    use String_Queue;
+    Q: String_Queue.Queue;
+    X: Unbounded_String;
 begin
-    Put_Line(S'Image);
-    Foo(S, S.Y);
-    Put_Line(S'Image);
+    for Index in 1..16 loop
+        Enqueue(Q, To_Unbounded_String(Index'Image));
+    end loop;
+    while Dequeue(Q, X) loop
+        null;
+    end loop;
+    for Index in 32..42 loop
+        Enqueue(Q, To_Unbounded_String(Index'Image));
+    end loop;
+    while Dequeue(Q, X) loop
+        Put_Line(To_String(X));
+    end loop;
 end;
