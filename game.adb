@@ -298,6 +298,12 @@ procedure Game is
 
     type Direction is (Left, Right, Up, Down);
 
+    Direction_Vector: constant array (Direction) of IVector2 := [
+      Left  => (X => -1, Y => 0),
+      Right => (X => 1, Y => 0),
+      Up    => (X => 0, Y => -1),
+      Down  => (X => 0, Y => 1)];
+
     procedure Step(D: in Direction; Position: in out IVector2) is
     begin
         case D is
@@ -350,15 +356,15 @@ procedure Game is
         return True;
     end;
 
+    package Queue is new
+      Ada.Containers.Vectors(Index_Type => Natural, Element_Type => IVector2);
+
     procedure Recompute_Path_For_Boss
       (Game: in out Game_State;
        Me: Boss_Index;
        Steps_Limit: Integer;
        Step_Length_Limit: Integer)
     is
-        package Queue is new
-          Ada.Containers.Vectors(Index_Type => Natural, Element_Type => IVector2);
-
         Q: Queue.Vector;
     begin
         for Y in Game.Bosses(Me).Path'Range(1) loop
@@ -621,6 +627,36 @@ procedure Game is
         end loop;
     end;
 
+    procedure Open_Adjacent_Doors(Game: in out Game_State; Start: IVector2) is
+        Q: Queue.Vector;
+    begin
+        if not Within_Map(Game, Start) or else Game.Map(Start.Y, Start.X) /= Door then
+            return;
+        end if;
+
+        Game.Map(Start.Y, Start.X) := Floor;
+        Q.Append(Start);
+
+        while not Q.Is_Empty loop
+            declare
+                Position: constant IVector2 := Q(0);
+            begin
+                Q.Delete_First;
+
+                for Dir in Direction loop
+                    declare
+                        New_Position: constant IVector2 := Position + Direction_Vector(Dir);
+                    begin
+                        if Within_Map(Game, New_Position) and then Game.Map(New_Position.Y, New_Position.X) = Door then
+                            Game.Map(New_Position.Y, New_Position.X) := Floor;
+                            Q.Append(New_Position);
+                        end if;
+                    end;
+                end loop;
+            end;
+        end loop;
+    end;
+
     procedure Player_Step(Game: in out Game_State; Dir: Direction) is
     begin
         Game.Player.Prev_Position := Game.Player.Position;
@@ -656,7 +692,7 @@ procedure Game is
            when Door =>
                if Game.Player.Keys > 0 then
                    Game.Player.Keys := Game.Player.Keys - 1;
-                   Game.Map(Game.Player.Position.Y, Game.Player.Position.X) := Floor;
+                   Open_Adjacent_Doors(Game, Game.Player.Position);
                else
                    Step(Opposite(Dir), Game.Player.Position);
                end if;
@@ -1139,7 +1175,6 @@ end;
 --  TODO: Different palettes depending on the area
 --    Or maybe different palette for each NG+
 --  TODO: Path finding considers explosion impenetrable
---  TODO: Wide doors for the first boss
 --  TODO: Sounds
 --  TODO: Player Death animation @polish
 --  TODO: Boss Death animation @polish
