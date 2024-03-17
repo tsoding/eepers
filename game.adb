@@ -22,8 +22,7 @@ procedure Game is
       COLOR_WALL,
       COLOR_BARRICADE,
       COLOR_PLAYER,
-      COLOR_DOOR,
-      COLOR_KEY,
+      COLOR_DOOR_KEY,
       COLOR_BOMB,
       COLOR_LABEL,
       COLOR_SHREK,
@@ -38,8 +37,7 @@ procedure Game is
       COLOR_WALL       => To_Unbounded_String("Wall"),
       COLOR_Barricade  => To_Unbounded_String("Barricade"),
       COLOR_PLAYER     => To_Unbounded_String("Player"),
-      COLOR_DOOR       => To_Unbounded_String("Door"),
-      COLOR_KEY        => To_Unbounded_String("Key"),
+      COLOR_DOOR_KEY   => To_Unbounded_String("DoorKey"),
       COLOR_BOMB       => To_Unbounded_String("Bomb"),
       COLOR_LABEL      => To_Unbounded_String("Label"),
       COLOR_SHREK      => To_Unbounded_String("Shrek"),
@@ -152,7 +150,7 @@ procedure Game is
             when Floor     => return Palette_RGB(COLOR_FLOOR);
             when Wall      => return Palette_RGB(COLOR_WALL);
             when Barricade => return Palette_RGB(COLOR_BARRICADE);
-            when Door      => return Palette_RGB(COLOR_DOOR);
+            when Door      => return Palette_RGB(COLOR_DOOR_KEY);
             when Explosion => return Palette_RGB(COLOR_EXPLOSION);
         end case;
     end;
@@ -566,7 +564,7 @@ procedure Game is
 
     procedure Draw_Key(Position: IVector2) is
     begin
-        Draw_Circle_V(To_Vector2(Position)*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.25, Palette_RGB(COLOR_KEY));
+        Draw_Circle_V(To_Vector2(Position)*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.25, Palette_RGB(COLOR_DOOR_KEY));
     end;
 
     procedure Draw_Number(Start, Size: Vector2; N: Integer; C: Color) is
@@ -909,7 +907,7 @@ procedure Game is
             declare
                 Position: constant Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 100.0);
             begin
-                Draw_Circle_V(Position, Cell_Size.X*0.25, Palette_RGB(COLOR_KEY));
+                Draw_Circle_V(Position, Cell_Size.X*0.25, Palette_RGB(COLOR_DOOR_KEY));
             end;
         end loop;
 
@@ -1119,7 +1117,6 @@ begin
 end;
 
 --  TODO: Side-room after first boss with Gnomes that drop keys to unlock bombs for the Second Boss @content
---  TODO: Use the same color for Doors and Keys
 --  TODO: Smarter Path Finding
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
 --    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.

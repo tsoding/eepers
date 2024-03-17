@@ -3,8 +3,7 @@ Floor 0 0 44
 Wall 0 0 0
 Barricade 0 255 255
 Player 232 193 255
-Door 82 255 255
-Key 25 255 255
+DoorKey 25 254 228
 Bomb 0 255 255
 Label 0 0 255
 Shrek 60 255 255
