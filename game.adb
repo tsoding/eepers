@@ -1118,7 +1118,7 @@ begin
     Close_Window;
 end;
 
---  TODO(content): Side-room after first boss with Gnomes that drop keys to unlock bombs for the Second Boss
+--  TODO: Side-room after first boss with Gnomes that drop keys to unlock bombs for the Second Boss @content
 --  TODO: Use the same color for Doors and Keys
 --  TODO: Smarter Path Finding
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
@@ -1126,7 +1126,7 @@ end;
 --  TODO: Third Boss
 --  TODO: Visual Clue that the Boss is about to kill the Player (only one step in Path Map)
 --  TODO: Show Boss Cooldown timer outside of the screen somehow
---  TODO(content): "tutorial" does not "explain" how to place bomb
+--  TODO: "tutorial" does not "explain" how to place bomb @content
 --  TODO: keep steping while you are holding a certain direction
 --    Cause constantly tapping it feels like ass.
 --  TODO: count the player's turns towards the final score of the game
@@ -1140,9 +1140,9 @@ end;
 --  TODO: Path finding considers explosion impenetrable
 --  TODO: Wide doors for the first boss
 --  TODO: Sounds
---  TODO(polish): Player Death animation
---  TODO(polish): Boss Death animation
---  TODO(polish): Cool effects when you pick up items and checkpoints
+--  TODO: Player Death animation @polish
+--  TODO: Boss Death animation @polish
+--  TODO: Cool effects when you pick up items and checkpoints @polish
 --  TODO: Initial position of the camera in map.txt
 --  TODO: Indicate how many bomb slots we have in HUD
 --  TODO: Windows Build
