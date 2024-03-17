@@ -1123,6 +1123,10 @@ end;
 --  TODO: Smarter Path Finding
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
 --    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.
+--  TODO: Deactivate attack cooldown when the Boss cannot reach the player
+--    - Don't show it
+--    - Don't update it
+--    - When it becomes active again start from the max value
 --  TODO: Third Boss
 --  TODO: Visual Clue that the Boss is about to kill the Player (only one step in Path Map)
 --  TODO: Show Boss Cooldown timer outside of the screen somehow
