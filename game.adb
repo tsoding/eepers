@@ -304,26 +304,6 @@ procedure Game is
       Up    => (X => 0, Y => -1),
       Down  => (X => 0, Y => 1)];
 
-    procedure Step(D: in Direction; Position: in out IVector2) is
-    begin
-        case D is
-            when Left  => Position.X := Position.X - 1;
-            when Right => Position.X := Position.X + 1;
-            when Up    => Position.Y := Position.Y - 1;
-            when Down  => Position.Y := Position.Y + 1;
-        end case;
-    end;
-
-    function Opposite(D: Direction) return Direction is
-    begin
-        case D is
-            when Left  => return Right;
-            when Right => return Left;
-            when Up    => return Down;
-            when Down  => return Up;
-        end case;
-    end;
-
     function Inside_Of_Rect(Start, Size, Point: in IVector2) return Boolean is
     begin
         return Start <= Point and then Point < Start + Size;
@@ -402,9 +382,8 @@ procedure Game is
 
                 for Dir in Direction loop
                     declare
-                        New_Position: IVector2 := Position;
+                        New_Position: IVector2 := Position + Direction_Vector(Dir);
                     begin
-                        Step(Dir, New_Position);
                         for Limit in 1..Step_Length_Limit loop
                             if not Boss_Can_Stand_Here(Game, New_Position, Me) then
                                 exit;
@@ -414,7 +393,7 @@ procedure Game is
                             end if;
                             Game.Bosses(Me).Path(New_Position.Y, New_Position.X) := Game.Bosses(Me).Path(Position.Y, Position.X) + 1;
                             Q.Append(New_Position);
-                            Step(Dir, New_Position);
+                            New_Position := New_Position + Direction_Vector(Dir);
                         end loop;
                     end;
                 end loop;
@@ -658,21 +637,20 @@ procedure Game is
     end;
 
     procedure Player_Step(Game: in out Game_State; Dir: Direction) is
+        New_Position: constant IVector2 := Game.Player.Position + Direction_Vector(Dir);
     begin
         Game.Player.Prev_Position := Game.Player.Position;
         Game.Turn_Animation := 1.0;
-        Step(Dir, Game.Player.Position);
 
-        if not Within_Map(Game, Game.Player.Position) then
-            Step(Opposite(Dir), Game.Player.Position);
+        if not Within_Map(Game, New_Position) then
             return;
         end if;
 
-        case Game.Map(Game.Player.Position.Y, Game.Player.Position.X) is
+        case Game.Map(New_Position.Y, New_Position.X) is
            when Floor =>
                declare
                    use Hashed_Map_Items;
-                   C: Cursor := Game.Items.Find(Game.Player.Position);
+                   C: Cursor := Game.Items.Find(New_Position);
                begin
                    if Has_Element(C) then
                        case Element(C).Kind is
@@ -689,15 +667,14 @@ procedure Game is
                        end case;
                    end if;
                end;
+               Game.Player.Position := New_Position;
            when Door =>
                if Game.Player.Keys > 0 then
                    Game.Player.Keys := Game.Player.Keys - 1;
-                   Open_Adjacent_Doors(Game, Game.Player.Position);
-               else
-                   Step(Opposite(Dir), Game.Player.Position);
+                   Open_Adjacent_Doors(Game, New_Position);
+                   Game.Player.Position := New_Position;
                end if;
-           when others =>
-               Step(Opposite(Dir), Game.Player.Position);
+           when others => null;
         end case;
     end;
 
@@ -742,7 +719,7 @@ procedure Game is
                            end if;
                        end loop;
 
-                       Step(Dir, New_Position);
+                       New_Position := New_Position + Direction_Vector(Dir);
                    when Barricade =>
                        Game.Map(New_Position.Y, New_Position.X) := Explosion;
                        return;
@@ -825,9 +802,8 @@ procedure Game is
         if Space_Down and then Game.Player.Bombs > 0 then
             for Dir in Direction loop
                 declare
-                    Position: IVector2 := Game.Player.Position;
+                    Position: constant IVector2 := Game.Player.Position + Direction_Vector(Dir);
                 begin
-                    Step(Dir, Position);
                     if Within_Map(Game, Position) and then Game.Map(Position.Y, Position.X) = Floor then
                         Draw_Bomb(Position, Palette_RGB(COLOR_BOMB));
                         if Dir_Pressed(Dir) then
@@ -898,7 +874,7 @@ procedure Game is
                                                 Position: IVector2 := Game.Bosses(Me).Position;
                                             begin
                                                 while Boss_Can_Stand_Here(Game, Position, Me) loop
-                                                    Step(Dir, Position);
+                                                    Position := Position + Direction_Vector(Dir);
                                                     if Within_Map(Game, Position) and then Game.Bosses(Me).Path(Position.Y, Position.X) = Current - 1 then
                                                         Game.Bosses(Me).Position := Position;
                                                         exit Search;
