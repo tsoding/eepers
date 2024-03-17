@@ -12,9 +12,17 @@ use Ada.Containers;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings;
 with Ada.Exceptions; use Ada.Exceptions;
+with Ada.Numerics.Discrete_Random;
 
 procedure Game is
+    package Random_Integer is
+        new Ada.Numerics.Discrete_Random(Result_Subtype => Integer);
+
+    use Random_Integer;
+
+    Gen: Generator;
     DEVELOPMENT : constant Boolean := True;
+    Not_Implemented: exception;
 
     type Palette is (
       COLOR_BACKGROUND,
@@ -27,6 +35,7 @@ procedure Game is
       COLOR_LABEL,
       COLOR_SHREK,
       COLOR_URMOM,
+      COLOR_GNOME,
       COLOR_CHECKPOINT,
       COLOR_EXPLOSION,
       COLOR_HEALTHBAR);
@@ -42,6 +51,7 @@ procedure Game is
       COLOR_LABEL      => To_Unbounded_String("Label"),
       COLOR_SHREK      => To_Unbounded_String("Shrek"),
       COLOR_URMOM      => To_Unbounded_String("Urmom"),
+      COLOR_GNOME      => To_Unbounded_String("Gnome"),
       COLOR_CHECKPOINT => To_Unbounded_String("Checkpoint"),
       COLOR_EXPLOSION  => To_Unbounded_String("Explosion"),
       COLOR_HEALTHBAR  => To_Unbounded_String("Healthbar")
@@ -237,18 +247,19 @@ procedure Game is
         Dead: Boolean := False;
     end record;
 
-    type Boss_Behavior is (Shrek, Urmom);
+    type Boss_Behavior is (Shrek, Urmom, Gnome);
 
     type Boss_State is record
         Behavior: Boss_Behavior;
         Dead: Boolean := True;
         Prev_Position: IVector2;
         Position: IVector2;
+        Size: IVector2;
+        Path: Path_Map_Access;
+
         Background: Palette;
-        Size: IVector2 := (3, 3);
         Health: Float := 1.0;
         Attack_Cooldown: Integer := SHREK_ATTACK_COOLDOWN;
-        Path: Path_Map_Access;
     end record;
 
     type Bomb_State is record
@@ -351,7 +362,8 @@ procedure Game is
       (Game: in out Game_State;
        Me: Boss_Index;
        Steps_Limit: Integer;
-       Step_Length_Limit: Integer)
+       Step_Length_Limit: Integer;
+       Stop_At_Me: Boolean := True)
     is
         Q: Queue.Vector;
     begin
@@ -380,7 +392,7 @@ procedure Game is
             begin
                 Q.Delete_First;
 
-                if Position = Game.Bosses(Me).Position then
+                if Stop_At_Me and then Position = Game.Bosses(Me).Position then
                     exit;
                 end if;
 
@@ -435,6 +447,37 @@ procedure Game is
         Game.Player.Bomb_Slots := Game.Checkpoint.Player_Bomb_Slots;
         Game.Bosses            := Game.Checkpoint.Bosses;
         Game.Items             := Game.Checkpoint.Items;
+    end;
+
+    procedure Spawn_Gnome(Game: in out Game_State; Position: IVector2) is
+    begin
+        for Boss of Game.Bosses loop
+            if Boss.Dead then
+                  Boss.Behavior := Gnome;
+                  Boss.Dead := False;
+                  Boss.Background := COLOR_GNOME;
+                  Boss.Position := Position;
+                  Boss.Prev_Position := Position;
+                  Boss.Size := (1, 1);
+                exit;
+            end if;
+        end loop;
+    end;
+
+    procedure Spawn_Urmom(Game: in out Game_State; Position: IVector2) is
+    begin
+        for Boss of Game.Bosses loop
+            if Boss.Dead then
+                  Boss.Behavior := Urmom;
+                  Boss.Dead := False;
+                  Boss.Background := COLOR_URMOM;
+                  Boss.Position := Position;
+                  Boss.Prev_Position := Position;
+                  Boss.Health := 1.0;
+                  Boss.Size := (6, 6);
+                exit;
+            end if;
+        end loop;
     end;
 
     procedure Spawn_Shrek(Game: in out Game_State; Position: IVector2) is
@@ -503,19 +546,11 @@ procedure Game is
                 for Column in Game.Map'Range(2) loop
                     if Column in 1..Length(Map_Row) then
                         case Element(Map_Row, Column) is
+                            when 'G' =>
+                                Spawn_Gnome(Game, (Column, Row));
+                                Game.Map(Row, Column) := Floor;
                             when 'M' =>
-                                for Boss of Game.Bosses loop
-                                    if Boss.Dead then
-                                        Boss.Behavior := Urmom;
-                                        Boss.Dead := False;
-                                        Boss.Background := COLOR_URMOM;
-                                        Boss.Position := (Column, Row);
-                                        Boss.Prev_Position := (Column, Row);
-                                        Boss.Health := 1.0;
-                                        Boss.Size := (6, 6);
-                                        exit;
-                                    end if;
-                                end loop;
+                                Spawn_Urmom(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
                             when 'B' =>
                                 Spawn_Shrek(Game, (Column, Row));
@@ -583,9 +618,6 @@ procedure Game is
                     Position: constant Vector2 := To_Vector2((Column, Row))*Cell_Size;
                 begin
                     Draw_Rectangle_V(position, cell_size, Cell_Colors(Game.Map(Row, Column)));
-                    if Is_Key_Down(KEY_P) then
-                        Draw_Number((Column, Row), Game.Bosses(1).Path(Row, Column), (A => 255, others => 0));
-                    end if;
                 end;
             end loop;
         end loop;
@@ -644,7 +676,7 @@ procedure Game is
         end loop;
     end;
 
-    procedure Player_Step(Game: in out Game_State; Dir: Direction) is
+    procedure Game_Player_Turn(Game: in out Game_State; Dir: Direction) is
         New_Position: constant IVector2 := Game.Player.Position + Direction_Vector(Dir);
     begin
         Game.Player.Prev_Position := Game.Player.Position;
@@ -707,6 +739,9 @@ procedure Game is
                        for Boss of Game.Bosses loop
                            if not Boss.Dead and then Inside_Of_Rect(Boss.Position, Boss.Size, New_Position) then
                                case Boss.Behavior is
+                                   when Gnome =>
+                                       Game.Items.Insert(Boss.Position, (Kind => Key));
+                                       Boss.Dead := True;
                                    when Shrek =>
                                        Boss.Health := Boss.Health - BOSS_EXPLOSION_DAMAGE;
                                        if Boss.Health <= 0.0 then
@@ -787,6 +822,118 @@ procedure Game is
         Dir_Pressed := [others => False];
     end;
 
+    procedure Game_Bombs_Turn(Game: in out Game_State) is
+    begin
+        for Bomb of Game.Bombs loop
+            if Bomb.Countdown > 0 then
+                Bomb.Countdown := Bomb.Countdown - 1;
+                if Bomb.Countdown <= 0 then
+                    Explode(Game, Bomb.Position);
+                end if;
+            end if;
+        end loop;
+    end;
+
+    procedure Game_Explosions_Turn(Game: in out Game_State) is
+    begin
+        for Y in Game.Map'Range(1) loop
+            for X in Game.Map'Range(2) loop
+                if Game.Map(Y, X) = Explosion then
+                    Game.Map(Y, X) := Floor;
+                end if;
+            end loop;
+        end loop;
+    end;
+
+    procedure Game_Bosses_Turn(Game: in out Game_State) is
+    begin
+        for Me in Boss_Index loop
+            if not Game.Bosses(Me).Dead then
+                Game.Bosses(Me).Prev_Position := Game.Bosses(Me).Position;
+                case Game.Bosses(Me).Behavior is
+                    when Shrek | Urmom =>
+                        Recompute_Path_For_Boss(Game, Me, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
+                        -- TODO: Boss should attack on zero just like a bomb.
+                        if Game.Bosses(Me).Attack_Cooldown <= 0 then
+                            declare
+                                Current : constant Integer := Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X);
+                            begin
+                                -- TODO: maybe pick the paths
+                                --  randomly to introduce a bit of
+                                --  RNG into this pretty
+                                --  deterministic game
+                            Search: for Dir in Direction loop
+                                    declare
+                                        Position: IVector2 := Game.Bosses(Me).Position;
+                                    begin
+                                        while Boss_Can_Stand_Here(Game, Position, Me) loop
+                                            Position := Position + Direction_Vector(Dir);
+                                            if Within_Map(Game, Position) and then Game.Bosses(Me).Path(Position.Y, Position.X) = Current - 1 then
+                                                Game.Bosses(Me).Position := Position;
+                                                exit Search;
+                                            end if;
+                                        end loop;
+                                    end;
+                                end loop Search;
+                            end;
+                            Game.Bosses(Me).Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
+                        else
+                            Game.Bosses(Me).Attack_Cooldown := Game.Bosses(Me).Attack_Cooldown - 1;
+                        end if;
+
+                        if Inside_Of_Rect(Game.Bosses(Me).Position, Game.Bosses(Me).Size, Game.Player.Position) then
+                            Game.Player.Dead := True;
+                        end if;
+                        if Game.Bosses(Me).Health < 1.0 then
+                            Game.Bosses(Me).Health := Game.Bosses(Me).Health + SHREK_TURN_REGENERATION;
+                        end if;
+                    when Gnome =>
+                        Recompute_Path_For_Boss(Game, Me, 10, 1, Stop_At_Me => False);
+                        declare
+                            Position: IVector2 := Game.Bosses(Me).Position;
+                        begin
+                            if Game.Bosses(Me).Path(Position.Y, Position.X) >= 0 then
+                                declare
+                                    Available_Positions: array (0..Direction_Vector'Length-1) of IVector2;
+                                    Count: Integer := 0;
+                                begin
+                                    for Dir in Direction loop
+                                        declare
+                                            New_Position: constant IVector2 := Position + Direction_Vector(Dir);
+                                        begin
+                                            if Within_Map(Game, New_Position)
+                                              and then Game.Map(New_Position.Y, New_Position.X) = Floor
+                                              and then Game.Bosses(Me).Path(New_Position.Y, New_Position.X) > Game.Bosses(Me).Path(Position.Y, Position.X)
+                                            then
+                                                Available_Positions(Count) := New_Position;
+                                                Count := Count + 1;
+                                            end if;
+                                        end;
+                                    end loop;
+
+                                    if Count > 0 then
+                                        Game.Bosses(Me).Position := Available_Positions(Random(Gen) mod Count);
+                                    end if;
+                                end;
+                            end if;
+                        end;
+                end case;
+            end if;
+        end loop;
+    end;
+
+    procedure Game_Items_Turn(Game: in out Game_State) is
+        use Hashed_Map_Items;
+    begin
+        for C in Game.Items.Iterate loop
+            if Element(C).Kind = Bomb then
+                if Element(C).Cooldown > 0 then
+                    Game.Items.Replace_Element(C, (Kind => Bomb, Cooldown => Element(C).Cooldown - 1));
+                end if;
+            end if;
+        end loop;
+    end;
+
     procedure Game_Player(Game: in out Game_State) is
     begin
         if Game.Player.Dead then
@@ -833,77 +980,11 @@ procedure Game is
                     declare
                         Start_Of_Turn: constant Double := Get_Time;
                     begin
-                        for Y in Game.Map'Range(1) loop
-                            for X in Game.Map'Range(2) loop
-                                if Game.Map(Y, X) = Explosion then
-                                    Game.Map(Y, X) := Floor;
-                                end if;
-                            end loop;
-                        end loop;
-
-                        Player_Step(Game, Dir);
-
-                        for Bomb of Game.Bombs loop
-                            if Bomb.Countdown > 0 then
-                                Bomb.Countdown := Bomb.Countdown - 1;
-                                if Bomb.Countdown <= 0 then
-                                    Explode(Game, Bomb.Position);
-                                end if;
-                            end if;
-                        end loop;
-
-                        declare
-                            use Hashed_Map_Items;
-                        begin
-                            for C in Game.Items.Iterate loop
-                                if Element(C).Kind = Bomb then
-                                    if Element(C).Cooldown > 0 then
-                                        Game.Items.Replace_Element(C, (Kind => Bomb, Cooldown => Element(C).Cooldown - 1));
-                                    end if;
-                                end if;
-                            end loop;
-                        end;
-
-                        for Me in Boss_Index loop
-                            if not Game.Bosses(Me).Dead then
-                                Recompute_Path_For_Boss(Game, Me, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
-                                Game.Bosses(Me).Prev_Position := Game.Bosses(Me).Position;
-                                -- TODO: Boss should attack on zero just like a bomb.
-                                if Game.Bosses(Me).Attack_Cooldown <= 0 then
-                                    declare
-                                        Current : constant Integer := Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X);
-                                    begin
-                                        -- TODO: maybe pick the paths
-                                        --  randomly to introduce a bit of
-                                        --  RNG into this pretty
-                                        --  deterministic game
-                                        Search: for Dir in Direction loop
-                                            declare
-                                                Position: IVector2 := Game.Bosses(Me).Position;
-                                            begin
-                                                while Boss_Can_Stand_Here(Game, Position, Me) loop
-                                                    Position := Position + Direction_Vector(Dir);
-                                                    if Within_Map(Game, Position) and then Game.Bosses(Me).Path(Position.Y, Position.X) = Current - 1 then
-                                                        Game.Bosses(Me).Position := Position;
-                                                        exit Search;
-                                                    end if;
-                                                end loop;
-                                            end;
-                                        end loop Search;
-                                    end;
-                                    Game.Bosses(Me).Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
-                                else
-                                    Game.Bosses(Me).Attack_Cooldown := Game.Bosses(Me).Attack_Cooldown - 1;
-                                end if;
-                                if Inside_Of_Rect(Game.Bosses(Me).Position, Game.Bosses(Me).Size, Game.Player.Position) then
-                                    Game.Player.Dead := True;
-                                end if;
-                                if Game.Bosses(Me).Health < 1.0 then
-                                   Game.Bosses(Me).Health := Game.Bosses(Me).Health + SHREK_TURN_REGENERATION;
-                                end if;
-                            end if;
-                        end loop;
-
+                        Game_Explosions_Turn(Game);
+                        Game_Player_Turn(Game, Dir);
+                        Game_Bombs_Turn(Game);
+                        Game_Items_Turn(Game);
+                        Game_Bosses_Turn(Game);
                         Game.Duration_Of_Last_Turn := Get_Time - Start_Of_Turn;
                     end;
                 end if;
@@ -974,14 +1055,18 @@ procedure Game is
                 Size: constant Vector2 := To_Vector2(Boss.Size)*Cell_Size;
             begin
                 if not Boss.Dead then
-                    Draw_Rectangle_V(Position, Cell_Size*To_Vector2(Boss.Size), Palette_RGB(Boss.Background));
                     case Boss.Behavior is
-                        when Shrek =>
+                        when Gnome =>
+                            declare
+                                GNOME_SIZE: constant C_Float := 0.7;
+                            begin
+                                Draw_Rectangle_V(Position + Cell_Size*0.5 - Cell_Size*GNOME_SIZE*0.5, Cell_Size*GNOME_SIZE, Palette_RGB(Boss.Background));
+                            end;
+                        when Shrek | Urmom =>
+                            Draw_Rectangle_V(Position, Cell_Size*To_Vector2(Boss.Size), Palette_RGB(Boss.Background));
                             Health_Bar(Position, Size, C_Float(Boss.Health));
-                        when Urmom =>
-                            null;
+                            Draw_Number(Position, Size, Boss.Attack_Cooldown, (A => 255, others => 0));
                     end case;
-                    Draw_Number(Position, Size, Boss.Attack_Cooldown, (A => 255, others => 0));
                 end if;
             end;
         end loop;
@@ -994,7 +1079,9 @@ procedure Game is
     Palette_Editor_Choice: Palette := Palette'First;
     Palette_Editor_Selected: Boolean := False;
     Palette_Editor_Component: HSV_Comp := Hue;
+
 begin
+    Reset(Gen);
     Load_Colors("colors.txt");
     Load_Game_From_File("map.txt", Game, True);
     Game_Save_Checkpoint(Game);
@@ -1088,6 +1175,19 @@ begin
                 Game_Player(Game);
                 Game_Bosses(Game);
                 Game_Bombs(Game);
+                if DEVELOPMENT then
+                    if Is_Key_Down(KEY_P) then
+                        for Row in Game.Map'Range(1) loop
+                            for Column in Game.Map'Range(2) loop
+                                declare
+                                    Position: constant Vector2 := To_Vector2((Column, Row))*Cell_Size;
+                                begin
+                                    Draw_Number((Column, Row), Game.Bosses(1).Path(Row, Column), (A => 255, others => 0));
+                                end;
+                            end loop;
+                        end loop;
+                    end if;
+                end if;
             End_Mode2D;
 
             Game_Hud(Game);
@@ -1153,6 +1253,8 @@ end;
 --  TODO: count the player's turns towards the final score of the game
 --    We can even collect different stats, like bombs collected, bombs used,
 --    times died etc.
+--  TODO: Gnome should have triangular hats in the form of keys
+--    And key must become triangles intead of circles
 --  TODO: Player pushing bombs mechanic
 --  TODO: animate key when you pick it up
 --    Smoothly move it into the HUD.
