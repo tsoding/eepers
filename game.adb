@@ -22,7 +22,6 @@ procedure Game is
 
     Gen: Generator;
     DEVELOPMENT : constant Boolean := True;
-    Not_Implemented: exception;
 
     type Palette is (
       COLOR_BACKGROUND,
@@ -247,10 +246,10 @@ procedure Game is
         Dead: Boolean := False;
     end record;
 
-    type Boss_Behavior is (Shrek, Urmom, Gnome);
+    type Boss_Kind is (Shrek, Urmom, Gnome);
 
     type Boss_State is record
-        Behavior: Boss_Behavior;
+        Kind: Boss_Kind;
         Dead: Boolean := True;
         Prev_Position: IVector2;
         Position: IVector2;
@@ -453,7 +452,7 @@ procedure Game is
     begin
         for Boss of Game.Bosses loop
             if Boss.Dead then
-                  Boss.Behavior := Gnome;
+                  Boss.Kind := Gnome;
                   Boss.Dead := False;
                   Boss.Background := COLOR_GNOME;
                   Boss.Position := Position;
@@ -468,13 +467,13 @@ procedure Game is
     begin
         for Boss of Game.Bosses loop
             if Boss.Dead then
-                  Boss.Behavior := Urmom;
+                  Boss.Kind := Urmom;
                   Boss.Dead := False;
                   Boss.Background := COLOR_URMOM;
                   Boss.Position := Position;
                   Boss.Prev_Position := Position;
                   Boss.Health := 1.0;
-                  Boss.Size := (6, 6);
+                  Boss.Size := (7, 7);
                 exit;
             end if;
         end loop;
@@ -484,7 +483,7 @@ procedure Game is
     begin
         for Boss of Game.Bosses loop
             if Boss.Dead then
-                Boss.Behavior := Shrek;
+                Boss.Kind := Shrek;
                 Boss.Background := COLOR_SHREK;
                 Boss.Dead := False;
                 Boss.Position := Position;
@@ -738,7 +737,7 @@ procedure Game is
 
                        for Boss of Game.Bosses loop
                            if not Boss.Dead and then Inside_Of_Rect(Boss.Position, Boss.Size, New_Position) then
-                               case Boss.Behavior is
+                               case Boss.Kind is
                                    when Gnome =>
                                        Game.Items.Insert(Boss.Position, (Kind => Key));
                                        Boss.Dead := True;
@@ -753,9 +752,9 @@ procedure Game is
                                        begin
                                            Boss.Dead := True;
                                            Spawn_Shrek(Game, Position + (0, 0));
-                                           Spawn_Shrek(Game, Position + (3, 0));
-                                           Spawn_Shrek(Game, Position + (0, 3));
-                                           Spawn_Shrek(Game, Position + (3, 3));
+                                           Spawn_Shrek(Game, Position + (4, 0));
+                                           Spawn_Shrek(Game, Position + (0, 4));
+                                           Spawn_Shrek(Game, Position + (4, 4));
                                        end;
                                end case;
                                return;
@@ -850,7 +849,7 @@ procedure Game is
         for Me in Boss_Index loop
             if not Game.Bosses(Me).Dead then
                 Game.Bosses(Me).Prev_Position := Game.Bosses(Me).Position;
-                case Game.Bosses(Me).Behavior is
+                case Game.Bosses(Me).Kind is
                     when Shrek | Urmom =>
                         Recompute_Path_For_Boss(Game, Me, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
                         -- TODO: Boss should attack on zero just like a bomb.
@@ -890,7 +889,7 @@ procedure Game is
                     when Gnome =>
                         Recompute_Path_For_Boss(Game, Me, 10, 1, Stop_At_Me => False);
                         declare
-                            Position: IVector2 := Game.Bosses(Me).Position;
+                            Position: constant IVector2 := Game.Bosses(Me).Position;
                         begin
                             if Game.Bosses(Me).Path(Position.Y, Position.X) >= 0 then
                                 declare
@@ -1055,7 +1054,7 @@ procedure Game is
                 Size: constant Vector2 := To_Vector2(Boss.Size)*Cell_Size;
             begin
                 if not Boss.Dead then
-                    case Boss.Behavior is
+                    case Boss.Kind is
                         when Gnome =>
                             declare
                                 GNOME_SIZE: constant C_Float := 0.7;
@@ -1179,11 +1178,7 @@ begin
                     if Is_Key_Down(KEY_P) then
                         for Row in Game.Map'Range(1) loop
                             for Column in Game.Map'Range(2) loop
-                                declare
-                                    Position: constant Vector2 := To_Vector2((Column, Row))*Cell_Size;
-                                begin
-                                    Draw_Number((Column, Row), Game.Bosses(1).Path(Row, Column), (A => 255, others => 0));
-                                end;
+                                Draw_Number((Column, Row), Game.Bosses(1).Path(Row, Column), (A => 255, others => 0));
                             end loop;
                         end loop;
                     end if;
