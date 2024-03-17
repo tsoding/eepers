@@ -51,6 +51,14 @@ procedure Game is
     type HSV_Comp is (Hue, Sat, Value);
     type HSV is array (HSV_Comp) of Byte;
 
+    function HSV_To_RGB(C: HSV) return Color is
+        H: constant C_Float := C_Float(C(Hue))/255.0*360.0;
+        S: constant C_Float := C_Float(C(Sat))/255.0;
+        V: constant C_Float := C_Float(C(Value))/255.0;
+    begin
+        return Color_From_HSV(H, S, V);
+    end;
+
     Palette_RGB: array (Palette) of Color := [others => (A => 255, others => 0)];
     Palette_HSV: array (Palette) of HSV := [others => [others => 0]];
 
@@ -1036,12 +1044,12 @@ begin
 
                         if Is_Key_Down(Keys(Up)) then
                             Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) := Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) + 1;
-                            Palette_RGB(Palette_Editor_Choice) := Color_From_HSV(C_Float(Palette_HSV(Palette_Editor_Choice)(Hue))/255.0*360.0, C_Float(Palette_HSV(Palette_Editor_Choice)(Sat))/255.0, C_Float(Palette_HSV(Palette_Editor_Choice)(Value))/255.0);
+                            Palette_RGB(Palette_Editor_Choice) := HSV_To_RGB(Palette_HSV(Palette_Editor_Choice));
                         end if;
 
                         if Is_Key_Down(Keys(Down)) then
                             Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) := Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) - 1;
-                            Palette_RGB(Palette_Editor_Choice) := Color_From_HSV(C_Float(Palette_HSV(Palette_Editor_Choice)(Hue))/255.0*360.0, C_Float(Palette_HSV(Palette_Editor_Choice)(Sat))/255.0, C_Float(Palette_HSV(Palette_Editor_Choice)(Value))/255.0);
+                            Palette_RGB(Palette_Editor_Choice) := HSV_To_RGB(Palette_HSV(Palette_Editor_Choice));
                         end if;
                     else
                         if Is_Key_Pressed(Keys(Down)) then
