@@ -1258,15 +1258,16 @@ begin
 end;
 
 --  TODO: NG+ which rounds you back to the beginning
---  TODO: Eyes for Bosses
---  TODO: Side-room after first boss with Gnomes that drop keys to unlock bombs for the Second Boss @content
---  TODO: Smarter Path Finding
---    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
---    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.
 --  TODO: Deactivate attack cooldown when the Boss cannot reach the player
 --    - Don't show it
 --    - Don't update it
 --    - When it becomes active again start from the max value
+--  TODO: Eyes for Bosses
+--  TODO: Smarter Path Finding
+--    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
+--    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.
+--  TODO: Side-room after first boss with Gnomes that drop keys to unlock bombs for the Second Boss @content
+--  TODO: The role of Barriers is not explored enough
 --  TODO: Visual Clue that the Boss is about to kill the Player (only one step in Path Map)
 --  TODO: Show Boss Cooldown timer outside of the screen somehow
 --  TODO: "tutorial" does not "explain" how to place bomb @content
