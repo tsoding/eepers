@@ -1257,6 +1257,7 @@ begin
     Close_Window;
 end;
 
+--  TODO: NG+ which rounds you back to the beginning
 --  TODO: Eyes for Bosses
 --  TODO: Side-room after first boss with Gnomes that drop keys to unlock bombs for the Second Boss @content
 --  TODO: Smarter Path Finding
@@ -1266,7 +1267,6 @@ end;
 --    - Don't show it
 --    - Don't update it
 --    - When it becomes active again start from the max value
---  TODO: Third Boss
 --  TODO: Visual Clue that the Boss is about to kill the Player (only one step in Path Map)
 --  TODO: Show Boss Cooldown timer outside of the screen somehow
 --  TODO: "tutorial" does not "explain" how to place bomb @content
@@ -1282,8 +1282,8 @@ end;
 --    Smoothly move it into the HUD.
 --  TODO: Different palettes depending on the area
 --    Or maybe different palette for each NG+
---  TODO: Path finding considers explosion impenetrable
---  TODO: Restart on any key press
+--  TODO: Path finding considers explosion impenetrable @bug
+--  TODO: Restart on any key press after ded
 --  TODO: Sounds
 --  TODO: Player Death animation @polish
 --  TODO: Boss Death animation @polish
@@ -1301,4 +1301,3 @@ end;
 --    the bombs are placed for the turn. This is related to making placement
 --    of the bombs a legit turn.
 --  TODO: placing a bomb is not a turn (should it be tho?)
---  TODO: NG+ which rounds you back to the beginning
