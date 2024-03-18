@@ -713,6 +713,7 @@ procedure Game is
 
         case Game.Map(New_Position.Y, New_Position.X) is
            when Floor =>
+               Game.Player.Position := New_Position;
                declare
                    use Hashed_Map_Items;
                    C: Cursor := Game.Items.Find(New_Position);
@@ -732,7 +733,6 @@ procedure Game is
                        end case;
                    end if;
                end;
-               Game.Player.Position := New_Position;
            when Door =>
                if Game.Player.Keys > 0 then
                    Game.Player.Keys := Game.Player.Keys - 1;
@@ -1257,7 +1257,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Checkpoint saving time is one turn off @bug
 --  TODO: Second Boss as the Final Boss. Two Shreks as the Second Boss. @content
 --  TODO: Eyes for Bosses
 --  TODO: Side-room after first boss with Gnomes that drop keys to unlock bombs for the Second Boss @content
