@@ -1231,6 +1231,10 @@ begin
     Close_Window;
 end;
 
+--  TODO: Checkpoint saving time is one turn off @bug
+--  TODO: Load maps from images intead of text files @tool
+--  TODO: Second Boss as the Final Boss. Two Shreks as the Second Boss. @content
+--  TODO: Eyes for Bosses
 --  TODO: Side-room after first boss with Gnomes that drop keys to unlock bombs for the Second Boss @content
 --  TODO: Smarter Path Finding
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
@@ -1256,6 +1260,7 @@ end;
 --  TODO: Different palettes depending on the area
 --    Or maybe different palette for each NG+
 --  TODO: Path finding considers explosion impenetrable
+--  TODO: Restart on any key press
 --  TODO: Sounds
 --  TODO: Player Death animation @polish
 --  TODO: Boss Death animation @polish
