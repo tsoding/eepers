@@ -1,4 +1,5 @@
 with Interfaces.C; use Interfaces.C;
+with Interfaces.C.Pointers;
 with Raymath; use Raymath;
 
 package Raylib is
@@ -111,6 +112,11 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "GetColor";
+    function Color_To_Int(C: Color) return unsigned
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "ColorToInt";
     procedure Draw_Circle(centerX, centerY: int; radius: C_float; c: Color)
         with
             Import => True,
@@ -171,4 +177,28 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "GetTime";
+    type Addr is mod 2 ** Standard'Address_Size;
+    type Image is record
+        Data: Addr;
+        Width: int;
+        Height: int;
+        Mipmaps: int;
+        Format: int;
+    end record
+        with Convention => C_Pass_By_Copy;
+    function Load_Image(File_Name: Char_Array) return Image
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "LoadImage";
+    function Gen_Image_Color(Width, Height: Int; C: Color) return Image
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "GenImageColor";
+    function Export_Image(Img: Image; File_Name: Char_Array) return C_Bool
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "ExportImage";
 end Raylib;

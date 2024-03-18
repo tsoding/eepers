@@ -13,14 +13,14 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings;
 with Ada.Exceptions; use Ada.Exceptions;
 with Ada.Numerics.Discrete_Random;
+with Interfaces.C.Pointers;
+with Ada.Unchecked_Conversion;
 
 procedure Game is
     package Random_Integer is
         new Ada.Numerics.Discrete_Random(Result_Subtype => Integer);
 
-    use Random_Integer;
-
-    Gen: Generator;
+    Gen: Random_Integer.Generator;
     DEVELOPMENT : constant Boolean := True;
 
     type Palette is (
@@ -241,7 +241,7 @@ procedure Game is
         Prev_Position: IVector2;
         Position: IVector2;
         Keys: Integer := 0;
-        Bombs: Integer := 1;
+        Bombs: Integer := 0;
         Bomb_Slots: Integer := 1;
         Dead: Boolean := False;
     end record;
@@ -285,9 +285,6 @@ procedure Game is
         Map: Map_Access := Null;
         Player: Player_State;
         Bosses: Boss_Array;
-        --  Shrek: Boss_State;
-        --  Urmom: Shrek_State := (
-        --    Size => (6, 6));
 
         Turn_Animation: Float := 0.0;
 
@@ -496,40 +493,68 @@ procedure Game is
         end loop;
     end;
 
-    procedure Load_Game_From_File(File_Name: in String; Game: in out Game_State; Update_Player: Boolean) is
-        package Rows is new
-            Ada.Containers.Vectors(
-                Index_Type => Natural,
-                Element_Type => Unbounded_String);
-        F: File_Type;
-        Map_Rows: Rows.Vector;
-        Width: Integer := 0;
-        Height: Integer := 0;
-    begin
-        Open(F, In_File, File_Name);
-        while not End_Of_File(F) loop
-            declare
-                Line: constant String := Get_Line(F);
-            begin
-                if Line'Length > Width then
-                    Width := Line'Length;
-                end if;
-                Map_Rows.Append(To_Unbounded_String(Line));
-                Height := Height + 1;
-            end;
-        end loop;
-        Close(F);
+    type Level_Cell is (
+      Level_None,
+      Level_Gnome,
+      Level_Urmom,
+      Level_Shrek,
+      Level_Floor,
+      Level_Wall,
+      Level_Door,
+      Level_Checkpoint,
+      Level_Bomb_Gen,
+      Level_Barricade,
+      Level_Key,
+      Level_Player);
+    Level_Cell_Color: constant array (Level_Cell) of Color := [
+      Level_None       => Get_Color(16#00000000#),
+      Level_Gnome      => Get_Color(16#FF9600FF#),
+      Level_Urmom      => Get_Color(16#96FF00FF#),
+      Level_Shrek      => Get_Color(16#00FF00FF#),
+      Level_Floor      => Get_Color(16#FFFFFFFF#),
+      Level_Wall       => Get_Color(16#000000FF#),
+      Level_Door       => Get_Color(16#00FFFFFF#),
+      Level_Checkpoint => Get_Color(16#FF00FFFF#),
+      Level_Bomb_Gen   => Get_Color(16#FF0000FF#),
+      Level_Barricade  => Get_Color(16#FF0096FF#),
+      Level_Key        => Get_Color(16#FFFF00FF#),
+      Level_Player     => Get_Color(16#0000FFFF#)];
 
+    function Cell_By_Color(Col: Color; Out_Cel: out Level_Cell) return Boolean is
+    begin
+        for Cel in Level_Cell loop
+            if Level_Cell_Color(Cel) = Col then
+                Out_Cel := Cel;
+                return True;
+            end if;
+        end loop;
+        return False;
+    end;
+
+    procedure Load_Game_From_Image(File_Name: in String; Game: in out Game_State; Update_Player: Boolean) is
+        type Color_Array is array (Natural range <>) of aliased Raylib.Color;
+        package Color_Pointer is new Interfaces.C.Pointers(
+          Index => Natural,
+          Element => Raylib.Color,
+          Element_Array => Color_Array,
+          Default_Terminator => (others => 0));
+        function To_Color_Pointer is new Ada.Unchecked_Conversion (Raylib.Addr, Color_Pointer.Pointer);
+        use Color_Pointer;
+
+        Img: constant Image := Raylib.Load_Image(To_C(File_Name));
+        Pixels: constant Color_Pointer.Pointer := To_Color_Pointer(Img.Data);
+    begin
         if Game.Map /= null then
             Delete_Map(Game.Map);
         end if;
-        Game.Map := new Map(1..Height, 1..Width);
+        Game.Map := new Map(1..Integer(Img.Height), 1..Integer(Img.Width));
 
         for Boss of Game.Bosses loop
+            Boss.Dead := True;
             if Boss.Path /= null then
                 Delete_Path_Map(Boss.Path);
             end if;
-            Boss.Path := new Path_Map(1..Height, 1..Width);
+            Boss.Path := new Path_Map(1..Integer(Img.Height), 1..Integer(Img.Width));
         end loop;
 
         Game.Items.Clear;
@@ -538,37 +563,38 @@ procedure Game is
         end loop;
 
         for Row in Game.Map'Range(1) loop
-            declare
-                Map_Row: constant Unbounded_String := Map_Rows(Row - 1);
-            begin
-                Put_Line(To_String(Map_Rows(Row - 1)));
-                for Column in Game.Map'Range(2) loop
-                    if Column in 1..Length(Map_Row) then
-                        case Element(Map_Row, Column) is
-                            when 'G' =>
+            for Column in Game.Map'Range(2) loop
+                declare
+                    Index: constant Ptrdiff_T := Ptrdiff_T((Row - 1)*Integer(Img.Width) + (Column - 1));
+                    Pixel: constant Color_Pointer.Pointer := Pixels + Index;
+                    Cel: Level_Cell;
+                begin
+                    if Cell_By_Color(Pixel.all, Cel) then
+                        case Cel is
+                            when Level_Gnome =>
                                 Spawn_Gnome(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
-                            when 'M' =>
+                            when Level_Urmom =>
                                 Spawn_Urmom(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
-                            when 'B' =>
+                            when Level_Shrek =>
                                 Spawn_Shrek(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
-                            when '.' => Game.Map(Row, Column) := Floor;
-                            when '#' => Game.Map(Row, Column) := Wall;
-                            when '=' => Game.Map(Row, Column) := Door;
-                            when '!' =>
+                            when Level_Floor => Game.Map(Row, Column) := Floor;
+                            when Level_Wall => Game.Map(Row, Column) := Wall;
+                            when Level_Door => Game.Map(Row, Column) := Door;
+                            when Level_Checkpoint =>
                                 Game.Map(Row, Column) := Floor;
                                 Game.Items.Insert((Column, Row), (Kind => Checkpoint));
-                            when '*' =>
+                            when Level_Bomb_Gen =>
                                 Game.Map(Row, Column) := Floor;
                                 Game.Items.Insert((Column, Row), (Kind => Bomb, Cooldown => 0));
-                            when '&' =>
+                            when Level_Barricade =>
                                 Game.Map(Row, Column) := Barricade;
-                            when '%' =>
+                            when Level_Key =>
                                 Game.Map(Row, Column) := Floor;
                                 Game.Items.Insert((Column, Row), (Kind => Key));
-                            when '@' =>
+                            when Level_Player =>
                                 Game.Map(Row, Column) := Floor;
                                 if Update_Player then
                                     Game.Player.Position := (Column, Row);
@@ -579,8 +605,8 @@ procedure Game is
                     else
                         Game.Map(Row, Column) := None;
                     end if;
-                end loop;
-            end;
+                end;
+            end loop;
         end loop;
     end;
 
@@ -911,7 +937,7 @@ procedure Game is
                                     end loop;
 
                                     if Count > 0 then
-                                        Game.Bosses(Me).Position := Available_Positions(Random(Gen) mod Count);
+                                        Game.Bosses(Me).Position := Available_Positions(Random_Integer.Random(Gen) mod Count);
                                     end if;
                                 end;
                             end if;
@@ -1080,9 +1106,9 @@ procedure Game is
     Palette_Editor_Component: HSV_Comp := Hue;
 
 begin
-    Reset(Gen);
+    Random_Integer.Reset(Gen);
     Load_Colors("colors.txt");
-    Load_Game_From_File("map.txt", Game, True);
+    Load_Game_From_Image("map.png", Game, True);
     Game_Save_Checkpoint(Game);
     Put_Line("Keys: " & Integer'Image(Game.Player.Keys));
     Set_Config_Flags(FLAG_WINDOW_RESIZABLE);
@@ -1100,7 +1126,7 @@ begin
 
             if DEVELOPMENT then
                 if Is_Key_Pressed(KEY_R) then
-                    Load_Game_From_File("map.txt", Game, False);
+                    Load_Game_From_Image("map.png", Game, False);
                 end if;
 
                 if Is_Key_Pressed(KEY_O) then
@@ -1232,7 +1258,6 @@ begin
 end;
 
 --  TODO: Checkpoint saving time is one turn off @bug
---  TODO: Load maps from images intead of text files @tool
 --  TODO: Second Boss as the Final Boss. Two Shreks as the Second Boss. @content
 --  TODO: Eyes for Bosses
 --  TODO: Side-room after first boss with Gnomes that drop keys to unlock bombs for the Second Boss @content
@@ -1265,7 +1290,7 @@ end;
 --  TODO: Player Death animation @polish
 --  TODO: Boss Death animation @polish
 --  TODO: Cool effects when you pick up items and checkpoints @polish
---  TODO: Initial position of the camera in map.txt
+--  TODO: Initial position of the camera in map.png
 --  TODO: Indicate how many bomb slots we have in HUD
 --  TODO: Windows Build
 --    https://www.adacore.com/download/more
