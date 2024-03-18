@@ -241,7 +241,7 @@ procedure Game is
         Prev_Position: IVector2;
         Position: IVector2;
         Keys: Integer := 0;
-        Bombs: Integer := 0;
+        Bombs: Integer := 1;
         Bomb_Slots: Integer := 1;
         Dead: Boolean := False;
     end record;
@@ -1257,7 +1257,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Second Boss as the Final Boss. Two Shreks as the Second Boss. @content
 --  TODO: Eyes for Bosses
 --  TODO: Side-room after first boss with Gnomes that drop keys to unlock bombs for the Second Boss @content
 --  TODO: Smarter Path Finding
