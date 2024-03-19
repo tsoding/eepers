@@ -26,6 +26,16 @@ package Raymath is
             Import => True,
             Convention => C,
             External_Name => "Vector2Scale";
+    function Vector2_Rotate(V: Vector2; Angle: C_Float) return Vector2
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "Vector2Rotate";
+    function Vector2_Line_Angle(Start, Finish: Vector2) return C_Float
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "Vector2LineAngle";
     type Vector3 is record
         x: C_float;
         y: C_float;

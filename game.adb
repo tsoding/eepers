@@ -38,7 +38,8 @@ procedure Game is
       COLOR_CHECKPOINT,
       COLOR_EXPLOSION,
       COLOR_HEALTHBAR,
-      COLOR_NEW_GAME);
+      COLOR_NEW_GAME,
+      COLOR_EYES);
 
     Palette_Names: constant array (Palette) of Unbounded_String := [
       COLOR_BACKGROUND => To_Unbounded_String("Background"),
@@ -55,8 +56,8 @@ procedure Game is
       COLOR_CHECKPOINT => To_Unbounded_String("Checkpoint"),
       COLOR_EXPLOSION  => To_Unbounded_String("Explosion"),
       COLOR_HEALTHBAR  => To_Unbounded_String("Healthbar"),
-      COLOR_NEW_GAME   => To_Unbounded_String("NewGame")
-      ];
+      COLOR_NEW_GAME   => To_Unbounded_String("NewGame"),
+      COLOR_EYES       => To_Unbounded_String("EYES")];
 
     type Byte is mod 256;
     type HSV_Comp is (Hue, Sat, Value);
@@ -987,6 +988,15 @@ procedure Game is
         end loop;
     end;
 
+    function Screen_Player_Position(Game: in Game_State) return Vector2 is
+    begin
+        if Game.Turn_Animation > 0.0 then
+            return Interpolate_Positions(Game.Player.Prev_Position, Game.Player.Position, Game.Turn_Animation);
+        else
+            return To_Vector2(Game.Player.Position)*Cell_Size;
+        end if;
+    end;
+
     procedure Game_Player(Game: in out Game_State) is
     begin
         if Game.Player.Dead then
@@ -1001,12 +1011,12 @@ procedure Game is
             return;
         end if;
 
+        Draw_Rectangle_V(Screen_Player_Position(Game), Cell_Size, Palette_RGB(COLOR_PLAYER));
+
         if Game.Turn_Animation > 0.0 then
-            Draw_Rectangle_V(Interpolate_Positions(Game.Player.Prev_Position, Game.Player.Position, Game.Turn_Animation), Cell_Size, Palette_RGB(COLOR_PLAYER));
             return;
         end if;
 
-        Draw_Rectangle_V(To_Vector2(Game.Player.Position)*Cell_Size, Cell_Size, Palette_RGB(COLOR_PLAYER));
         if Space_Down and then Game.Player.Bombs > 0 then
             for Dir in Direction loop
                 declare
@@ -1087,7 +1097,7 @@ procedure Game is
     end;
 
     procedure Health_Bar(Boundary_Start, Boundary_Size: Vector2; Health: C_Float) is
-        Health_Padding: constant C_Float := 20.0;
+        Health_Padding: constant C_Float := 10.0;
         Health_Height: constant C_Float := 10.0;
         Health_Width: constant C_Float := Boundary_Size.X*Health;
     begin
@@ -1095,6 +1105,34 @@ procedure Game is
           Boundary_Start - (0.0, Health_Padding + Health_Height),
           (Health_Width, Health_Height),
           Palette_RGB(COLOR_HEALTHBAR));
+    end;
+
+    procedure Draw_Eyes(Start, Size: Vector2; Angle: Float; Closed: Boolean) is
+        Dir: constant Vector2 := Vector2_Rotate((1.0, 0.0), C_Float(Angle));
+        Eyes_Ratio: constant Vector2 := (13.0/64.0, 23.0/64.0);
+        Eyes_Size: constant Vector2 := Eyes_Ratio*Size;
+        Center: constant Vector2 := Start + Size*0.5;
+        Position: constant Vector2 := Center + Dir*Eyes_Size.X*0.6;
+        Left_Position: constant Vector2 := Position - Eyes_Size*(0.5, 0.0) - Eyes_Size*(1.0, 0.5);
+        Right_Position: constant Vector2 := Position + Eyes_Size*(0.5, 0.0) - Eyes_Size*(0.0, 0.5);
+        Closed_Ratio: constant C_Float := 0.2;
+    begin
+        if Closed then
+            Draw_Rectangle_V(Left_Position + Eyes_Size*(0.0, 1.0 - Closed_Ratio), Eyes_Size*(1.0, Closed_Ratio), Palette_RGB(COLOR_EYES));
+            Draw_Rectangle_V(Right_Position + Eyes_Size*(0.0, 1.0 - Closed_Ratio), Eyes_Size*(1.0, Closed_Ratio), Palette_RGB(COLOR_EYES));
+        else
+            Draw_Rectangle_V(Left_Position, Eyes_Size, Palette_RGB(COLOR_EYES));
+            Draw_Rectangle_V(Right_Position, Eyes_Size, Palette_RGB(COLOR_EYES));
+        end if;
+    end;
+
+    procedure Draw_Cooldown_Timer_Bubble(Start, Size: Vector2; Cooldown: Integer; Background: Palette) is
+        Text_Color: constant Color := (A => 255, others => 0);
+        Bubble_Radius: constant C_Float := 30.0;
+        Bubble_Center: constant Vector2 := Start + Size*(0.5, 0.0) - (0.0, Bubble_Radius*2.0);
+    begin
+        Draw_Circle_V(Bubble_Center, Bubble_Radius, Palette_RGB(Background));
+        Draw_Number(Bubble_Center - (Bubble_Radius, Bubble_Radius), (Bubble_Radius, Bubble_Radius)*2.0, Cooldown, Text_Color);
     end;
 
     procedure Game_Bosses(Game: in out Game_State) is
@@ -1109,18 +1147,28 @@ procedure Game is
             begin
                 if not Boss.Dead then
                     case Boss.Kind is
-                        when Gnome =>
-                            declare
-                                GNOME_SIZE: constant C_Float := 0.7;
-                            begin
-                                Draw_Rectangle_V(Position + Cell_Size*0.5 - Cell_Size*GNOME_SIZE*0.5, Cell_Size*GNOME_SIZE, Palette_RGB(Boss.Background));
-                            end;
                         when Shrek | Urmom =>
-                            Draw_Rectangle_V(Position, Cell_Size*To_Vector2(Boss.Size), Palette_RGB(Boss.Background));
+                            Draw_Rectangle_V(Position, Size, Palette_RGB(Boss.Background));
                             Health_Bar(Position, Size, C_Float(Boss.Health));
                             if Boss.Path(Boss.Position.Y, Boss.Position.X) >= 0 then
-                                Draw_Number(Position, Size, Boss.Attack_Cooldown, (A => 255, others => 0));
+                                Draw_Cooldown_Timer_Bubble(Position, Size, Boss.Attack_Cooldown, Boss.Background);
+                                Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Closed => False);
+                            else
+                                Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Closed => True);
                             end if;
+                        when Gnome =>
+                            declare
+                                GNOME_RATIO: constant C_Float := 0.7;
+                                GNOME_SIZE: constant Vector2 := Cell_Size*GNOME_RATIO;
+                                GNOME_START: constant Vector2 := Position + Cell_Size*0.5 - GNOME_SIZE*0.5;
+                            begin
+                                Draw_Rectangle_V(GNOME_START, GNOME_SIZE, Palette_RGB(Boss.Background));
+                                if Boss.Path(Boss.Position.Y, Boss.Position.X) >= 0 then
+                                    Draw_Eyes(GNOME_START, GNOME_SIZE, -Float(Vector2_Line_Angle(GNOME_START + GNOME_SIZE*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Closed => False);
+                                else
+                                    Draw_Eyes(GNOME_START, GNOME_SIZE, -Float(Vector2_Line_Angle(GNOME_START + GNOME_SIZE*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Closed => True);
+                                end if;
+                            end;
                     end case;
                 end if;
             end;
@@ -1287,7 +1335,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Eyes for Bosses
 --  TODO: Visual Clue that the Boss is about to kill the Player (only one step in Path Map)
 --  TODO: Smarter Path Finding
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
@@ -1310,6 +1357,7 @@ end;
 --  TODO: Different palettes depending on the area
 --    Or maybe different palette for each NG+
 --  TODO: Path finding considers explosion impenetrable @bug
+--  TODO: Boss slide attack animation is pretty boring @polish
 --  TODO: Restart on any key press after ded
 --  TODO: Sounds
 --  TODO: Player Death animation @polish
@@ -1327,5 +1375,6 @@ end;
 --    and the Player Bomb Placement. Map must be recomputed only after
 --    the bombs are placed for the turn. This is related to making placement
 --    of the bombs a legit turn.
+--    That enables escaping first boss btw.
 --  TODO: placing a bomb is not a turn (should it be tho?)
 --  TODO: Path finding on a separate thread
