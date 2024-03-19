@@ -1263,13 +1263,13 @@ end;
 --    - Don't update it
 --    - When it becomes active again start from the max value
 --  TODO: Eyes for Bosses
+--  TODO: Visual Clue that the Boss is about to kill the Player (only one step in Path Map)
 --  TODO: Smarter Path Finding
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
 --    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.
---  TODO: Side-room after first boss with Gnomes that drop keys to unlock bombs for the Second Boss @content
---  TODO: The role of Barriers is not explored enough
---  TODO: Visual Clue that the Boss is about to kill the Player (only one step in Path Map)
 --  TODO: Show Boss Cooldown timer outside of the screen somehow
+--  TODO: Keys for the bomb gens of final boss @content
+--  TODO: The role of Barriers is not explored enough
 --  TODO: "tutorial" does not "explain" how to place bomb @content
 --  TODO: keep steping while you are holding a certain direction
 --    Cause constantly tapping it feels like ass.
@@ -1294,7 +1294,6 @@ end;
 --  TODO: Windows Build
 --    https://www.adacore.com/download/more
 --  TODO: Menu
---    resolution, volume, etc.
 --  TODO: Allow moving with arrows too
 --  TODO: Primed bombs should be barriers
 --    Be careful with the order of Path Finding Map Recomputation
