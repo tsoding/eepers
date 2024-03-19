@@ -1302,3 +1302,4 @@ end;
 --    the bombs are placed for the turn. This is related to making placement
 --    of the bombs a legit turn.
 --  TODO: placing a bomb is not a turn (should it be tho?)
+--  TODO: Path finding on a separate thread
