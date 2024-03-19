@@ -1276,7 +1276,6 @@ begin
     Close_Window;
 end;
 
---  TODO: NG+ which rounds you back to the beginning
 --  TODO: Deactivate attack cooldown when the Boss cannot reach the player
 --    - Don't show it
 --    - Don't update it
@@ -1287,6 +1286,7 @@ end;
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
 --    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.
 --  TODO: Show Boss Cooldown timer outside of the screen somehow
+--  TODO: Cool animation for New Game
 --  TODO: Keys for the bomb gens of final boss @content
 --  TODO: The role of Barriers is not explored enough
 --  TODO: "tutorial" does not "explain" how to place bomb @content
