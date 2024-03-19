@@ -1107,7 +1107,9 @@ procedure Game is
           Palette_RGB(COLOR_HEALTHBAR));
     end;
 
-    procedure Draw_Eyes(Start, Size: Vector2; Angle: Float; Closed: Boolean) is
+    type Eyes_Kind is (Eyes_Open, Eyes_Closed, Eyes_Angry);
+
+    procedure Draw_Eyes(Start, Size: Vector2; Angle: Float; Kind: Eyes_Kind; Background: Palette) is
         Dir: constant Vector2 := Vector2_Rotate((1.0, 0.0), C_Float(Angle));
         Eyes_Ratio: constant Vector2 := (13.0/64.0, 23.0/64.0);
         Eyes_Size: constant Vector2 := Eyes_Ratio*Size;
@@ -1117,13 +1119,27 @@ procedure Game is
         Right_Position: constant Vector2 := Position + Eyes_Size*(0.5, 0.0) - Eyes_Size*(0.0, 0.5);
         Closed_Ratio: constant C_Float := 0.2;
     begin
-        if Closed then
-            Draw_Rectangle_V(Left_Position + Eyes_Size*(0.0, 1.0 - Closed_Ratio), Eyes_Size*(1.0, Closed_Ratio), Palette_RGB(COLOR_EYES));
-            Draw_Rectangle_V(Right_Position + Eyes_Size*(0.0, 1.0 - Closed_Ratio), Eyes_Size*(1.0, Closed_Ratio), Palette_RGB(COLOR_EYES));
-        else
-            Draw_Rectangle_V(Left_Position, Eyes_Size, Palette_RGB(COLOR_EYES));
-            Draw_Rectangle_V(Right_Position, Eyes_Size, Palette_RGB(COLOR_EYES));
-        end if;
+        case Kind is
+            when Eyes_Closed =>
+                Draw_Rectangle_V(Left_Position + Eyes_Size*(0.0, 1.0 - Closed_Ratio), Eyes_Size*(1.0, Closed_Ratio), Palette_RGB(COLOR_EYES));
+                Draw_Rectangle_V(Right_Position + Eyes_Size*(0.0, 1.0 - Closed_Ratio), Eyes_Size*(1.0, Closed_Ratio), Palette_RGB(COLOR_EYES));
+            when Eyes_Open =>
+                Draw_Rectangle_V(Left_Position, Eyes_Size, Palette_RGB(COLOR_EYES));
+                Draw_Rectangle_V(Right_Position, Eyes_Size, Palette_RGB(COLOR_EYES));
+            when Eyes_Angry =>
+                Draw_Rectangle_V(Left_Position, Eyes_Size, Palette_RGB(COLOR_EYES));
+                Draw_Triangle(
+                  Left_Position,
+                  Left_Position + Eyes_Size*(1.0, 0.3),
+                  Left_Position + Eyes_Size*(1.0, 0.0),
+                  Palette_RGB(Background));
+                Draw_Rectangle_V(Right_Position, Eyes_Size, Palette_RGB(COLOR_EYES));
+                Draw_Triangle(
+                  Right_Position,
+                  Right_Position + Eyes_Size*(0.0, 0.3),
+                  Right_Position + Eyes_Size*(1.0, 0.0),
+                  Palette_RGB(Background));
+        end case;
     end;
 
     procedure Draw_Cooldown_Timer_Bubble(Start, Size: Vector2; Cooldown: Integer; Background: Palette) is
@@ -1150,11 +1166,14 @@ procedure Game is
                         when Shrek | Urmom =>
                             Draw_Rectangle_V(Position, Size, Palette_RGB(Boss.Background));
                             Health_Bar(Position, Size, C_Float(Boss.Health));
-                            if Boss.Path(Boss.Position.Y, Boss.Position.X) >= 0 then
+                            if Boss.Path(Boss.Position.Y, Boss.Position.X) = 1 then
                                 Draw_Cooldown_Timer_Bubble(Position, Size, Boss.Attack_Cooldown, Boss.Background);
-                                Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Closed => False);
+                                Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Angry, Boss.Background);
+                            elsif Boss.Path(Boss.Position.Y, Boss.Position.X) >= 0 then
+                                Draw_Cooldown_Timer_Bubble(Position, Size, Boss.Attack_Cooldown, Boss.Background);
+                                Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Open, Boss.Background);
                             else
-                                Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Closed => True);
+                                Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Closed, Boss.Background);
                             end if;
                         when Gnome =>
                             declare
@@ -1164,9 +1183,9 @@ procedure Game is
                             begin
                                 Draw_Rectangle_V(GNOME_START, GNOME_SIZE, Palette_RGB(Boss.Background));
                                 if Boss.Path(Boss.Position.Y, Boss.Position.X) >= 0 then
-                                    Draw_Eyes(GNOME_START, GNOME_SIZE, -Float(Vector2_Line_Angle(GNOME_START + GNOME_SIZE*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Closed => False);
+                                    Draw_Eyes(GNOME_START, GNOME_SIZE, -Float(Vector2_Line_Angle(GNOME_START + GNOME_SIZE*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Open, Boss.Background);
                                 else
-                                    Draw_Eyes(GNOME_START, GNOME_SIZE, -Float(Vector2_Line_Angle(GNOME_START + GNOME_SIZE*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Closed => True);
+                                    Draw_Eyes(GNOME_START, GNOME_SIZE, -Float(Vector2_Line_Angle(GNOME_START + GNOME_SIZE*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Open, Boss.Background);
                                 end if;
                             end;
                     end case;
@@ -1335,7 +1354,7 @@ begin
     Close_Window;
 end;
 
---  TODO: Visual Clue that the Boss is about to kill the Player (only one step in Path Map)
+--  TODO: Visual Clue that the Boss is about to kill the Player when Completely outside of the Screen
 --  TODO: Smarter Path Finding
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
 --    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.

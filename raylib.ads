@@ -201,4 +201,9 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "ExportImage";
+    procedure Draw_Triangle(V1, V2, V3: Vector2; C: Color)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "DrawTriangle";
 end Raylib;
