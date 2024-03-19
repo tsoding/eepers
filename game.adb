@@ -150,7 +150,7 @@ procedure Game is
     SHREK_ATTACK_COOLDOWN   : constant Integer := 10;
     BOSS_EXPLOSION_DAMAGE  : constant Float := 0.45;
     SHREK_TURN_REGENERATION : constant Float := 0.01;
-    BOMB_GENERATOR_COOLDOWN : constant Integer := 20;
+    BOMB_GENERATOR_COOLDOWN : constant Integer := 10;
     SHREK_STEPS_LIMIT       : constant Integer := 4;
     SHREK_STEP_LENGTH_LIMIT : constant Integer := 100;
     EXPLOSION_LENGTH        : constant Integer := 10;
@@ -559,6 +559,11 @@ procedure Game is
                 Delete_Path_Map(Boss.Path);
             end if;
             Boss.Path := new Path_Map(1..Integer(Img.Height), 1..Integer(Img.Width));
+            for Y in Boss.Path'Range(1) loop
+                for X in Boss.Path'Range(2) loop
+                    Boss.Path(Y, X) := -1;
+                end loop;
+            end loop;
         end loop;
 
         Game.Items.Clear;
@@ -897,32 +902,36 @@ procedure Game is
                 case Game.Bosses(Me).Kind is
                     when Shrek | Urmom =>
                         Recompute_Path_For_Boss(Game, Me, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
-                        -- TODO: Boss should attack on zero just like a bomb.
-                        if Game.Bosses(Me).Attack_Cooldown <= 0 then
-                            declare
-                                Current : constant Integer := Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X);
-                            begin
-                                -- TODO: maybe pick the paths
-                                --  randomly to introduce a bit of
-                                --  RNG into this pretty
-                                --  deterministic game
-                            Search: for Dir in Direction loop
-                                    declare
-                                        Position: IVector2 := Game.Bosses(Me).Position;
-                                    begin
-                                        while Boss_Can_Stand_Here(Game, Position, Me) loop
-                                            Position := Position + Direction_Vector(Dir);
-                                            if Within_Map(Game, Position) and then Game.Bosses(Me).Path(Position.Y, Position.X) = Current - 1 then
-                                                Game.Bosses(Me).Position := Position;
-                                                exit Search;
-                                            end if;
-                                        end loop;
-                                    end;
-                                end loop Search;
-                            end;
-                            Game.Bosses(Me).Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
+                        if Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X) >= 0 then
+                            -- TODO: Boss should attack on zero just like a bomb.
+                            if Game.Bosses(Me).Attack_Cooldown <= 0 then
+                                declare
+                                    Current : constant Integer := Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X);
+                                begin
+                                    -- TODO: maybe pick the paths
+                                    --  randomly to introduce a bit of
+                                    --  RNG into this pretty
+                                    --  deterministic game
+                                Search: for Dir in Direction loop
+                                        declare
+                                            Position: IVector2 := Game.Bosses(Me).Position;
+                                        begin
+                                            while Boss_Can_Stand_Here(Game, Position, Me) loop
+                                                Position := Position + Direction_Vector(Dir);
+                                                if Within_Map(Game, Position) and then Game.Bosses(Me).Path(Position.Y, Position.X) = Current - 1 then
+                                                    Game.Bosses(Me).Position := Position;
+                                                    exit Search;
+                                                end if;
+                                            end loop;
+                                        end;
+                                    end loop Search;
+                                end;
+                                Game.Bosses(Me).Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
+                            else
+                                Game.Bosses(Me).Attack_Cooldown := Game.Bosses(Me).Attack_Cooldown - 1;
+                            end if;
                         else
-                            Game.Bosses(Me).Attack_Cooldown := Game.Bosses(Me).Attack_Cooldown - 1;
+                            Game.Bosses(Me).Attack_Cooldown := SHREK_ATTACK_COOLDOWN + 1;
                         end if;
 
                         if Inside_Of_Rect(Game.Bosses(Me).Position, Game.Bosses(Me).Size, Game.Player.Position) then
@@ -1109,7 +1118,9 @@ procedure Game is
                         when Shrek | Urmom =>
                             Draw_Rectangle_V(Position, Cell_Size*To_Vector2(Boss.Size), Palette_RGB(Boss.Background));
                             Health_Bar(Position, Size, C_Float(Boss.Health));
-                            Draw_Number(Position, Size, Boss.Attack_Cooldown, (A => 255, others => 0));
+                            if Boss.Path(Boss.Position.Y, Boss.Position.X) >= 0 then
+                                Draw_Number(Position, Size, Boss.Attack_Cooldown, (A => 255, others => 0));
+                            end if;
                     end case;
                 end if;
             end;
@@ -1276,10 +1287,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Deactivate attack cooldown when the Boss cannot reach the player
---    - Don't show it
---    - Don't update it
---    - When it becomes active again start from the max value
 --  TODO: Eyes for Bosses
 --  TODO: Visual Clue that the Boss is about to kill the Player (only one step in Path Map)
 --  TODO: Smarter Path Finding
