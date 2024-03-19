@@ -215,11 +215,11 @@ procedure Game is
         return Hash_Type(V.X) * M31 + Hash_Type(V.Y);
     end;
 
-    type Item_Kind is (Key, Bomb, Checkpoint);
+    type Item_Kind is (Key, Bomb_Gen, Checkpoint);
 
     type Item(Kind: Item_Kind := Key) is record
         case Kind is
-            when Bomb =>
+            when Bomb_Gen =>
                 Cooldown: Integer;
             when others => null;
         end case;
@@ -588,7 +588,7 @@ procedure Game is
                                 Game.Items.Insert((Column, Row), (Kind => Checkpoint));
                             when Level_Bomb_Gen =>
                                 Game.Map(Row, Column) := Floor;
-                                Game.Items.Insert((Column, Row), (Kind => Bomb, Cooldown => 0));
+                                Game.Items.Insert((Column, Row), (Kind => Bomb_Gen, Cooldown => 0));
                             when Level_Barricade =>
                                 Game.Map(Row, Column) := Barricade;
                             when Level_Key =>
@@ -660,7 +660,7 @@ procedure Game is
                     begin
                         Draw_Rectangle_V(To_Vector2(Key(C))*Cell_Size + Cell_Size*0.5 - Checkpoint_Item_Size*0.5, Checkpoint_Item_Size, Palette_RGB(COLOR_CHECKPOINT));
                     end;
-                when Bomb =>
+                when Bomb_Gen =>
                     if Element(C).Cooldown > 0 then
                         Draw_Bomb(Key(C), Color_Brightness(Palette_RGB(COLOR_BOMB), -0.5));
                         Draw_Number(Key(C), Element(C).Cooldown, Palette_RGB(COLOR_LABEL));
@@ -720,16 +720,19 @@ procedure Game is
                begin
                    if Has_Element(C) then
                        case Element(C).Kind is
-                          when Key =>
-                              Game.Player.Keys := Game.Player.Keys + 1;
-                              Game.Items.Delete(C);
-                          when Bomb => if Game.Player.Bombs < Game.Player.Bomb_Slots and then Element(C).Cooldown <= 0 then
-                              Game.Player.Bombs := Game.Player.Bombs + 1;
-                              Game.Items.Replace_Element(C, (Kind => Bomb, Cooldown => BOMB_GENERATOR_COOLDOWN));
-                          end if;
-                          when Checkpoint =>
-                              Game.Items.Delete(C);
-                              Game_Save_Checkpoint(Game);
+                           when Key =>
+                               Game.Player.Keys := Game.Player.Keys + 1;
+                               Game.Items.Delete(C);
+                           when Bomb_Gen => if
+                               Game.Player.Bombs < Game.Player.Bomb_Slots
+                               and then Element(C).Cooldown <= 0
+                           then
+                               Game.Player.Bombs := Game.Player.Bombs + 1;
+                               Game.Items.Replace_Element(C, (Kind => Bomb_Gen, Cooldown => BOMB_GENERATOR_COOLDOWN));
+                           end if;
+                           when Checkpoint =>
+                               Game.Items.Delete(C);
+                               Game_Save_Checkpoint(Game);
                        end case;
                    end if;
                end;
@@ -951,9 +954,9 @@ procedure Game is
         use Hashed_Map_Items;
     begin
         for C in Game.Items.Iterate loop
-            if Element(C).Kind = Bomb then
+            if Element(C).Kind = Bomb_Gen then
                 if Element(C).Cooldown > 0 then
-                    Game.Items.Replace_Element(C, (Kind => Bomb, Cooldown => Element(C).Cooldown - 1));
+                    Game.Items.Replace_Element(C, (Kind => Bomb_Gen, Cooldown => Element(C).Cooldown - 1));
                 end if;
             end if;
         end loop;
