@@ -1295,6 +1295,7 @@ end;
 --    https://www.adacore.com/download/more
 --  TODO: Menu
 --  TODO: Allow moving with arrows too
+--  TODO: Camera shaking when big bosses (Shrek and Urmom) make moves
 --  TODO: Primed bombs should be barriers
 --    Be careful with the order of Path Finding Map Recomputation
 --    and the Player Bomb Placement. Map must be recomputed only after
