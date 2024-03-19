@@ -12,3 +12,4 @@ Gnome 65 194 255
 Checkpoint 213 255 255
 Explosion 213 255 255
 Healthbar 0 255 255
+NewGame 255 0 255

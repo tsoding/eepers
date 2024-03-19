@@ -37,7 +37,8 @@ procedure Game is
       COLOR_GNOME,
       COLOR_CHECKPOINT,
       COLOR_EXPLOSION,
-      COLOR_HEALTHBAR);
+      COLOR_HEALTHBAR,
+      COLOR_NEW_GAME);
 
     Palette_Names: constant array (Palette) of Unbounded_String := [
       COLOR_BACKGROUND => To_Unbounded_String("Background"),
@@ -53,7 +54,8 @@ procedure Game is
       COLOR_GNOME      => To_Unbounded_String("Gnome"),
       COLOR_CHECKPOINT => To_Unbounded_String("Checkpoint"),
       COLOR_EXPLOSION  => To_Unbounded_String("Explosion"),
-      COLOR_HEALTHBAR  => To_Unbounded_String("Healthbar")
+      COLOR_HEALTHBAR  => To_Unbounded_String("Healthbar"),
+      COLOR_NEW_GAME   => To_Unbounded_String("NewGame")
       ];
 
     type Byte is mod 256;
@@ -215,7 +217,7 @@ procedure Game is
         return Hash_Type(V.X) * M31 + Hash_Type(V.Y);
     end;
 
-    type Item_Kind is (Key, Bomb_Gen, Checkpoint);
+    type Item_Kind is (Key, Bomb_Gen, Checkpoint, New_Game);
 
     type Item(Kind: Item_Kind := Key) is record
         case Kind is
@@ -505,7 +507,8 @@ procedure Game is
       Level_Bomb_Gen,
       Level_Barricade,
       Level_Key,
-      Level_Player);
+      Level_Player,
+      Level_New_Game);
     Level_Cell_Color: constant array (Level_Cell) of Color := [
       Level_None       => Get_Color(16#00000000#),
       Level_Gnome      => Get_Color(16#FF9600FF#),
@@ -518,7 +521,8 @@ procedure Game is
       Level_Bomb_Gen   => Get_Color(16#FF0000FF#),
       Level_Barricade  => Get_Color(16#FF0096FF#),
       Level_Key        => Get_Color(16#FFFF00FF#),
-      Level_Player     => Get_Color(16#0000FFFF#)];
+      Level_Player     => Get_Color(16#0000FFFF#),
+      Level_New_Game   => Get_Color(16#FFAAFFFF#)];
 
     function Cell_By_Color(Col: Color; Out_Cel: out Level_Cell) return Boolean is
     begin
@@ -571,6 +575,8 @@ procedure Game is
                 begin
                     if Cell_By_Color(Pixel.all, Cel) then
                         case Cel is
+                            when Level_None =>
+                                Game.Map(Row, Column) := None;
                             when Level_Gnome =>
                                 Spawn_Gnome(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
@@ -600,7 +606,9 @@ procedure Game is
                                     Game.Player.Position := (Column, Row);
                                     Game.Player.Prev_Position := (Column, Row);
                                 end if;
-                            when others => Game.Map(Row, Column) := None;
+                            when Level_New_Game =>
+                                Game.Map(Row, Column) := Floor;
+                                Game.Items.Insert((Column, Row), (Kind => New_Game));
                         end case;
                     else
                         Game.Map(Row, Column) := None;
@@ -653,6 +661,12 @@ procedure Game is
     begin
         for C in Game.Items.Iterate loop
             case Element(C).Kind is
+                when New_Game =>
+                    declare
+                        New_Game_Size: constant Vector2 := Cell_Size*0.8;
+                    begin
+                        Draw_Rectangle_V(To_Vector2(Key(C))*Cell_Size + Cell_Size*0.5 - New_Game_Size*0.5, New_Game_Size, Palette_RGB(COLOR_NEW_GAME));
+                    end;
                 when Key => Draw_Key(Key(C));
                 when Checkpoint =>
                     declare
@@ -720,6 +734,8 @@ procedure Game is
                begin
                    if Has_Element(C) then
                        case Element(C).Kind is
+                           when New_Game =>
+                               Load_Game_From_Image("map.png", Game, Update_Player => True);
                            when Key =>
                                Game.Player.Keys := Game.Player.Keys + 1;
                                Game.Items.Delete(C);
