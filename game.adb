@@ -1368,6 +1368,7 @@ end;
 --  TODO: Keys for the bomb gens of final boss @content
 --  TODO: Cool animation for New Game
 --  TODO: The role of Barriers is not explored enough
+--  TODO: Tutorial sign that says "WASD" to move when you start the game for the first time
 --  TODO: "Tutorial" does not "explain" how to place bomb @content
 --  TODO: keep steping while you are holding a certain direction
 --    Cause constantly tapping it feels like ass.
@@ -1388,13 +1389,13 @@ end;
 --  TODO: Player Death animation @polish
 --  TODO: Boss Death animation @polish
 --  TODO: Cool effects when you pick up items and checkpoints @polish
+--  TODO: Allow moving with arrows too
 --  TODO: Camera shaking when big bosses (Shrek and Urmom) make moves
 --  TODO: Initial position of the camera in map.png
 --  TODO: Indicate how many bomb slots we have in HUD
 --  TODO: Windows Build
 --    https://www.adacore.com/download/more
 --  TODO: Menu
---  TODO: Allow moving with arrows too
 --  TODO: Primed bombs should be barriers
 --    Be careful with the order of Path Finding Map Recomputation
 --    and the Player Bomb Placement. Map must be recomputed only after
