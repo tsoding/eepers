@@ -1359,15 +1359,16 @@ end;
 --  TODO: Animate transition between the eye states
 --  TODO: Checkpoints must refill the bombs
 --  TODO: Special Eeper Eyes on Damage
+--  TODO: Show Boss Cooldown timer outside of the screen somehow
 --  TODO: Visual Clue that the Boss is about to kill the Player when Completely outside of the Screen
+--    - Cooldown ball is shaking
 --  TODO: Smarter Path Finding
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
 --    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.
---  TODO: Show Boss Cooldown timer outside of the screen somehow
---  TODO: Cool animation for New Game
 --  TODO: Keys for the bomb gens of final boss @content
+--  TODO: Cool animation for New Game
 --  TODO: The role of Barriers is not explored enough
---  TODO: "tutorial" does not "explain" how to place bomb @content
+--  TODO: "Tutorial" does not "explain" how to place bomb @content
 --  TODO: keep steping while you are holding a certain direction
 --    Cause constantly tapping it feels like ass.
 --  TODO: count the player's turns towards the final score of the game
