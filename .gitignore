@@ -1,4 +1,5 @@
 *.ali
 *.o
 game
+game.exe
 test
