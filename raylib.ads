@@ -1,5 +1,4 @@
 with Interfaces.C; use Interfaces.C;
-with Interfaces.C.Pointers;
 with Raymath; use Raymath;
 
 package Raylib is
@@ -13,7 +12,7 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "CloseWindow";
-    function Window_Should_Close return int
+    function Window_Should_Close return C_Bool
         with
             Import => True,
             Convention => C,
@@ -206,4 +205,8 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "DrawTriangle";
+
+    type Vector2_Array is array (size_t range <>) of aliased Vector2;
+
+    procedure Draw_Triangle_Strip(Points: Vector2_Array; C: Color);
 end Raylib;

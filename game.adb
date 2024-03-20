@@ -249,13 +249,33 @@ procedure Game is
         Dead: Boolean := False;
     end record;
 
+    type Eyes_Kind is (Eyes_Open, Eyes_Closed, Eyes_Angry);
+    type Eye_Mesh is new Vector2_Array(1..4);
+    type Eye is (Left_Eye, Right_Eye);
+    type Eyes_Mesh is array (Eye) of Eye_Mesh;
+    Eyes_Meshes: constant array (Eyes_Kind) of Eyes_Mesh := [
+        Eyes_Open => [
+            Left_Eye => [ (0.0, 0.0), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0) ],
+            Right_Eye => [ (0.0, 0.0), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0) ]
+        ],
+        Eyes_Closed => [
+            Left_Eye => [ (0.0, 0.8), (0.0, 1.0), (1.0, 0.8), (1.0, 1.0) ],
+            Right_Eye => [ (0.0, 0.8), (0.0, 1.0), (1.0, 0.8), (1.0, 1.0) ]
+        ],
+        Eyes_Angry => [
+            Left_Eye => [ (0.0, 0.0), (0.0, 1.0), (1.0, 0.3), (1.0, 1.0) ],
+            Right_Eye => [ (0.0, 0.3), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0) ]
+        ]
+    ];
+
     type Boss_Kind is (Shrek, Urmom, Gnome);
 
     type Boss_State is record
         Kind: Boss_Kind;
         Dead: Boolean := True;
-        Prev_Position: IVector2;
-        Position: IVector2;
+        Position, Prev_Position: IVector2;
+        Prev_Eyes: Eyes_Kind;
+        Eyes: Eyes_Kind := Eyes_Closed;
         Size: IVector2;
         Path: Path_Map_Access;
 
@@ -860,7 +880,7 @@ procedure Game is
         Prev_Position: constant Vector2 := To_Vector2(IPrev_Position)*Cell_Size;
         Curr_Position: constant Vector2 := To_Vector2(IPosition)*Cell_Size;
     begin
-        return Prev_Position + (Curr_Position - Prev_Position)*C_Float(1.0 - T*T);
+        return Vector2_Lerp(Prev_Position, Curr_Position, C_Float(1.0 - T*T));
     end;
 
     Space_Down: Boolean := False;
@@ -900,6 +920,7 @@ procedure Game is
         for Me in Boss_Index loop
             if not Game.Bosses(Me).Dead then
                 Game.Bosses(Me).Prev_Position := Game.Bosses(Me).Position;
+                Game.Bosses(Me).Prev_Eyes := Game.Bosses(Me).Eyes;
                 case Game.Bosses(Me).Kind is
                     when Shrek | Urmom =>
                         Recompute_Path_For_Boss(Game, Me, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
@@ -931,7 +952,14 @@ procedure Game is
                             else
                                 Game.Bosses(Me).Attack_Cooldown := Game.Bosses(Me).Attack_Cooldown - 1;
                             end if;
+
+                            if Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X) = 1 then
+                                Game.Bosses(Me).Eyes := Eyes_Angry;
+                            else
+                                Game.Bosses(Me).Eyes := Eyes_Open;
+                            end if;
                         else
+                            Game.Bosses(Me).Eyes := Eyes_Closed;
                             Game.Bosses(Me).Attack_Cooldown := SHREK_ATTACK_COOLDOWN + 1;
                         end if;
 
@@ -969,6 +997,9 @@ procedure Game is
                                         Game.Bosses(Me).Position := Available_Positions(Random_Integer.Random(Gen) mod Count);
                                     end if;
                                 end;
+                                Game.Bosses(Me).Eyes := Eyes_Open;
+                            else
+                                Game.Bosses(Me).Eyes := Eyes_Closed;
                             end if;
                         end;
                 end case;
@@ -1107,39 +1138,24 @@ procedure Game is
           Palette_RGB(COLOR_HEALTHBAR));
     end;
 
-    type Eyes_Kind is (Eyes_Open, Eyes_Closed, Eyes_Angry);
-
-    procedure Draw_Eyes(Start, Size: Vector2; Angle: Float; Kind: Eyes_Kind; Background: Palette) is
+    procedure Draw_Eyes(Start, Size: Vector2; Angle: Float; Prev_Kind, Kind: Eyes_Kind; T: Float) is
         Dir: constant Vector2 := Vector2_Rotate((1.0, 0.0), C_Float(Angle));
         Eyes_Ratio: constant Vector2 := (13.0/64.0, 23.0/64.0);
         Eyes_Size: constant Vector2 := Eyes_Ratio*Size;
         Center: constant Vector2 := Start + Size*0.5;
         Position: constant Vector2 := Center + Dir*Eyes_Size.X*0.6;
-        Left_Position: constant Vector2 := Position - Eyes_Size*(0.5, 0.0) - Eyes_Size*(1.0, 0.5);
-        Right_Position: constant Vector2 := Position + Eyes_Size*(0.5, 0.0) - Eyes_Size*(0.0, 0.5);
-        Closed_Ratio: constant C_Float := 0.2;
+        Positions: constant array (Eye) of Vector2 := [
+            Left_Eye => Position - Eyes_Size*(0.5, 0.0) - Eyes_Size*(1.0, 0.5),
+            Right_Eye => Position + Eyes_Size*(0.5, 0.0) - Eyes_Size*(0.0, 0.5)
+        ];
+        Mesh: Eye_Mesh;
     begin
-        case Kind is
-            when Eyes_Closed =>
-                Draw_Rectangle_V(Left_Position + Eyes_Size*(0.0, 1.0 - Closed_Ratio), Eyes_Size*(1.0, Closed_Ratio), Palette_RGB(COLOR_EYES));
-                Draw_Rectangle_V(Right_Position + Eyes_Size*(0.0, 1.0 - Closed_Ratio), Eyes_Size*(1.0, Closed_Ratio), Palette_RGB(COLOR_EYES));
-            when Eyes_Open =>
-                Draw_Rectangle_V(Left_Position, Eyes_Size, Palette_RGB(COLOR_EYES));
-                Draw_Rectangle_V(Right_Position, Eyes_Size, Palette_RGB(COLOR_EYES));
-            when Eyes_Angry =>
-                Draw_Rectangle_V(Left_Position, Eyes_Size, Palette_RGB(COLOR_EYES));
-                Draw_Triangle(
-                  Left_Position,
-                  Left_Position + Eyes_Size*(1.0, 0.3),
-                  Left_Position + Eyes_Size*(1.0, 0.0),
-                  Palette_RGB(Background));
-                Draw_Rectangle_V(Right_Position, Eyes_Size, Palette_RGB(COLOR_EYES));
-                Draw_Triangle(
-                  Right_Position,
-                  Right_Position + Eyes_Size*(0.0, 0.3),
-                  Right_Position + Eyes_Size*(1.0, 0.0),
-                  Palette_RGB(Background));
-        end case;
+        for Eye_Index in Eye loop
+            for Vertex_Index in Eye_Mesh'Range loop
+                Mesh(Vertex_Index) := Positions(Eye_Index) + Eyes_Size*Vector2_Lerp(Eyes_Meshes(Prev_Kind)(Eye_Index)(Vertex_Index), Eyes_Meshes(Kind)(Eye_Index)(Vertex_Index), C_Float(1.0 - T*T));
+            end loop;
+            Draw_Triangle_Strip(Mesh, Palette_RGB(COLOR_EYES));
+        end loop;
     end;
 
     procedure Draw_Cooldown_Timer_Bubble(Start, Size: Vector2; Cooldown: Integer; Background: Palette) is
@@ -1168,13 +1184,10 @@ procedure Game is
                             Health_Bar(Position, Size, C_Float(Boss.Health));
                             if Boss.Path(Boss.Position.Y, Boss.Position.X) = 1 then
                                 Draw_Cooldown_Timer_Bubble(Position, Size, Boss.Attack_Cooldown, Boss.Background);
-                                Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Angry, Boss.Background);
                             elsif Boss.Path(Boss.Position.Y, Boss.Position.X) >= 0 then
                                 Draw_Cooldown_Timer_Bubble(Position, Size, Boss.Attack_Cooldown, Boss.Background);
-                                Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Open, Boss.Background);
-                            else
-                                Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Closed, Boss.Background);
                             end if;
+                            Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Boss.Prev_Eyes, Boss.Eyes, Game.Turn_Animation);
                         when Gnome =>
                             declare
                                 GNOME_RATIO: constant C_Float := 0.7;
@@ -1182,11 +1195,7 @@ procedure Game is
                                 GNOME_START: constant Vector2 := Position + Cell_Size*0.5 - GNOME_SIZE*0.5;
                             begin
                                 Draw_Rectangle_V(GNOME_START, GNOME_SIZE, Palette_RGB(Boss.Background));
-                                if Boss.Path(Boss.Position.Y, Boss.Position.X) >= 0 then
-                                    Draw_Eyes(GNOME_START, GNOME_SIZE, -Float(Vector2_Line_Angle(GNOME_START + GNOME_SIZE*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Open, Boss.Background);
-                                else
-                                    Draw_Eyes(GNOME_START, GNOME_SIZE, -Float(Vector2_Line_Angle(GNOME_START + GNOME_SIZE*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Open, Boss.Background);
-                                end if;
+                                Draw_Eyes(GNOME_START, GNOME_SIZE, -Float(Vector2_Line_Angle(GNOME_START + GNOME_SIZE*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Boss.Prev_Eyes, Boss.Eyes, Game.Turn_Animation);
                             end;
                     end case;
                 end if;
@@ -1195,7 +1204,7 @@ procedure Game is
     end;
 
     Game: Game_State;
-    Title: constant Char_Array := To_C("Hello, NSA");
+    Title: constant Char_Array := To_C("Eepers");
 
     Palette_Editor: Boolean := False;
     Palette_Editor_Choice: Palette := Palette'First;
@@ -1212,7 +1221,7 @@ begin
     Init_Window(800, 600, Title);
     Set_Target_FPS(60);
     Set_Exit_Key(KEY_NULL);
-    while Window_Should_Close = 0 loop
+    while not Window_Should_Close loop
         Begin_Drawing;
             Clear_Background(Palette_RGB(COLOR_BACKGROUND));
 
@@ -1356,7 +1365,6 @@ end;
 
 --  TODO: End Game as a Huge White Eeper
 --  TODO: Closed eyes should always point down
---  TODO: Animate transition between the eye states
 --  TODO: Checkpoints must refill the bombs
 --  TODO: Special Eeper Eyes on Damage
 --  TODO: Show Boss Cooldown timer outside of the screen somehow

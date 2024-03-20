@@ -42,4 +42,9 @@ package Raymath is
         z: C_float;
     end record
         with Convention => C_Pass_By_Copy;
+    function Vector2_Lerp(V1, V2: Vector2; Amount: C_Float) return Vector2
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "Vector2Lerp";
 end;
