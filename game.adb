@@ -1392,8 +1392,17 @@ begin
     Close_Window;
 end;
 
---  TODO: Closed eyes should always point down
+--  TODO: Default 16:9 resolution
+--  TODO: Fullscreen mode
+--  TODO: Compile MinGW build with Windows Subsystem (so it does not show cmd window)
+--  TODO: Don't reset cooldown timer for bosses (might be duplicate)
+--  TODO: Try MSAA (if too slow, don't)
+--  TODO: Bake assets into executable
+--  TODO: Keep rendering Player on Turn_Animation even if Dead
+--  TODO: Rename executable to "eepers"
+--  TODO: Icon on for Windows build
 --  TODO: Checkpoints must refill the bombs
+--  TODO: Closed eyes should always point down
 --  TODO: Special Eeper Eyes on Damage
 --  TODO: Show Boss Cooldown timer outside of the screen somehow
 --  TODO: Place bombs directly at the Player's position
