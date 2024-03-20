@@ -1354,6 +1354,11 @@ begin
     Close_Window;
 end;
 
+--  TODO: End Game as a Huge White Eeper
+--  TODO: Closed eyes should always point down
+--  TODO: Animate transition between the eye states
+--  TODO: Checkpoints must refill the bombs
+--  TODO: Special Eeper Eyes on Damage
 --  TODO: Visual Clue that the Boss is about to kill the Player when Completely outside of the Screen
 --  TODO: Smarter Path Finding
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
@@ -1382,13 +1387,13 @@ end;
 --  TODO: Player Death animation @polish
 --  TODO: Boss Death animation @polish
 --  TODO: Cool effects when you pick up items and checkpoints @polish
+--  TODO: Camera shaking when big bosses (Shrek and Urmom) make moves
 --  TODO: Initial position of the camera in map.png
 --  TODO: Indicate how many bomb slots we have in HUD
 --  TODO: Windows Build
 --    https://www.adacore.com/download/more
 --  TODO: Menu
 --  TODO: Allow moving with arrows too
---  TODO: Camera shaking when big bosses (Shrek and Urmom) make moves
 --  TODO: Primed bombs should be barriers
 --    Be careful with the order of Path Finding Map Recomputation
 --    and the Player Bomb Placement. Map must be recomputed only after
