@@ -1360,6 +1360,7 @@ end;
 --  TODO: Checkpoints must refill the bombs
 --  TODO: Special Eeper Eyes on Damage
 --  TODO: Show Boss Cooldown timer outside of the screen somehow
+--  TODO: Place bombs directly at the Player's position
 --  TODO: Visual Clue that the Boss is about to kill the Player when Completely outside of the Screen
 --    - Cooldown ball is shaking
 --  TODO: Smarter Path Finding
