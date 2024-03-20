@@ -14,3 +14,4 @@ Explosion 213 255 255
 Healthbar 0 173 255
 NewGame 255 0 255
 EYES 0 0 0
+Final 0 11 254

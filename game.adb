@@ -39,7 +39,8 @@ procedure Game is
       COLOR_EXPLOSION,
       COLOR_HEALTHBAR,
       COLOR_NEW_GAME,
-      COLOR_EYES);
+      COLOR_EYES,
+      COLOR_FINAL);
 
     Palette_Names: constant array (Palette) of Unbounded_String := [
       COLOR_BACKGROUND => To_Unbounded_String("Background"),
@@ -57,7 +58,8 @@ procedure Game is
       COLOR_EXPLOSION  => To_Unbounded_String("Explosion"),
       COLOR_HEALTHBAR  => To_Unbounded_String("Healthbar"),
       COLOR_NEW_GAME   => To_Unbounded_String("NewGame"),
-      COLOR_EYES       => To_Unbounded_String("EYES")];
+      COLOR_EYES       => To_Unbounded_String("EYES"),
+      COLOR_FINAL      => To_Unbounded_String("Final")];
 
     type Byte is mod 256;
     type HSV_Comp is (Hue, Sat, Value);
@@ -268,7 +270,7 @@ procedure Game is
         ]
     ];
 
-    type Boss_Kind is (Shrek, Urmom, Gnome);
+    type Boss_Kind is (Shrek, Urmom, Gnome, Final);
 
     type Boss_State is record
         Kind: Boss_Kind;
@@ -483,6 +485,23 @@ procedure Game is
         end loop;
     end;
 
+    procedure Spawn_Final(Game: in out Game_State; Position: IVector2) is
+    begin
+        for Boss of Game.Bosses loop
+            if Boss.Dead then
+                  Boss.Kind := Final;
+                  Boss.Dead := False;
+                  Boss.Background := COLOR_FINAL;
+                  Boss.Position := Position;
+                  Boss.Prev_Position := Position;
+                  Boss.Health := 1.0;
+                  Boss.Size := (7, 7);
+                exit;
+            end if;
+        end loop;
+    end;
+
+
     procedure Spawn_Urmom(Game: in out Game_State; Position: IVector2) is
     begin
         for Boss of Game.Bosses loop
@@ -529,7 +548,8 @@ procedure Game is
       Level_Barricade,
       Level_Key,
       Level_Player,
-      Level_New_Game);
+      Level_New_Game,
+      Level_Final);
     Level_Cell_Color: constant array (Level_Cell) of Color := [
       Level_None       => Get_Color(16#00000000#),
       Level_Gnome      => Get_Color(16#FF9600FF#),
@@ -543,7 +563,8 @@ procedure Game is
       Level_Barricade  => Get_Color(16#FF0096FF#),
       Level_Key        => Get_Color(16#FFFF00FF#),
       Level_Player     => Get_Color(16#0000FFFF#),
-      Level_New_Game   => Get_Color(16#FFAAFFFF#)];
+      Level_New_Game   => Get_Color(16#FFAAFFFF#),
+      Level_Final      => Get_Color(16#265FDAFF#)];
 
     function Cell_By_Color(Col: Color; Out_Cel: out Level_Cell) return Boolean is
     begin
@@ -611,6 +632,9 @@ procedure Game is
                                 Game.Map(Row, Column) := Floor;
                             when Level_Shrek =>
                                 Spawn_Shrek(Game, (Column, Row));
+                                Game.Map(Row, Column) := Floor;
+                            when Level_Final =>
+                                Spawn_Final(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
                             when Level_Floor => Game.Map(Row, Column) := Floor;
                             when Level_Wall => Game.Map(Row, Column) := Wall;
@@ -809,6 +833,7 @@ procedure Game is
                        for Boss of Game.Bosses loop
                            if not Boss.Dead and then Inside_Of_Rect(Boss.Position, Boss.Size, New_Position) then
                                case Boss.Kind is
+                                   when Final => null;
                                    when Gnome =>
                                        Game.Items.Insert(Boss.Position, (Kind => Key));
                                        Boss.Dead := True;
@@ -922,6 +947,7 @@ procedure Game is
                 Game.Bosses(Me).Prev_Position := Game.Bosses(Me).Position;
                 Game.Bosses(Me).Prev_Eyes := Game.Bosses(Me).Eyes;
                 case Game.Bosses(Me).Kind is
+                    when Final => null;
                     when Shrek | Urmom =>
                         Recompute_Path_For_Boss(Game, Me, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
                         if Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X) >= 0 then
@@ -1179,6 +1205,9 @@ procedure Game is
             begin
                 if not Boss.Dead then
                     case Boss.Kind is
+                        when Final =>
+                            Draw_Rectangle_V(Position, Size, Palette_RGB(Boss.Background));
+                            Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Closed, Eyes_Closed, 1.0);
                         when Shrek | Urmom =>
                             Draw_Rectangle_V(Position, Size, Palette_RGB(Boss.Background));
                             Health_Bar(Position, Size, C_Float(Boss.Health));
@@ -1363,7 +1392,6 @@ begin
     Close_Window;
 end;
 
---  TODO: End Game as a Huge White Eeper
 --  TODO: Closed eyes should always point down
 --  TODO: Checkpoints must refill the bombs
 --  TODO: Special Eeper Eyes on Damage
