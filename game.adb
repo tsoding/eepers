@@ -131,7 +131,7 @@ procedure Game is
 
     TURN_DURATION_SECS      : constant Float := 0.125;
     GUARD_ATTACK_COOLDOWN   : constant Integer := 10;
-    BOSS_EXPLOSION_DAMAGE  : constant Float := 0.45;
+    EEPER_EXPLOSION_DAMAGE  : constant Float := 0.45;
     GUARD_TURN_REGENERATION : constant Float := 0.01;
     BOMB_GENERATOR_COOLDOWN : constant Integer := 10;
     GUARD_STEPS_LIMIT       : constant Integer := 4;
@@ -231,22 +231,36 @@ procedure Game is
         Dead: Boolean := False;
     end record;
 
-    type Eyes_Kind is (Eyes_Open, Eyes_Closed, Eyes_Angry);
+    type Eyes_Kind is (Eyes_Open, Eyes_Closed, Eyes_Angry, Eyes_Cringe, Eyes_Surprised);
     type Eye_Mesh is new Vector2_Array(1..4);
     type Eye is (Left_Eye, Right_Eye);
     type Eyes_Mesh is array (Eye) of Eye_Mesh;
     Eyes_Meshes: constant array (Eyes_Kind) of Eyes_Mesh := [
         Eyes_Open => [
+            -- 1-3
+            -- |/|
+            -- 2-4
             Left_Eye => [ (0.0, 0.0), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0) ],
-            Right_Eye => [ (0.0, 0.0), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0) ]
+            -- 3-4
+            -- |\|
+            -- 1-2
+            Right_Eye => [ (0.0, 1.0), (1.0, 1.0), (0.0, 0.0), (1.0, 0.0) ]
         ],
         Eyes_Closed => [
             Left_Eye => [ (0.0, 0.8), (0.0, 1.0), (1.0, 0.8), (1.0, 1.0) ],
-            Right_Eye => [ (0.0, 0.8), (0.0, 1.0), (1.0, 0.8), (1.0, 1.0) ]
+            Right_Eye => [ (0.0, 1.0), (1.0, 1.0), (0.0, 0.8), (1.0, 0.8) ]
         ],
         Eyes_Angry => [
             Left_Eye => [ (0.0, 0.0), (0.0, 1.0), (1.0, 0.3), (1.0, 1.0) ],
-            Right_Eye => [ (0.0, 0.3), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0) ]
+            Right_Eye => [ (0.0, 1.0), (1.0, 1.0), (0.0, 0.3), (1.0, 0.0) ]
+        ],
+        Eyes_Cringe => [
+            Left_Eye => [ (0.0, 0.5), (0.5, 0.75), (1.3, 0.75), (0.0, 1.0) ],
+            Right_Eye => [ (1.0, 1.0), (0.5, 0.75), (-0.3, 0.75), (1.0, 0.5) ]
+        ],
+        Eyes_Surprised => [
+            Left_Eye => [ (0.0, 0.3), (0.0, 1.0), (1.0, 0.3), (1.0, 1.0) ],
+            Right_Eye => [ (0.0, 1.0), (1.0, 1.0), (0.0, 0.0), (1.0, 0.0) ]
         ]
     ];
 
@@ -810,7 +824,7 @@ procedure Game is
                                        Game.Items.Insert(Eeper.Position, (Kind => Key));
                                        Eeper.Dead := True;
                                    when Eeper_Guard =>
-                                       Eeper.Health := Eeper.Health - BOSS_EXPLOSION_DAMAGE;
+                                       Eeper.Health := Eeper.Health - EEPER_EXPLOSION_DAMAGE;
                                        if Eeper.Health <= 0.0 then
                                            Eeper.Dead := True;
                                        end if;
@@ -1362,8 +1376,8 @@ begin
     Close_Window;
 end;
 
---  TODO: Special Eeper Eyes expression when something explodes.
 --  TODO: Special Eeper Eyes on Damage
+--  TODO: Special Eeper Eyes expression when something explodes.
 --  TODO: Bug with pushing Eepers back on timer 0 (dodging)
 --  TODO: Place bombs directly at the Player's position
 --  TODO: Disallow placing bomb on the same position more than once
