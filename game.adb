@@ -251,7 +251,7 @@ procedure Game is
         ]
     ];
 
-    type Eeper_Kind is (Eeper_Guard, Eeper_Urmom, Eeper_Gnome, Eeper_Final);
+    type Eeper_Kind is (Eeper_Guard, Eeper_Mother, Eeper_Gnome, Eeper_Final);
 
     type Eeper_State is record
         Kind: Eeper_Kind;
@@ -483,11 +483,11 @@ procedure Game is
     end;
 
 
-    procedure Spawn_Urmom(Game: in out Game_State; Position: IVector2) is
+    procedure Spawn_Mother(Game: in out Game_State; Position: IVector2) is
     begin
         for Eeper of Game.Eepers loop
             if Eeper.Dead then
-                  Eeper.Kind := Eeper_Urmom;
+                  Eeper.Kind := Eeper_Mother;
                   Eeper.Dead := False;
                   Eeper.Background := COLOR_URMOM;
                   Eeper.Position := Position;
@@ -519,7 +519,7 @@ procedure Game is
     type Level_Cell is (
       Level_None,
       Level_Gnome,
-      Level_Urmom,
+      Level_Mother,
       Level_Guard,
       Level_Floor,
       Level_Wall,
@@ -534,7 +534,7 @@ procedure Game is
     Level_Cell_Color: constant array (Level_Cell) of Color := [
       Level_None       => Get_Color(16#00000000#),
       Level_Gnome      => Get_Color(16#FF9600FF#),
-      Level_Urmom      => Get_Color(16#96FF00FF#),
+      Level_Mother      => Get_Color(16#96FF00FF#),
       Level_Guard      => Get_Color(16#00FF00FF#),
       Level_Floor      => Get_Color(16#FFFFFFFF#),
       Level_Wall       => Get_Color(16#000000FF#),
@@ -608,8 +608,8 @@ procedure Game is
                             when Level_Gnome =>
                                 Spawn_Gnome(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
-                            when Level_Urmom =>
-                                Spawn_Urmom(Game, (Column, Row));
+                            when Level_Mother =>
+                                Spawn_Mother(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
                             when Level_Guard =>
                                 Spawn_Guard(Game, (Column, Row));
@@ -823,7 +823,7 @@ procedure Game is
                                        if Eeper.Health <= 0.0 then
                                            Eeper.Dead := True;
                                        end if;
-                                   when Eeper_Urmom =>
+                                   when Eeper_Mother =>
                                        declare
                                            Position: constant IVector2 := Eeper.Position;
                                        begin
@@ -929,7 +929,7 @@ procedure Game is
                 Game.Eepers(Me).Prev_Eyes := Game.Eepers(Me).Eyes;
                 case Game.Eepers(Me).Kind is
                     when Eeper_Final => null;
-                    when Eeper_Guard | Eeper_Urmom =>
+                    when Eeper_Guard | Eeper_Mother =>
                         Recompute_Path_For_Eeper(Game, Me, GUARD_STEPS_LIMIT, GUARD_STEP_LENGTH_LIMIT);
                         if Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X) >= 0 then
                             if Game.Eepers(Me).Attack_Cooldown <= 0 then
@@ -1181,7 +1181,7 @@ procedure Game is
                         when Eeper_Final =>
                             Draw_Rectangle_V(Position, Size, Palette_RGB(Eeper.Background));
                             Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Closed, Eyes_Closed, 1.0);
-                        when Eeper_Guard | Eeper_Urmom =>
+                        when Eeper_Guard | Eeper_Mother =>
                             Draw_Rectangle_V(Position, Size, Palette_RGB(Eeper.Background));
                             Health_Bar(Position, Size, C_Float(Eeper.Health));
                             if Eeper.Path(Eeper.Position.Y, Eeper.Position.X) = 1 then
@@ -1366,8 +1366,7 @@ begin
 end;
 
 --  TODO: Rename some definitions within the code
---    - Eeper -> Eeper
---    - Urmom -> Mother
+--    - Mother -> Mother
 --    - New_Game -> Father
 --  TODO: Smarter Path Finding
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Eeper position change may affect the Path Map
@@ -1437,7 +1436,7 @@ end;
 --  TODO: Cool effects when you pick up items and checkpoints
 --    Particles
 --  TODO: Allow moving with arrows too
---  TODO: Camera shaking when big bosses (Guard and Urmom) make moves
+--  TODO: Camera shaking when big bosses (Guard and Mother) make moves
 --  TODO: Initial position of the camera in map.png
 --    The Father's position.
 --  TODO: Indicate how many bomb slots we have in HUD
