@@ -1395,6 +1395,7 @@ end;
 --  TODO: During Path Finding maybe pick the equal paths randomly.
 --    to introduce a bit of RNG into this pretty deterministic game
 --  TODO: Path finding considers explosion impenetrable @bug
+--  TODO: Bug with pushing Eepers back on timer 0
 --  TODO: Place bombs directly at the Player's position
 --  TODO: Disallow placing bomb on the same position more than once
 --    Especially important if we gonna allow placing bombs at the position of the Player
