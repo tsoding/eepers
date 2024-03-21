@@ -943,7 +943,10 @@ procedure Game is
                 Game.Eepers(Me).Prev_Position := Game.Eepers(Me).Position;
                 Game.Eepers(Me).Prev_Eyes := Game.Eepers(Me).Eyes;
                 case Game.Eepers(Me).Kind is
-                    when Eeper_Father => null;
+                    when Eeper_Father =>
+                        if Inside_Of_Rect(Game.Eepers(Me).Position, Game.Eepers(Me).Size, Game.Player.Position) then
+                            Load_Game_From_Image("map.png", Game, True);
+                        end if;
                     when Eeper_Guard | Eeper_Mother =>
                         Recompute_Path_For_Eeper(Game, Me, GUARD_STEPS_LIMIT, GUARD_STEP_LENGTH_LIMIT);
                         if Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X) = 0 then
@@ -1412,7 +1415,6 @@ end;
 --    So it will search the resources there.
 --  TODO: Eyes for the Player.
 --    The denote last direction of the step.
---  TODO: Touch father starts NG+
 --  TODO: Eeper should attack on zero just like a bomb.
 --  TODO: Desaturate the colors
 --  TODO: Properly disablable DEV features
