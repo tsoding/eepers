@@ -582,6 +582,11 @@ procedure Game is
         return False;
     end;
 
+    function Screen_Size return Vector2 is
+    begin
+        return To_Vector2((Integer(Get_Screen_Width), Integer(Get_Screen_Height)));
+    end;
+
     procedure Load_Game_From_Image(File_Name: in String; Game: in out Game_State; Update_Player: Boolean) is
         type Color_Array is array (Natural range <>) of aliased Raylib.Color;
         package Color_Pointer is new Interfaces.C.Pointers(
@@ -639,6 +644,7 @@ procedure Game is
                                 Spawn_Guard(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
                             when Level_Father =>
+                                Game.Camera_Position := Screen_Size*0.5 - (To_Vector2((Column, Row))*Cell_Size + To_Vector2((7, 7))*Cell_Size*0.5);
                                 Spawn_Father(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
                             when Level_Floor => Game.Map(Row, Column) := Floor;
@@ -873,11 +879,6 @@ procedure Game is
         Up    => KEY_W,
         Down  => KEY_S
     ];
-
-    function Screen_Size return Vector2 is
-    begin
-        return To_Vector2((Integer(Get_Screen_Width), Integer(Get_Screen_Height)));
-    end;
 
     procedure Game_Update_Camera(Game: in out Game_State) is
         Camera_Target: constant Vector2 :=
@@ -1238,15 +1239,16 @@ procedure Game is
     Palette_Editor_Component: HSV_Comp := Hue;
 
 begin
+    Set_Config_Flags(FLAG_WINDOW_RESIZABLE);
+    Init_Window(1600, 900, Title);
+    Set_Target_FPS(60);
+    Set_Exit_Key(KEY_NULL);
+
     Random_Integer.Reset(Gen);
     Load_Colors("colors.txt");
     Load_Game_From_Image("map.png", Game, True);
     Game_Save_Checkpoint(Game);
-    Put_Line("Keys: " & Integer'Image(Game.Player.Keys));
-    Set_Config_Flags(FLAG_WINDOW_RESIZABLE);
-    Init_Window(800, 600, Title);
-    Set_Target_FPS(60);
-    Set_Exit_Key(KEY_NULL);
+
     while not Window_Should_Close loop
         Begin_Drawing;
             Clear_Background(Palette_RGB(COLOR_BACKGROUND));
@@ -1390,6 +1392,7 @@ begin
 end;
 
 
+--  TODO: Mother should require several attacks before being "split"
 --  TODO: Disallow placing bomb on the same position more than once
 --    Especially important if we gonna allow placing bombs at the position of the Player
 --  TODO: Do not stack up damage for Eepers per the tiles of their body.
@@ -1451,8 +1454,6 @@ end;
 --    Particles
 --  TODO: Allow moving with arrows too
 --  TODO: Camera shaking when big bosses (Guard and Mother) make moves
---  TODO: Initial position of the camera in map.png
---    The Father's position.
 --  TODO: Indicate how many bomb slots we have in HUD
 --  TODO: Menu
 --    Could be just a splash with the game name and logo.
