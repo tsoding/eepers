@@ -824,6 +824,7 @@ procedure Game is
                                        Game.Items.Insert(Eeper.Position, (Kind => Key));
                                        Eeper.Dead := True;
                                    when Eeper_Guard =>
+                                       Eeper.Eyes := Eyes_Cringe;
                                        Eeper.Health := Eeper.Health - EEPER_EXPLOSION_DAMAGE;
                                        if Eeper.Health <= 0.0 then
                                            Eeper.Dead := True;
@@ -1085,10 +1086,10 @@ procedure Game is
                         Start_Of_Turn: constant Double := Get_Time;
                     begin
                         Game_Explosions_Turn(Game);
-                        Game_Player_Turn(Game, Dir);
-                        Game_Bombs_Turn(Game);
                         Game_Items_Turn(Game);
+                        Game_Player_Turn(Game, Dir);
                         Game_Eepers_Turn(Game);
+                        Game_Bombs_Turn(Game);
                         Game.Duration_Of_Last_Turn := Get_Time - Start_Of_Turn;
                     end;
                 end if;
@@ -1376,7 +1377,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Special Eeper Eyes on Damage
 --  TODO: Special Eeper Eyes expression when something explodes.
 --  TODO: Bug with pushing Eepers back on timer 0 (dodging)
 --  TODO: Place bombs directly at the Player's position
