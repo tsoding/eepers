@@ -956,10 +956,6 @@ procedure Game is
                                 declare
                                     Current : constant Integer := Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X);
                                 begin
-                                    -- TODO: maybe pick the paths
-                                    --  randomly to introduce a bit of
-                                    --  RNG into this pretty
-                                    --  deterministic game
                                 Search: for Dir in Direction loop
                                         declare
                                             Position: IVector2 := Game.Bosses(Me).Position;
@@ -1392,6 +1388,19 @@ begin
     Close_Window;
 end;
 
+--  TODO: Rename some definitions within the code
+--    - Boss -> Eeper
+--    - Shrek -> Guard
+--    - Urmom -> Mother
+--    - New_Game -> Father
+--  TODO: Smarter Path Finding
+--    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
+--    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.
+--  TODO: During Path Finding maybe pick the equal paths randomly.
+--    to introduce a bit of RNG into this pretty deterministic game
+--  TODO: Place bombs directly at the Player's position
+--  TODO: Keys for the bomb gens of final boss @content
+--  TODO: Second boss room is boring
 --  TODO: Eyes of Father changing as the Player gets closer:
 --    - Closed
 --    - Open
@@ -1406,11 +1415,6 @@ end;
 --  TODO: Touch father starts NG+
 --  TODO: Desaturate the colors
 --  TODO: Properly disablable DEV features
---  TODO: Rename some definitions within the code
---    - Boss -> Eeper
---    - Shrek -> Guard
---    - Urmom -> Mother
---    - New_Game -> Father
 --  TODO: Default 16:9 resolution
 --  TODO: Fullscreen mode
 --  TODO: Compile MinGW build with Windows Subsystem (so it does not show cmd window)
@@ -1424,13 +1428,8 @@ end;
 --  TODO: Closed eyes should always point down
 --  TODO: Special Eeper Eyes on Damage
 --  TODO: Show Boss Cooldown timer outside of the screen somehow
---  TODO: Place bombs directly at the Player's position
 --  TODO: Visual Clue that the Boss is about to kill the Player when Completely outside of the Screen
 --    - Cooldown ball is shaking
---  TODO: Smarter Path Finding
---    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
---    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.
---  TODO: Keys for the bomb gens of final boss @content
 --  TODO: Cool animation for New Game
 --  TODO: The role of Barriers is not explored enough
 --  TODO: Tutorial sign that says "WASD" to move when you start the game for the first time
@@ -1440,10 +1439,7 @@ end;
 --  TODO: count the player's turns towards the final score of the game
 --    We can even collect different stats, like bombs collected, bombs used,
 --    times died etc.
---  TODO: Gnome should have triangular hats in the form of keys
---    And key must become triangles intead of circles
---  TODO: Player pushing bombs mechanic
---  TODO: animate key when you pick it up
+--  TODO: Animate key when you pick it up
 --    Smoothly move it into the HUD.
 --  TODO: Different palettes depending on the area
 --    Or maybe different palette for each NG+
@@ -1452,8 +1448,11 @@ end;
 --  TODO: Restart on any key press after ded
 --  TODO: Sounds
 --  TODO: Player Death animation @polish
+--    Particles
 --  TODO: Boss Death animation @polish
+--    Particles
 --  TODO: Cool effects when you pick up items and checkpoints @polish
+--    Particles
 --  TODO: Allow moving with arrows too
 --  TODO: Camera shaking when big bosses (Shrek and Urmom) make moves
 --  TODO: Initial position of the camera in map.png
@@ -1473,5 +1472,10 @@ end;
 --    Something that makes the controls actually simpler.
 --  TODO: Placing a bomb is not a turn (should it be tho?)
 --  TODO: Disallow placing bomb on the same position more than once
---  TODO: Explosions should trigger bombs?
+--    Especially important if we gonna allow placing bombs at the position of the Player
+--  TODO: Explosions should trigger other primed bombs?
 --  TODO: Path finding in a separate thread
+--  TODO: Player pushing bombs mechanic
+--    May not be relevant after we do not make bombs barriers
+--  TODO: Gnome should have triangular hats in the form of keys
+--    And key must become triangles intead of circles
