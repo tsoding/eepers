@@ -32,7 +32,7 @@ procedure Game is
       COLOR_DOOR_KEY,
       COLOR_BOMB,
       COLOR_LABEL,
-      COLOR_SHREK,
+      COLOR_GUARD,
       COLOR_URMOM,
       COLOR_GNOME,
       COLOR_CHECKPOINT,
@@ -41,25 +41,6 @@ procedure Game is
       COLOR_NEW_GAME,
       COLOR_EYES,
       COLOR_FINAL);
-
-    Palette_Names: constant array (Palette) of Unbounded_String := [
-      COLOR_BACKGROUND => To_Unbounded_String("Background"),
-      COLOR_FLOOR      => To_Unbounded_String("Floor"),
-      COLOR_WALL       => To_Unbounded_String("Wall"),
-      COLOR_Barricade  => To_Unbounded_String("Barricade"),
-      COLOR_PLAYER     => To_Unbounded_String("Player"),
-      COLOR_DOOR_KEY   => To_Unbounded_String("DoorKey"),
-      COLOR_BOMB       => To_Unbounded_String("Bomb"),
-      COLOR_LABEL      => To_Unbounded_String("Label"),
-      COLOR_SHREK      => To_Unbounded_String("Shrek"),
-      COLOR_URMOM      => To_Unbounded_String("Urmom"),
-      COLOR_GNOME      => To_Unbounded_String("Gnome"),
-      COLOR_CHECKPOINT => To_Unbounded_String("Checkpoint"),
-      COLOR_EXPLOSION  => To_Unbounded_String("Explosion"),
-      COLOR_HEALTHBAR  => To_Unbounded_String("Healthbar"),
-      COLOR_NEW_GAME   => To_Unbounded_String("NewGame"),
-      COLOR_EYES       => To_Unbounded_String("EYES"),
-      COLOR_FINAL      => To_Unbounded_String("Final")];
 
     type Byte is mod 256;
     type HSV_Comp is (Hue, Sat, Value);
@@ -83,7 +64,7 @@ procedure Game is
     begin
         Create(F, Out_File, File_Name);
         for C in Palette loop
-            Put(F, To_String(Palette_Names(C)));
+            Put(F, C'Image);
             for Comp in HSV_Comp loop
                 Put(F, Palette_HSV(C)(Comp)'Image);
             end loop;
@@ -119,7 +100,7 @@ procedure Game is
                 function Find_Color_By_Key(Key: Unbounded_String; Co: out Palette) return Boolean is
                 begin
                     for C in Palette loop
-                        if Key = Palette_Names(C) then
+                        if Key = C'Image then
                             Co := C;
                             return True;
                         end if;
@@ -150,12 +131,12 @@ procedure Game is
     end;
 
     TURN_DURATION_SECS      : constant Float := 0.125;
-    SHREK_ATTACK_COOLDOWN   : constant Integer := 10;
+    GUARD_ATTACK_COOLDOWN   : constant Integer := 10;
     BOSS_EXPLOSION_DAMAGE  : constant Float := 0.45;
-    SHREK_TURN_REGENERATION : constant Float := 0.01;
+    GUARD_TURN_REGENERATION : constant Float := 0.01;
     BOMB_GENERATOR_COOLDOWN : constant Integer := 10;
-    SHREK_STEPS_LIMIT       : constant Integer := 4;
-    SHREK_STEP_LENGTH_LIMIT : constant Integer := 100;
+    GUARD_STEPS_LIMIT       : constant Integer := 4;
+    GUARD_STEP_LENGTH_LIMIT : constant Integer := 100;
     EXPLOSION_LENGTH        : constant Integer := 10;
 
     type IVector2 is record
@@ -270,7 +251,7 @@ procedure Game is
         ]
     ];
 
-    type Boss_Kind is (Shrek, Urmom, Gnome, Final);
+    type Boss_Kind is (Guard, Urmom, Gnome, Final);
 
     type Boss_State is record
         Kind: Boss_Kind;
@@ -283,7 +264,7 @@ procedure Game is
 
         Background: Palette;
         Health: Float := 1.0;
-        Attack_Cooldown: Integer := SHREK_ATTACK_COOLDOWN;
+        Attack_Cooldown: Integer := GUARD_ATTACK_COOLDOWN;
     end record;
 
     type Bomb_State is record
@@ -518,18 +499,18 @@ procedure Game is
         end loop;
     end;
 
-    procedure Spawn_Shrek(Game: in out Game_State; Position: IVector2) is
+    procedure Spawn_Guard(Game: in out Game_State; Position: IVector2) is
     begin
         for Boss of Game.Bosses loop
             if Boss.Dead then
-                Boss.Kind := Shrek;
-                Boss.Background := COLOR_SHREK;
+                Boss.Kind := Guard;
+                Boss.Background := COLOR_GUARD;
                 Boss.Dead := False;
                 Boss.Position := Position;
                 Boss.Prev_Position := Position;
                 Boss.Health := 1.0;
                 Boss.Size := (3, 3);
-                Boss.Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
+                Boss.Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
                 exit;
             end if;
         end loop;
@@ -539,7 +520,7 @@ procedure Game is
       Level_None,
       Level_Gnome,
       Level_Urmom,
-      Level_Shrek,
+      Level_Guard,
       Level_Floor,
       Level_Wall,
       Level_Door,
@@ -554,7 +535,7 @@ procedure Game is
       Level_None       => Get_Color(16#00000000#),
       Level_Gnome      => Get_Color(16#FF9600FF#),
       Level_Urmom      => Get_Color(16#96FF00FF#),
-      Level_Shrek      => Get_Color(16#00FF00FF#),
+      Level_Guard      => Get_Color(16#00FF00FF#),
       Level_Floor      => Get_Color(16#FFFFFFFF#),
       Level_Wall       => Get_Color(16#000000FF#),
       Level_Door       => Get_Color(16#00FFFFFF#),
@@ -630,8 +611,8 @@ procedure Game is
                             when Level_Urmom =>
                                 Spawn_Urmom(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
-                            when Level_Shrek =>
-                                Spawn_Shrek(Game, (Column, Row));
+                            when Level_Guard =>
+                                Spawn_Guard(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
                             when Level_Final =>
                                 Spawn_Final(Game, (Column, Row));
@@ -837,7 +818,7 @@ procedure Game is
                                    when Gnome =>
                                        Game.Items.Insert(Boss.Position, (Kind => Key));
                                        Boss.Dead := True;
-                                   when Shrek =>
+                                   when Guard =>
                                        Boss.Health := Boss.Health - BOSS_EXPLOSION_DAMAGE;
                                        if Boss.Health <= 0.0 then
                                            Boss.Dead := True;
@@ -847,10 +828,10 @@ procedure Game is
                                            Position: constant IVector2 := Boss.Position;
                                        begin
                                            Boss.Dead := True;
-                                           Spawn_Shrek(Game, Position + (0, 0));
-                                           Spawn_Shrek(Game, Position + (4, 0));
-                                           Spawn_Shrek(Game, Position + (0, 4));
-                                           Spawn_Shrek(Game, Position + (4, 4));
+                                           Spawn_Guard(Game, Position + (0, 0));
+                                           Spawn_Guard(Game, Position + (4, 0));
+                                           Spawn_Guard(Game, Position + (0, 4));
+                                           Spawn_Guard(Game, Position + (4, 4));
                                        end;
                                end case;
                                return;
@@ -948,8 +929,8 @@ procedure Game is
                 Game.Bosses(Me).Prev_Eyes := Game.Bosses(Me).Eyes;
                 case Game.Bosses(Me).Kind is
                     when Final => null;
-                    when Shrek | Urmom =>
-                        Recompute_Path_For_Boss(Game, Me, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
+                    when Guard | Urmom =>
+                        Recompute_Path_For_Boss(Game, Me, GUARD_STEPS_LIMIT, GUARD_STEP_LENGTH_LIMIT);
                         if Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X) >= 0 then
                             if Game.Bosses(Me).Attack_Cooldown <= 0 then
                                 declare
@@ -969,7 +950,7 @@ procedure Game is
                                         end;
                                     end loop Search;
                                 end;
-                                Game.Bosses(Me).Attack_Cooldown := SHREK_ATTACK_COOLDOWN;
+                                Game.Bosses(Me).Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
                             else
                                 Game.Bosses(Me).Attack_Cooldown := Game.Bosses(Me).Attack_Cooldown - 1;
                             end if;
@@ -981,14 +962,14 @@ procedure Game is
                             end if;
                         else
                             Game.Bosses(Me).Eyes := Eyes_Closed;
-                            Game.Bosses(Me).Attack_Cooldown := SHREK_ATTACK_COOLDOWN + 1;
+                            Game.Bosses(Me).Attack_Cooldown := GUARD_ATTACK_COOLDOWN + 1;
                         end if;
 
                         if Inside_Of_Rect(Game.Bosses(Me).Position, Game.Bosses(Me).Size, Game.Player.Position) then
                             Game.Player.Dead := True;
                         end if;
                         if Game.Bosses(Me).Health < 1.0 then
-                            Game.Bosses(Me).Health := Game.Bosses(Me).Health + SHREK_TURN_REGENERATION;
+                            Game.Bosses(Me).Health := Game.Bosses(Me).Health + GUARD_TURN_REGENERATION;
                         end if;
                     when Gnome =>
                         Recompute_Path_For_Boss(Game, Me, 10, 1, Stop_At_Me => False);
@@ -1200,7 +1181,7 @@ procedure Game is
                         when Final =>
                             Draw_Rectangle_V(Position, Size, Palette_RGB(Boss.Background));
                             Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Closed, Eyes_Closed, 1.0);
-                        when Shrek | Urmom =>
+                        when Guard | Urmom =>
                             Draw_Rectangle_V(Position, Size, Palette_RGB(Boss.Background));
                             Health_Bar(Position, Size, C_Float(Boss.Health));
                             if Boss.Path(Boss.Position.Y, Boss.Position.X) = 1 then
@@ -1352,7 +1333,7 @@ begin
             if Palette_Editor then
                 for C in Palette loop
                     declare
-                        Label: constant Char_Array := To_C(To_String(Palette_Names(C)));
+                        Label: constant Char_Array := To_C(C'Image);
                         Label_Height: constant Integer := 32;
                         Position: constant Vector2 := (200.0, 200.0 + C_Float(Palette'Pos(C))*C_Float(Label_Height));
                     begin
@@ -1386,7 +1367,6 @@ end;
 
 --  TODO: Rename some definitions within the code
 --    - Boss -> Eeper
---    - Shrek -> Guard
 --    - Urmom -> Mother
 --    - New_Game -> Father
 --  TODO: Smarter Path Finding
@@ -1457,7 +1437,7 @@ end;
 --  TODO: Cool effects when you pick up items and checkpoints
 --    Particles
 --  TODO: Allow moving with arrows too
---  TODO: Camera shaking when big bosses (Shrek and Urmom) make moves
+--  TODO: Camera shaking when big bosses (Guard and Urmom) make moves
 --  TODO: Initial position of the camera in map.png
 --    The Father's position.
 --  TODO: Indicate how many bomb slots we have in HUD

@@ -13,36 +13,27 @@ with Raylib; use Raylib;
 with Raymath; use Raymath;
 
 function Test return Integer is
-    type Vector2_Array is array (size_t range <>) of aliased Vector2;
-    procedure Draw_Triangle_Strip(Points: Vector2_Array; C: Color) is
-        procedure Draw_Triangle_Strip_C(Points: Vector2_Array; Point_Count: Int; C: Color)
-          with
-            Import => True,
-            Convention => C,
-            External_Name => "DrawTriangleStrip";
-    begin
-        Draw_Triangle_Strip_C(Points, Points'Length, C);
-    end;
-
-    Size: Vector2;
-    Radius: constant C_Float := 100.0;
+    type Palette is (
+      COLOR_BACKGROUND,
+      COLOR_FLOOR,
+      COLOR_WALL,
+      COLOR_BARRICADE,
+      COLOR_PLAYER,
+      COLOR_DOOR_KEY,
+      COLOR_BOMB,
+      COLOR_LABEL,
+      COLOR_GUARD,
+      COLOR_URMOM,
+      COLOR_GNOME,
+      COLOR_CHECKPOINT,
+      COLOR_EXPLOSION,
+      COLOR_HEALTHBAR,
+      COLOR_NEW_GAME,
+      COLOR_EYES,
+      COLOR_FINAL);
 begin
-    Init_Window(800, 600, To_C("Test"));
-    Set_Target_FPS(60);
-    while not Window_Should_Close loop
-        Begin_Drawing;
-            Size := (C_Float(Get_Screen_Width), C_Float(Get_Screen_Height));
-            Clear_Background(Get_Color(16#181818FF#));
-            Draw_Triangle_Strip(
-              Points => [
-                  Size*0.5 + (-Radius, -Radius),
-                  Size*0.5 + (-Radius, Radius),
-                  Size*0.5 + (Radius, -Radius),
-                  Size*0.5 + (Radius, Radius)
-              ],
-              C => (R => 255, A => 255, others => 0));
-        End_Drawing;
+    for C in Palette loop
+        Put_Line(To_Unbounded_String(C'Image));
     end loop;
-    Close_Window;
     return 0;
 end;
