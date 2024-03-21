@@ -1354,9 +1354,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Smarter Path Finding
---    - Recompute Path Map on each boss move. Not the Player turn. Because each Eeper position change may affect the Path Map
---    - Move Eepers starting from the closest to the Player. You can find the distance in the current Path Map.
 --  TODO: During Path Finding maybe pick the equal paths randomly.
 --    to introduce a bit of RNG into this pretty deterministic game
 --  TODO: Path finding considers explosion impenetrable @bug
