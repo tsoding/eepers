@@ -251,10 +251,10 @@ procedure Game is
         ]
     ];
 
-    type Boss_Kind is (Guard, Urmom, Gnome, Final);
+    type Eeper_Kind is (Eeper_Guard, Eeper_Urmom, Eeper_Gnome, Eeper_Final);
 
-    type Boss_State is record
-        Kind: Boss_Kind;
+    type Eeper_State is record
+        Kind: Eeper_Kind;
         Dead: Boolean := True;
         Position, Prev_Position: IVector2;
         Prev_Eyes: Eyes_Kind;
@@ -274,8 +274,8 @@ procedure Game is
 
     type Bomb_State_Array is array (1..10) of Bomb_State;
 
-    type Boss_Index is range 1..10;
-    type Boss_Array is array (Boss_Index) of Boss_State;
+    type Eeper_Index is range 1..10;
+    type Eeper_Array is array (Eeper_Index) of Eeper_State;
 
     type Checkpoint_State is record
         Map: Map_Access := Null;
@@ -283,14 +283,14 @@ procedure Game is
         Player_Keys: Integer;
         Player_Bombs: Integer;
         Player_Bomb_Slots: Integer;
-        Bosses: Boss_Array;
+        Eepers: Eeper_Array;
         Items: Hashed_Map_Items.Map;
     end record;
 
     type Game_State is record
         Map: Map_Access := Null;
         Player: Player_State;
-        Bosses: Boss_Array;
+        Eepers: Eeper_Array;
 
         Turn_Animation: Float := 0.0;
 
@@ -330,8 +330,8 @@ procedure Game is
         return Start <= Point and then Point < Start + Size;
     end;
 
-    function Boss_Can_Stand_Here(Game: Game_State; Start: IVector2; Me: Boss_Index) return Boolean is
-        Size: constant IVector2 := Game.Bosses(Me).Size;
+    function Eeper_Can_Stand_Here(Game: Game_State; Start: IVector2; Me: Eeper_Index) return Boolean is
+        Size: constant IVector2 := Game.Eepers(Me).Size;
     begin
         for X in Start.X..Start.X+Size.X-1 loop
             for Y in Start.Y..Start.Y+Size.Y-1 loop
@@ -341,12 +341,12 @@ procedure Game is
                 if Game.Map(Y, X) /= Floor then
                     return False;
                 end if;
-                for Index in Boss_Index loop
-                    if not Game.Bosses(Index).Dead and then Index /= Me then
+                for Index in Eeper_Index loop
+                    if not Game.Eepers(Index).Dead and then Index /= Me then
                         declare
-                            Boss : constant Boss_State := Game.Bosses(Index);
+                            Eeper : constant Eeper_State := Game.Eepers(Index);
                         begin
-                            if Inside_Of_Rect(Boss.Position, Boss.Size, (X, Y)) then
+                            if Inside_Of_Rect(Eeper.Position, Eeper.Size, (X, Y)) then
                                 return False;
                             end if;
                         end;
@@ -360,28 +360,28 @@ procedure Game is
     package Queue is new
       Ada.Containers.Vectors(Index_Type => Natural, Element_Type => IVector2);
 
-    procedure Recompute_Path_For_Boss
+    procedure Recompute_Path_For_Eeper
       (Game: in out Game_State;
-       Me: Boss_Index;
+       Me: Eeper_Index;
        Steps_Limit: Integer;
        Step_Length_Limit: Integer;
        Stop_At_Me: Boolean := True)
     is
         Q: Queue.Vector;
     begin
-        for Y in Game.Bosses(Me).Path'Range(1) loop
-            for X in Game.Bosses(Me).Path'Range(2) loop
-                Game.Bosses(Me).Path(Y, X) := -1;
+        for Y in Game.Eepers(Me).Path'Range(1) loop
+            for X in Game.Eepers(Me).Path'Range(2) loop
+                Game.Eepers(Me).Path(Y, X) := -1;
             end loop;
         end loop;
 
-        for Dy in 0..Game.Bosses(Me).Size.Y-1 loop
-            for Dx in 0..Game.Bosses(Me).Size.X-1 loop
+        for Dy in 0..Game.Eepers(Me).Size.Y-1 loop
+            for Dx in 0..Game.Eepers(Me).Size.X-1 loop
                 declare
                     Position: constant IVector2 := Game.Player.Position - (Dx, Dy);
                 begin
-                    if Boss_Can_Stand_Here(Game, Position, Me) then
-                        Game.Bosses(Me).Path(Position.Y, Position.X) := 0;
+                    if Eeper_Can_Stand_Here(Game, Position, Me) then
+                        Game.Eepers(Me).Path(Position.Y, Position.X) := 0;
                         Q.Append(Position);
                     end if;
                 end;
@@ -394,11 +394,11 @@ procedure Game is
             begin
                 Q.Delete_First;
 
-                if Stop_At_Me and then Position = Game.Bosses(Me).Position then
+                if Stop_At_Me and then Position = Game.Eepers(Me).Position then
                     exit;
                 end if;
 
-                if Game.Bosses(Me).Path(Position.Y, Position.X) >= Steps_Limit then
+                if Game.Eepers(Me).Path(Position.Y, Position.X) >= Steps_Limit then
                     exit;
                 end if;
 
@@ -407,13 +407,13 @@ procedure Game is
                         New_Position: IVector2 := Position + Direction_Vector(Dir);
                     begin
                         for Limit in 1..Step_Length_Limit loop
-                            if not Boss_Can_Stand_Here(Game, New_Position, Me) then
+                            if not Eeper_Can_Stand_Here(Game, New_Position, Me) then
                                 exit;
                             end if;
-                            if Game.Bosses(Me).Path(New_Position.Y, New_Position.X) >= 0 then
+                            if Game.Eepers(Me).Path(New_Position.Y, New_Position.X) >= 0 then
                                 exit;
                             end if;
-                            Game.Bosses(Me).Path(New_Position.Y, New_Position.X) := Game.Bosses(Me).Path(Position.Y, Position.X) + 1;
+                            Game.Eepers(Me).Path(New_Position.Y, New_Position.X) := Game.Eepers(Me).Path(Position.Y, Position.X) + 1;
                             Q.Append(New_Position);
                             New_Position := New_Position + Direction_Vector(Dir);
                         end loop;
@@ -433,7 +433,7 @@ procedure Game is
         Game.Checkpoint.Player_Keys       := Game.Player.Keys;
         Game.Checkpoint.Player_Bombs      := Game.Player.Bombs;
         Game.Checkpoint.Player_Bomb_Slots := Game.Player.Bomb_Slots;
-        Game.Checkpoint.Bosses            := Game.Bosses;
+        Game.Checkpoint.Eepers            := Game.Eepers;
         Game.Checkpoint.Items             := Game.Items;
     end;
 
@@ -447,20 +447,20 @@ procedure Game is
         Game.Player.Keys       := Game.Checkpoint.Player_Keys;
         Game.Player.Bombs      := Game.Checkpoint.Player_Bombs;
         Game.Player.Bomb_Slots := Game.Checkpoint.Player_Bomb_Slots;
-        Game.Bosses            := Game.Checkpoint.Bosses;
+        Game.Eepers            := Game.Checkpoint.Eepers;
         Game.Items             := Game.Checkpoint.Items;
     end;
 
     procedure Spawn_Gnome(Game: in out Game_State; Position: IVector2) is
     begin
-        for Boss of Game.Bosses loop
-            if Boss.Dead then
-                  Boss.Kind := Gnome;
-                  Boss.Dead := False;
-                  Boss.Background := COLOR_GNOME;
-                  Boss.Position := Position;
-                  Boss.Prev_Position := Position;
-                  Boss.Size := (1, 1);
+        for Eeper of Game.Eepers loop
+            if Eeper.Dead then
+                  Eeper.Kind := Eeper_Gnome;
+                  Eeper.Dead := False;
+                  Eeper.Background := COLOR_GNOME;
+                  Eeper.Position := Position;
+                  Eeper.Prev_Position := Position;
+                  Eeper.Size := (1, 1);
                 exit;
             end if;
         end loop;
@@ -468,15 +468,15 @@ procedure Game is
 
     procedure Spawn_Final(Game: in out Game_State; Position: IVector2) is
     begin
-        for Boss of Game.Bosses loop
-            if Boss.Dead then
-                  Boss.Kind := Final;
-                  Boss.Dead := False;
-                  Boss.Background := COLOR_FINAL;
-                  Boss.Position := Position;
-                  Boss.Prev_Position := Position;
-                  Boss.Health := 1.0;
-                  Boss.Size := (7, 7);
+        for Eeper of Game.Eepers loop
+            if Eeper.Dead then
+                  Eeper.Kind := Eeper_Final;
+                  Eeper.Dead := False;
+                  Eeper.Background := COLOR_FINAL;
+                  Eeper.Position := Position;
+                  Eeper.Prev_Position := Position;
+                  Eeper.Health := 1.0;
+                  Eeper.Size := (7, 7);
                 exit;
             end if;
         end loop;
@@ -485,15 +485,15 @@ procedure Game is
 
     procedure Spawn_Urmom(Game: in out Game_State; Position: IVector2) is
     begin
-        for Boss of Game.Bosses loop
-            if Boss.Dead then
-                  Boss.Kind := Urmom;
-                  Boss.Dead := False;
-                  Boss.Background := COLOR_URMOM;
-                  Boss.Position := Position;
-                  Boss.Prev_Position := Position;
-                  Boss.Health := 1.0;
-                  Boss.Size := (7, 7);
+        for Eeper of Game.Eepers loop
+            if Eeper.Dead then
+                  Eeper.Kind := Eeper_Urmom;
+                  Eeper.Dead := False;
+                  Eeper.Background := COLOR_URMOM;
+                  Eeper.Position := Position;
+                  Eeper.Prev_Position := Position;
+                  Eeper.Health := 1.0;
+                  Eeper.Size := (7, 7);
                 exit;
             end if;
         end loop;
@@ -501,16 +501,16 @@ procedure Game is
 
     procedure Spawn_Guard(Game: in out Game_State; Position: IVector2) is
     begin
-        for Boss of Game.Bosses loop
-            if Boss.Dead then
-                Boss.Kind := Guard;
-                Boss.Background := COLOR_GUARD;
-                Boss.Dead := False;
-                Boss.Position := Position;
-                Boss.Prev_Position := Position;
-                Boss.Health := 1.0;
-                Boss.Size := (3, 3);
-                Boss.Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
+        for Eeper of Game.Eepers loop
+            if Eeper.Dead then
+                Eeper.Kind := Eeper_Guard;
+                Eeper.Background := COLOR_GUARD;
+                Eeper.Dead := False;
+                Eeper.Position := Position;
+                Eeper.Prev_Position := Position;
+                Eeper.Health := 1.0;
+                Eeper.Size := (3, 3);
+                Eeper.Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
                 exit;
             end if;
         end loop;
@@ -576,15 +576,15 @@ procedure Game is
         end if;
         Game.Map := new Map(1..Integer(Img.Height), 1..Integer(Img.Width));
 
-        for Boss of Game.Bosses loop
-            Boss.Dead := True;
-            if Boss.Path /= null then
-                Delete_Path_Map(Boss.Path);
+        for Eeper of Game.Eepers loop
+            Eeper.Dead := True;
+            if Eeper.Path /= null then
+                Delete_Path_Map(Eeper.Path);
             end if;
-            Boss.Path := new Path_Map(1..Integer(Img.Height), 1..Integer(Img.Width));
-            for Y in Boss.Path'Range(1) loop
-                for X in Boss.Path'Range(2) loop
-                    Boss.Path(Y, X) := -1;
+            Eeper.Path := new Path_Map(1..Integer(Img.Height), 1..Integer(Img.Width));
+            for Y in Eeper.Path'Range(1) loop
+                for X in Eeper.Path'Range(2) loop
+                    Eeper.Path(Y, X) := -1;
                 end loop;
             end loop;
         end loop;
@@ -811,23 +811,23 @@ procedure Game is
                            return;
                        end if;
 
-                       for Boss of Game.Bosses loop
-                           if not Boss.Dead and then Inside_Of_Rect(Boss.Position, Boss.Size, New_Position) then
-                               case Boss.Kind is
-                                   when Final => null;
-                                   when Gnome =>
-                                       Game.Items.Insert(Boss.Position, (Kind => Key));
-                                       Boss.Dead := True;
-                                   when Guard =>
-                                       Boss.Health := Boss.Health - BOSS_EXPLOSION_DAMAGE;
-                                       if Boss.Health <= 0.0 then
-                                           Boss.Dead := True;
+                       for Eeper of Game.Eepers loop
+                           if not Eeper.Dead and then Inside_Of_Rect(Eeper.Position, Eeper.Size, New_Position) then
+                               case Eeper.Kind is
+                                   when Eeper_Final => null;
+                                   when Eeper_Gnome =>
+                                       Game.Items.Insert(Eeper.Position, (Kind => Key));
+                                       Eeper.Dead := True;
+                                   when Eeper_Guard =>
+                                       Eeper.Health := Eeper.Health - BOSS_EXPLOSION_DAMAGE;
+                                       if Eeper.Health <= 0.0 then
+                                           Eeper.Dead := True;
                                        end if;
-                                   when Urmom =>
+                                   when Eeper_Urmom =>
                                        declare
-                                           Position: constant IVector2 := Boss.Position;
+                                           Position: constant IVector2 := Eeper.Position;
                                        begin
-                                           Boss.Dead := True;
+                                           Eeper.Dead := True;
                                            Spawn_Guard(Game, Position + (0, 0));
                                            Spawn_Guard(Game, Position + (4, 0));
                                            Spawn_Guard(Game, Position + (0, 4));
@@ -921,62 +921,62 @@ procedure Game is
         end loop;
     end;
 
-    procedure Game_Bosses_Turn(Game: in out Game_State) is
+    procedure Game_Eepers_Turn(Game: in out Game_State) is
     begin
-        for Me in Boss_Index loop
-            if not Game.Bosses(Me).Dead then
-                Game.Bosses(Me).Prev_Position := Game.Bosses(Me).Position;
-                Game.Bosses(Me).Prev_Eyes := Game.Bosses(Me).Eyes;
-                case Game.Bosses(Me).Kind is
-                    when Final => null;
-                    when Guard | Urmom =>
-                        Recompute_Path_For_Boss(Game, Me, GUARD_STEPS_LIMIT, GUARD_STEP_LENGTH_LIMIT);
-                        if Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X) >= 0 then
-                            if Game.Bosses(Me).Attack_Cooldown <= 0 then
+        for Me in Eeper_Index loop
+            if not Game.Eepers(Me).Dead then
+                Game.Eepers(Me).Prev_Position := Game.Eepers(Me).Position;
+                Game.Eepers(Me).Prev_Eyes := Game.Eepers(Me).Eyes;
+                case Game.Eepers(Me).Kind is
+                    when Eeper_Final => null;
+                    when Eeper_Guard | Eeper_Urmom =>
+                        Recompute_Path_For_Eeper(Game, Me, GUARD_STEPS_LIMIT, GUARD_STEP_LENGTH_LIMIT);
+                        if Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X) >= 0 then
+                            if Game.Eepers(Me).Attack_Cooldown <= 0 then
                                 declare
-                                    Current : constant Integer := Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X);
+                                    Current : constant Integer := Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X);
                                 begin
                                 Search: for Dir in Direction loop
                                         declare
-                                            Position: IVector2 := Game.Bosses(Me).Position;
+                                            Position: IVector2 := Game.Eepers(Me).Position;
                                         begin
-                                            while Boss_Can_Stand_Here(Game, Position, Me) loop
+                                            while Eeper_Can_Stand_Here(Game, Position, Me) loop
                                                 Position := Position + Direction_Vector(Dir);
-                                                if Within_Map(Game, Position) and then Game.Bosses(Me).Path(Position.Y, Position.X) = Current - 1 then
-                                                    Game.Bosses(Me).Position := Position;
+                                                if Within_Map(Game, Position) and then Game.Eepers(Me).Path(Position.Y, Position.X) = Current - 1 then
+                                                    Game.Eepers(Me).Position := Position;
                                                     exit Search;
                                                 end if;
                                             end loop;
                                         end;
                                     end loop Search;
                                 end;
-                                Game.Bosses(Me).Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
+                                Game.Eepers(Me).Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
                             else
-                                Game.Bosses(Me).Attack_Cooldown := Game.Bosses(Me).Attack_Cooldown - 1;
+                                Game.Eepers(Me).Attack_Cooldown := Game.Eepers(Me).Attack_Cooldown - 1;
                             end if;
 
-                            if Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X) = 1 then
-                                Game.Bosses(Me).Eyes := Eyes_Angry;
+                            if Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X) = 1 then
+                                Game.Eepers(Me).Eyes := Eyes_Angry;
                             else
-                                Game.Bosses(Me).Eyes := Eyes_Open;
+                                Game.Eepers(Me).Eyes := Eyes_Open;
                             end if;
                         else
-                            Game.Bosses(Me).Eyes := Eyes_Closed;
-                            Game.Bosses(Me).Attack_Cooldown := GUARD_ATTACK_COOLDOWN + 1;
+                            Game.Eepers(Me).Eyes := Eyes_Closed;
+                            Game.Eepers(Me).Attack_Cooldown := GUARD_ATTACK_COOLDOWN + 1;
                         end if;
 
-                        if Inside_Of_Rect(Game.Bosses(Me).Position, Game.Bosses(Me).Size, Game.Player.Position) then
+                        if Inside_Of_Rect(Game.Eepers(Me).Position, Game.Eepers(Me).Size, Game.Player.Position) then
                             Game.Player.Dead := True;
                         end if;
-                        if Game.Bosses(Me).Health < 1.0 then
-                            Game.Bosses(Me).Health := Game.Bosses(Me).Health + GUARD_TURN_REGENERATION;
+                        if Game.Eepers(Me).Health < 1.0 then
+                            Game.Eepers(Me).Health := Game.Eepers(Me).Health + GUARD_TURN_REGENERATION;
                         end if;
-                    when Gnome =>
-                        Recompute_Path_For_Boss(Game, Me, 10, 1, Stop_At_Me => False);
+                    when Eeper_Gnome =>
+                        Recompute_Path_For_Eeper(Game, Me, 10, 1, Stop_At_Me => False);
                         declare
-                            Position: constant IVector2 := Game.Bosses(Me).Position;
+                            Position: constant IVector2 := Game.Eepers(Me).Position;
                         begin
-                            if Game.Bosses(Me).Path(Position.Y, Position.X) >= 0 then
+                            if Game.Eepers(Me).Path(Position.Y, Position.X) >= 0 then
                                 declare
                                     Available_Positions: array (0..Direction_Vector'Length-1) of IVector2;
                                     Count: Integer := 0;
@@ -987,7 +987,7 @@ procedure Game is
                                         begin
                                             if Within_Map(Game, New_Position)
                                               and then Game.Map(New_Position.Y, New_Position.X) = Floor
-                                              and then Game.Bosses(Me).Path(New_Position.Y, New_Position.X) > Game.Bosses(Me).Path(Position.Y, Position.X)
+                                              and then Game.Eepers(Me).Path(New_Position.Y, New_Position.X) > Game.Eepers(Me).Path(Position.Y, Position.X)
                                             then
                                                 Available_Positions(Count) := New_Position;
                                                 Count := Count + 1;
@@ -996,12 +996,12 @@ procedure Game is
                                     end loop;
 
                                     if Count > 0 then
-                                        Game.Bosses(Me).Position := Available_Positions(Random_Integer.Random(Gen) mod Count);
+                                        Game.Eepers(Me).Position := Available_Positions(Random_Integer.Random(Gen) mod Count);
                                     end if;
                                 end;
-                                Game.Bosses(Me).Eyes := Eyes_Open;
+                                Game.Eepers(Me).Eyes := Eyes_Open;
                             else
-                                Game.Bosses(Me).Eyes := Eyes_Closed;
+                                Game.Eepers(Me).Eyes := Eyes_Closed;
                             end if;
                         end;
                 end case;
@@ -1077,7 +1077,7 @@ procedure Game is
                         Game_Player_Turn(Game, Dir);
                         Game_Bombs_Turn(Game);
                         Game_Items_Turn(Game);
-                        Game_Bosses_Turn(Game);
+                        Game_Eepers_Turn(Game);
                         Game.Duration_Of_Last_Turn := Get_Time - Start_Of_Turn;
                     end;
                 end if;
@@ -1166,38 +1166,38 @@ procedure Game is
         Draw_Number(Bubble_Center - (Bubble_Radius, Bubble_Radius), (Bubble_Radius, Bubble_Radius)*2.0, Cooldown, Text_Color);
     end;
 
-    procedure Game_Bosses(Game: in out Game_State) is
+    procedure Game_Eepers(Game: in out Game_State) is
     begin
-        for Boss of Game.Bosses loop
+        for Eeper of Game.Eepers loop
             declare
                 Position: constant Vector2 :=
                   (if Game.Turn_Animation > 0.0
-                   then Interpolate_Positions(Boss.Prev_Position, Boss.Position, Game.Turn_Animation)
-                   else To_Vector2(Boss.Position)*Cell_Size);
-                Size: constant Vector2 := To_Vector2(Boss.Size)*Cell_Size;
+                   then Interpolate_Positions(Eeper.Prev_Position, Eeper.Position, Game.Turn_Animation)
+                   else To_Vector2(Eeper.Position)*Cell_Size);
+                Size: constant Vector2 := To_Vector2(Eeper.Size)*Cell_Size;
             begin
-                if not Boss.Dead then
-                    case Boss.Kind is
-                        when Final =>
-                            Draw_Rectangle_V(Position, Size, Palette_RGB(Boss.Background));
+                if not Eeper.Dead then
+                    case Eeper.Kind is
+                        when Eeper_Final =>
+                            Draw_Rectangle_V(Position, Size, Palette_RGB(Eeper.Background));
                             Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Closed, Eyes_Closed, 1.0);
-                        when Guard | Urmom =>
-                            Draw_Rectangle_V(Position, Size, Palette_RGB(Boss.Background));
-                            Health_Bar(Position, Size, C_Float(Boss.Health));
-                            if Boss.Path(Boss.Position.Y, Boss.Position.X) = 1 then
-                                Draw_Cooldown_Timer_Bubble(Position, Size, Boss.Attack_Cooldown, Boss.Background);
-                            elsif Boss.Path(Boss.Position.Y, Boss.Position.X) >= 0 then
-                                Draw_Cooldown_Timer_Bubble(Position, Size, Boss.Attack_Cooldown, Boss.Background);
+                        when Eeper_Guard | Eeper_Urmom =>
+                            Draw_Rectangle_V(Position, Size, Palette_RGB(Eeper.Background));
+                            Health_Bar(Position, Size, C_Float(Eeper.Health));
+                            if Eeper.Path(Eeper.Position.Y, Eeper.Position.X) = 1 then
+                                Draw_Cooldown_Timer_Bubble(Position, Size, Eeper.Attack_Cooldown, Eeper.Background);
+                            elsif Eeper.Path(Eeper.Position.Y, Eeper.Position.X) >= 0 then
+                                Draw_Cooldown_Timer_Bubble(Position, Size, Eeper.Attack_Cooldown, Eeper.Background);
                             end if;
-                            Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Boss.Prev_Eyes, Boss.Eyes, Game.Turn_Animation);
-                        when Gnome =>
+                            Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eeper.Prev_Eyes, Eeper.Eyes, Game.Turn_Animation);
+                        when Eeper_Gnome =>
                             declare
                                 GNOME_RATIO: constant C_Float := 0.7;
                                 GNOME_SIZE: constant Vector2 := Cell_Size*GNOME_RATIO;
                                 GNOME_START: constant Vector2 := Position + Cell_Size*0.5 - GNOME_SIZE*0.5;
                             begin
-                                Draw_Rectangle_V(GNOME_START, GNOME_SIZE, Palette_RGB(Boss.Background));
-                                Draw_Eyes(GNOME_START, GNOME_SIZE, -Float(Vector2_Line_Angle(GNOME_START + GNOME_SIZE*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Boss.Prev_Eyes, Boss.Eyes, Game.Turn_Animation);
+                                Draw_Rectangle_V(GNOME_START, GNOME_SIZE, Palette_RGB(Eeper.Background));
+                                Draw_Eyes(GNOME_START, GNOME_SIZE, -Float(Vector2_Line_Angle(GNOME_START + GNOME_SIZE*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eeper.Prev_Eyes, Eeper.Eyes, Game.Turn_Animation);
                             end;
                     end case;
                 end if;
@@ -1306,13 +1306,13 @@ begin
                 Game_Cells(Game);
                 Game_Items(Game);
                 Game_Player(Game);
-                Game_Bosses(Game);
+                Game_Eepers(Game);
                 Game_Bombs(Game);
                 if DEVELOPMENT then
                     if Is_Key_Down(KEY_P) then
                         for Row in Game.Map'Range(1) loop
                             for Column in Game.Map'Range(2) loop
-                                Draw_Number((Column, Row), Game.Bosses(1).Path(Row, Column), (A => 255, others => 0));
+                                Draw_Number((Column, Row), Game.Eepers(1).Path(Row, Column), (A => 255, others => 0));
                             end loop;
                         end loop;
                     end if;
@@ -1366,12 +1366,12 @@ begin
 end;
 
 --  TODO: Rename some definitions within the code
---    - Boss -> Eeper
+--    - Eeper -> Eeper
 --    - Urmom -> Mother
 --    - New_Game -> Father
 --  TODO: Smarter Path Finding
---    - Recompute Path Map on each boss move. Not the Player turn. Because each Boss position change may affect the Path Map
---    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.
+--    - Recompute Path Map on each boss move. Not the Player turn. Because each Eeper position change may affect the Path Map
+--    - Move Eepers starting from the closest to the Player. You can find the distance in the current Path Map.
 --  TODO: During Path Finding maybe pick the equal paths randomly.
 --    to introduce a bit of RNG into this pretty deterministic game
 --  TODO: Path finding considers explosion impenetrable @bug
@@ -1397,7 +1397,7 @@ end;
 --  TODO: Eyes for the Player.
 --    The denote last direction of the step.
 --  TODO: Touch father starts NG+
---  TODO: Boss should attack on zero just like a bomb.
+--  TODO: Eeper should attack on zero just like a bomb.
 --  TODO: Desaturate the colors
 --  TODO: Properly disablable DEV features
 --  TODO: Default 16:9 resolution
@@ -1411,8 +1411,8 @@ end;
 --  TODO: Checkpoints must refill the bombs
 --  TODO: Closed eyes should always point down
 --  TODO: Special Eeper Eyes on Damage
---  TODO: Show Boss Cooldown timer outside of the screen somehow
---  TODO: Visual Clue that the Boss is about to kill the Player when Completely outside of the Screen
+--  TODO: Show Eeper Cooldown timer outside of the screen somehow
+--  TODO: Visual Clue that the Eeper is about to kill the Player when Completely outside of the Screen
 --    - Cooldown ball is shaking
 --  TODO: Cool animation for New Game
 --  TODO: The role of Barriers is not explored enough
@@ -1427,12 +1427,12 @@ end;
 --    Smoothly move it into the HUD.
 --  TODO: Different palettes depending on the area
 --    Or maybe different palette for each NG+
---  TODO: Boss slide attack animation is pretty boring @polish
+--  TODO: Eeper slide attack animation is pretty boring @polish
 --  TODO: Restart on any key press after ded
 --  TODO: Sounds
 --  TODO: Player Death animation
 --    Particles
---  TODO: Boss Death animation
+--  TODO: Eeper Death animation
 --    Particles
 --  TODO: Cool effects when you pick up items and checkpoints
 --    Particles
