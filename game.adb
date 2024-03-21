@@ -951,7 +951,6 @@ procedure Game is
                     when Shrek | Urmom =>
                         Recompute_Path_For_Boss(Game, Me, SHREK_STEPS_LIMIT, SHREK_STEP_LENGTH_LIMIT);
                         if Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X) >= 0 then
-                            -- TODO: Boss should attack on zero just like a bomb.
                             if Game.Bosses(Me).Attack_Cooldown <= 0 then
                                 declare
                                     Current : constant Integer := Game.Bosses(Me).Path(Game.Bosses(Me).Position.Y, Game.Bosses(Me).Position.X);
@@ -1053,9 +1052,6 @@ procedure Game is
     procedure Game_Player(Game: in out Game_State) is
     begin
         if Game.Player.Dead then
-            --  TODO: when the player revives themselves they are
-            --  being put into bomb selection mode if they hold the
-            --  space key which is weird
             if Space_Down then
                 Game_Restore_Checkpoint(Game);
                 Game.Player.Dead := False;
@@ -1398,21 +1394,29 @@ end;
 --    - Move Bosses starting from the closest to the Player. You can find the distance in the current Path Map.
 --  TODO: During Path Finding maybe pick the equal paths randomly.
 --    to introduce a bit of RNG into this pretty deterministic game
+--  TODO: Path finding considers explosion impenetrable @bug
 --  TODO: Place bombs directly at the Player's position
---  TODO: Keys for the bomb gens of final boss @content
+--  TODO: Disallow placing bomb on the same position more than once
+--    Especially important if we gonna allow placing bombs at the position of the Player
+--  TODO: Do not stack up damage for Eepers per the tiles of their body.
+--  TODO: Keys for the bomb gens of final boss
 --  TODO: Second boss room is boring
 --  TODO: Eyes of Father changing as the Player gets closer:
 --    - Closed
 --    - Open
 --    - Happy (very important to indicate that he's not hostile)
+--  TODO: Keep rendering Player on Turn_Animation even if Dead
+--    Because otherwise it just awkwardly disappears before running into the thing that killed them.
 --  TODO: Eye Angle Speed
 --    For smoother transitions. Especially from Open to Closed if we decide
 --    that the Closed eyes should always point down
 --  TODO: Surprised Eeper face you run into it by yourself (something like this o_O)
---  TODO: Set working directory to where the exec is
+--  TODO: Set working directory to where the exe is
+--    So it will search the resources there.
 --  TODO: Eyes for the Player.
 --    The denote last direction of the step.
 --  TODO: Touch father starts NG+
+--  TODO: Boss should attack on zero just like a bomb.
 --  TODO: Desaturate the colors
 --  TODO: Properly disablable DEV features
 --  TODO: Default 16:9 resolution
@@ -1421,7 +1425,6 @@ end;
 --  TODO: Don't reset cooldown timer for bosses (might be duplicate)
 --  TODO: Try MSAA (if too slow, don't)
 --  TODO: Bake assets into executable
---  TODO: Keep rendering Player on Turn_Animation even if Dead
 --  TODO: Rename executable to "eepers"
 --  TODO: Icon on for Windows build
 --  TODO: Checkpoints must refill the bombs
@@ -1443,15 +1446,14 @@ end;
 --    Smoothly move it into the HUD.
 --  TODO: Different palettes depending on the area
 --    Or maybe different palette for each NG+
---  TODO: Path finding considers explosion impenetrable @bug
 --  TODO: Boss slide attack animation is pretty boring @polish
 --  TODO: Restart on any key press after ded
 --  TODO: Sounds
---  TODO: Player Death animation @polish
+--  TODO: Player Death animation
 --    Particles
---  TODO: Boss Death animation @polish
+--  TODO: Boss Death animation
 --    Particles
---  TODO: Cool effects when you pick up items and checkpoints @polish
+--  TODO: Cool effects when you pick up items and checkpoints
 --    Particles
 --  TODO: Allow moving with arrows too
 --  TODO: Camera shaking when big bosses (Shrek and Urmom) make moves
@@ -1459,8 +1461,20 @@ end;
 --    The Father's position.
 --  TODO: Indicate how many bomb slots we have in HUD
 --  TODO: Menu
+--    Could be just a splash with the game name and logo.
 --  TODO: WebAssembly build
 --    https://blog.adacore.com/use-of-gnat-llvm-to-translate-ada-applications-to-webassembly
+--  TODO: Placing a bomb is not a turn (should it be tho?)
+--  TODO: Explosions should trigger other primed bombs?
+--  TODO: Path finding in a separate thread
+--  TODO: Player pushing bombs mechanic
+--    May not be relevant after we do not make bombs barriers
+--  TODO: Gnome should have triangular hats in the form of keys
+--    And key must become triangles intead of circles.
+--    I don't think it's relevant anymore within the current lore of the game.
+--  TODO: When the player revives themselves they are being put into bomb selection mode if they hold the space key which is weird.
+--    May not be relevant if we allow placing bombs directly on the player position,
+--    because then the direction selection mechanism becomes obsolete.
 --  TODO: Primed bombs should be barriers
 --    - Be careful with the order of Path Finding Map Recomputation
 --    and the Player Bomb Placement. Map must be recomputed only after
@@ -1470,12 +1484,3 @@ end;
 --    - I think they should be not. Because on top of breaking bosses
 --    they remove the possibility to spawn the bomb on the player.
 --    Something that makes the controls actually simpler.
---  TODO: Placing a bomb is not a turn (should it be tho?)
---  TODO: Disallow placing bomb on the same position more than once
---    Especially important if we gonna allow placing bombs at the position of the Player
---  TODO: Explosions should trigger other primed bombs?
---  TODO: Path finding in a separate thread
---  TODO: Player pushing bombs mechanic
---    May not be relevant after we do not make bombs barriers
---  TODO: Gnome should have triangular hats in the form of keys
---    And key must become triangles intead of circles
