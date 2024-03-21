@@ -29,18 +29,17 @@ procedure Game is
       COLOR_WALL,
       COLOR_BARRICADE,
       COLOR_PLAYER,
-      COLOR_DOOR_KEY,
+      COLOR_DOORKEY,
       COLOR_BOMB,
       COLOR_LABEL,
       COLOR_GUARD,
-      COLOR_URMOM,
+      COLOR_MOTHER,
       COLOR_GNOME,
       COLOR_CHECKPOINT,
       COLOR_EXPLOSION,
       COLOR_HEALTHBAR,
-      COLOR_NEW_GAME,
       COLOR_EYES,
-      COLOR_FINAL);
+      COLOR_FATHER);
 
     type Byte is mod 256;
     type HSV_Comp is (Hue, Sat, Value);
@@ -153,7 +152,7 @@ procedure Game is
             when Floor     => return Palette_RGB(COLOR_FLOOR);
             when Wall      => return Palette_RGB(COLOR_WALL);
             when Barricade => return Palette_RGB(COLOR_BARRICADE);
-            when Door      => return Palette_RGB(COLOR_DOOR_KEY);
+            when Door      => return Palette_RGB(COLOR_DOORKEY);
             when Explosion => return Palette_RGB(COLOR_EXPLOSION);
         end case;
     end;
@@ -251,7 +250,7 @@ procedure Game is
         ]
     ];
 
-    type Eeper_Kind is (Eeper_Guard, Eeper_Mother, Eeper_Gnome, Eeper_Final);
+    type Eeper_Kind is (Eeper_Guard, Eeper_Mother, Eeper_Gnome, Eeper_Father);
 
     type Eeper_State is record
         Kind: Eeper_Kind;
@@ -285,6 +284,7 @@ procedure Game is
         Player_Bomb_Slots: Integer;
         Eepers: Eeper_Array;
         Items: Hashed_Map_Items.Map;
+        Bombs: Bomb_State_Array;
     end record;
 
     type Game_State is record
@@ -435,6 +435,7 @@ procedure Game is
         Game.Checkpoint.Player_Bomb_Slots := Game.Player.Bomb_Slots;
         Game.Checkpoint.Eepers            := Game.Eepers;
         Game.Checkpoint.Items             := Game.Items;
+        Game.Checkpoint.Bombs             := Game.Bombs;
     end;
 
     procedure Game_Restore_Checkpoint(Game: in out Game_State) is
@@ -449,6 +450,7 @@ procedure Game is
         Game.Player.Bomb_Slots := Game.Checkpoint.Player_Bomb_Slots;
         Game.Eepers            := Game.Checkpoint.Eepers;
         Game.Items             := Game.Checkpoint.Items;
+        Game.Bombs             := Game.Checkpoint.Bombs;
     end;
 
     procedure Spawn_Gnome(Game: in out Game_State; Position: IVector2) is
@@ -466,13 +468,13 @@ procedure Game is
         end loop;
     end;
 
-    procedure Spawn_Final(Game: in out Game_State; Position: IVector2) is
+    procedure Spawn_Father(Game: in out Game_State; Position: IVector2) is
     begin
         for Eeper of Game.Eepers loop
             if Eeper.Dead then
-                  Eeper.Kind := Eeper_Final;
+                  Eeper.Kind := Eeper_Father;
                   Eeper.Dead := False;
-                  Eeper.Background := COLOR_FINAL;
+                  Eeper.Background := COLOR_FATHER;
                   Eeper.Position := Position;
                   Eeper.Prev_Position := Position;
                   Eeper.Health := 1.0;
@@ -489,7 +491,7 @@ procedure Game is
             if Eeper.Dead then
                   Eeper.Kind := Eeper_Mother;
                   Eeper.Dead := False;
-                  Eeper.Background := COLOR_URMOM;
+                  Eeper.Background := COLOR_MOTHER;
                   Eeper.Position := Position;
                   Eeper.Prev_Position := Position;
                   Eeper.Health := 1.0;
@@ -529,7 +531,7 @@ procedure Game is
       Level_Barricade,
       Level_Key,
       Level_Player,
-      Level_Final);
+      Level_Father);
     Level_Cell_Color: constant array (Level_Cell) of Color := [
       Level_None       => Get_Color(16#00000000#),
       Level_Gnome      => Get_Color(16#FF9600FF#),
@@ -543,7 +545,7 @@ procedure Game is
       Level_Barricade  => Get_Color(16#FF0096FF#),
       Level_Key        => Get_Color(16#FFFF00FF#),
       Level_Player     => Get_Color(16#0000FFFF#),
-      Level_Final      => Get_Color(16#265FDAFF#)];
+      Level_Father      => Get_Color(16#265FDAFF#)];
 
     function Cell_By_Color(Col: Color; Out_Cel: out Level_Cell) return Boolean is
     begin
@@ -612,8 +614,8 @@ procedure Game is
                             when Level_Guard =>
                                 Spawn_Guard(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
-                            when Level_Final =>
-                                Spawn_Final(Game, (Column, Row));
+                            when Level_Father =>
+                                Spawn_Father(Game, (Column, Row));
                                 Game.Map(Row, Column) := Floor;
                             when Level_Floor => Game.Map(Row, Column) := Floor;
                             when Level_Wall => Game.Map(Row, Column) := Wall;
@@ -651,7 +653,7 @@ procedure Game is
 
     procedure Draw_Key(Position: IVector2) is
     begin
-        Draw_Circle_V(To_Vector2(Position)*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.25, Palette_RGB(COLOR_DOOR_KEY));
+        Draw_Circle_V(To_Vector2(Position)*Cell_Size + Cell_Size*0.5, Cell_Size.X*0.25, Palette_RGB(COLOR_DOORKEY));
     end;
 
     procedure Draw_Number(Start, Size: Vector2; N: Integer; C: Color) is
@@ -801,7 +803,7 @@ procedure Game is
                        for Eeper of Game.Eepers loop
                            if not Eeper.Dead and then Inside_Of_Rect(Eeper.Position, Eeper.Size, New_Position) then
                                case Eeper.Kind is
-                                   when Eeper_Final => null;
+                                   when Eeper_Father => null;
                                    when Eeper_Gnome =>
                                        Game.Items.Insert(Eeper.Position, (Kind => Key));
                                        Eeper.Dead := True;
@@ -915,7 +917,7 @@ procedure Game is
                 Game.Eepers(Me).Prev_Position := Game.Eepers(Me).Position;
                 Game.Eepers(Me).Prev_Eyes := Game.Eepers(Me).Eyes;
                 case Game.Eepers(Me).Kind is
-                    when Eeper_Final => null;
+                    when Eeper_Father => null;
                     when Eeper_Guard | Eeper_Mother =>
                         Recompute_Path_For_Eeper(Game, Me, GUARD_STEPS_LIMIT, GUARD_STEP_LENGTH_LIMIT);
                         if Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X) >= 0 then
@@ -1088,7 +1090,7 @@ procedure Game is
             declare
                 Position: constant Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 100.0);
             begin
-                Draw_Circle_V(Position, Cell_Size.X*0.25, Palette_RGB(COLOR_DOOR_KEY));
+                Draw_Circle_V(Position, Cell_Size.X*0.25, Palette_RGB(COLOR_DOORKEY));
             end;
         end loop;
 
@@ -1165,7 +1167,7 @@ procedure Game is
             begin
                 if not Eeper.Dead then
                     case Eeper.Kind is
-                        when Eeper_Final =>
+                        when Eeper_Father =>
                             Draw_Rectangle_V(Position, Size, Palette_RGB(Eeper.Background));
                             Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Closed, Eyes_Closed, 1.0);
                         when Eeper_Guard | Eeper_Mother =>
@@ -1352,8 +1354,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Rename some definitions within the code
---    - New_Game -> Father
 --  TODO: Smarter Path Finding
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Eeper position change may affect the Path Map
 --    - Move Eepers starting from the closest to the Player. You can find the distance in the current Path Map.
@@ -1365,7 +1365,7 @@ end;
 --  TODO: Disallow placing bomb on the same position more than once
 --    Especially important if we gonna allow placing bombs at the position of the Player
 --  TODO: Do not stack up damage for Eepers per the tiles of their body.
---  TODO: Keys for the bomb gens of final boss
+--  TODO: Keys for the bomb gens of Mother
 --  TODO: Second boss room is boring
 --  TODO: Eyes of Father changing as the Player gets closer:
 --    - Closed
