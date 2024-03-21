@@ -895,12 +895,12 @@ procedure Game is
         return Vector2_Lerp(Prev_Position, Curr_Position, C_Float(1.0 - T*T));
     end;
 
-    Space_Down: Boolean := False;
+    Space_Pressed: Boolean := False;
     Dir_Pressed: array (Direction) of Boolean := [others => False];
 
     procedure Swallow_Player_Input is
     begin
-        Space_Down := False;
+        Space_Pressed := False;
         Dir_Pressed := [others => False];
     end;
 
@@ -988,7 +988,7 @@ procedure Game is
                             Game.Eepers(Me).Health := Game.Eepers(Me).Health + GUARD_TURN_REGENERATION;
                         end if;
                     when Eeper_Gnome =>
-                        Recompute_Path_For_Eeper(Game, Me, 10, 1, Stop_At_Me => False);
+                        Recompute_Path_For_Eeper(Game, Me, 9, 1, Stop_At_Me => False);
                         declare
                             Position: constant IVector2 := Game.Eepers(Me).Position;
                         begin
@@ -1049,7 +1049,7 @@ procedure Game is
     procedure Game_Player(Game: in out Game_State) is
     begin
         if Game.Player.Dead then
-            if Space_Down then
+            if Space_Pressed then
                 Game_Restore_Checkpoint(Game);
                 Game.Player.Dead := False;
             end if;
@@ -1063,26 +1063,26 @@ procedure Game is
             return;
         end if;
 
-        if Space_Down and then Game.Player.Bombs > 0 then
-            for Dir in Direction loop
-                declare
-                    Position: constant IVector2 := Game.Player.Position + Direction_Vector(Dir);
-                begin
-                    if Within_Map(Game, Position) and then Game.Map(Position.Y, Position.X) = Floor then
-                        Draw_Bomb(Position, Palette_RGB(COLOR_BOMB));
-                        if Dir_Pressed(Dir) then
-                            for Bomb of Game.Bombs loop
-                                if Bomb.Countdown <= 0 then
-                                    Bomb.Countdown := 3;
-                                    Bomb.Position := Position;
-                                    exit;
-                                end if;
-                            end loop;
-                            Game.Player.Bombs := Game.Player.Bombs - 1;
-                        end if;
-                    end if;
-                end;
+        if Space_Pressed and then Game.Player.Bombs > 0 then
+            for Bomb of Game.Bombs loop
+                if Bomb.Countdown <= 0 then
+                    Bomb.Countdown := 3;
+                    Bomb.Position := Game.Player.Position;
+                    exit;
+                end if;
             end loop;
+            Game.Player.Bombs := Game.Player.Bombs - 1;
+
+            declare
+                Start_Of_Turn: constant Double := Get_Time;
+            begin
+                Game_Explosions_Turn(Game);
+                Game_Items_Turn(Game);
+                --  Game_Player_Turn(Game, Dir);
+                Game_Eepers_Turn(Game);
+                --  Game_Bombs_Turn(Game);
+                Game.Duration_Of_Last_Turn := Get_Time - Start_Of_Turn;
+            end;
         else
             for Dir in Direction loop
                 if Dir_Pressed(Dir) then
@@ -1243,7 +1243,7 @@ begin
         Begin_Drawing;
             Clear_Background(Palette_RGB(COLOR_BACKGROUND));
 
-            Space_Down := Boolean(Is_Key_Down(KEY_SPACE));
+            Space_Pressed := Boolean(Is_Key_Pressed(KEY_SPACE));
             for Dir in Direction loop
                 Dir_Pressed(Dir) := Boolean(Is_Key_Pressed(Keys(Dir)));
             end loop;
@@ -1381,7 +1381,7 @@ begin
     Close_Window;
 end;
 
---  TODO: Place bombs directly at the Player's position
+
 --  TODO: Disallow placing bomb on the same position more than once
 --    Especially important if we gonna allow placing bombs at the position of the Player
 --  TODO: Do not stack up damage for Eepers per the tiles of their body.
@@ -1470,3 +1470,4 @@ end;
 --    - I think they should be not. Because on top of breaking bosses
 --    they remove the possibility to spawn the bomb on the player.
 --    Something that makes the controls actually simpler.
+--  TODO: Set back the gnome distance limit to 10 and try to solve the problem enviromentally
