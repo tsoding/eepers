@@ -1392,6 +1392,25 @@ begin
     Close_Window;
 end;
 
+--  TODO: Eyes of Father changing as the Player gets closer:
+--    - Closed
+--    - Open
+--    - Happy (very important to indicate that he's not hostile)
+--  TODO: Eye Angle Speed
+--    For smoother transitions. Especially from Open to Closed if we decide
+--    that the Closed eyes should always point down
+--  TODO: Surprised Eeper face you run into it by yourself (something like this o_O)
+--  TODO: Set working directory to where the exec is
+--  TODO: Eyes for the Player.
+--    The denote last direction of the step.
+--  TODO: Touch father starts NG+
+--  TODO: Desaturate the colors
+--  TODO: Properly disablable DEV features
+--  TODO: Rename some definitions within the code
+--    - Boss -> Eeper
+--    - Shrek -> Guard
+--    - Urmom -> Mother
+--    - New_Game -> Father
 --  TODO: Default 16:9 resolution
 --  TODO: Fullscreen mode
 --  TODO: Compile MinGW build with Windows Subsystem (so it does not show cmd window)
@@ -1438,15 +1457,21 @@ end;
 --  TODO: Allow moving with arrows too
 --  TODO: Camera shaking when big bosses (Shrek and Urmom) make moves
 --  TODO: Initial position of the camera in map.png
+--    The Father's position.
 --  TODO: Indicate how many bomb slots we have in HUD
 --  TODO: Menu
 --  TODO: WebAssembly build
 --    https://blog.adacore.com/use-of-gnat-llvm-to-translate-ada-applications-to-webassembly
 --  TODO: Primed bombs should be barriers
---    Be careful with the order of Path Finding Map Recomputation
+--    - Be careful with the order of Path Finding Map Recomputation
 --    and the Player Bomb Placement. Map must be recomputed only after
 --    the bombs are placed for the turn. This is related to making placement
 --    of the bombs a legit turn.
---    That enables escaping first boss btw.
---  TODO: placing a bomb is not a turn (should it be tho?)
---  TODO: Path finding on a separate thread
+--    - That enables escaping first boss btw.
+--    - I think they should be not. Because on top of breaking bosses
+--    they remove the possibility to spawn the bomb on the player.
+--    Something that makes the controls actually simpler.
+--  TODO: Placing a bomb is not a turn (should it be tho?)
+--  TODO: Disallow placing bomb on the same position more than once
+--  TODO: Explosions should trigger bombs?
+--  TODO: Path finding in a separate thread
