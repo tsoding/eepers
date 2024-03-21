@@ -201,7 +201,7 @@ procedure Game is
         return Hash_Type(V.X) * M31 + Hash_Type(V.Y);
     end;
 
-    type Item_Kind is (Key, Bomb_Gen, Checkpoint, New_Game);
+    type Item_Kind is (Key, Bomb_Gen, Checkpoint);
 
     type Item(Kind: Item_Kind := Key) is record
         case Kind is
@@ -529,7 +529,6 @@ procedure Game is
       Level_Barricade,
       Level_Key,
       Level_Player,
-      Level_New_Game,
       Level_Final);
     Level_Cell_Color: constant array (Level_Cell) of Color := [
       Level_None       => Get_Color(16#00000000#),
@@ -544,7 +543,6 @@ procedure Game is
       Level_Barricade  => Get_Color(16#FF0096FF#),
       Level_Key        => Get_Color(16#FFFF00FF#),
       Level_Player     => Get_Color(16#0000FFFF#),
-      Level_New_Game   => Get_Color(16#FFAAFFFF#),
       Level_Final      => Get_Color(16#265FDAFF#)];
 
     function Cell_By_Color(Col: Color; Out_Cel: out Level_Cell) return Boolean is
@@ -637,9 +635,6 @@ procedure Game is
                                     Game.Player.Position := (Column, Row);
                                     Game.Player.Prev_Position := (Column, Row);
                                 end if;
-                            when Level_New_Game =>
-                                Game.Map(Row, Column) := Floor;
-                                Game.Items.Insert((Column, Row), (Kind => New_Game));
                         end case;
                     else
                         Game.Map(Row, Column) := None;
@@ -692,12 +687,6 @@ procedure Game is
     begin
         for C in Game.Items.Iterate loop
             case Element(C).Kind is
-                when New_Game =>
-                    declare
-                        New_Game_Size: constant Vector2 := Cell_Size*0.8;
-                    begin
-                        Draw_Rectangle_V(To_Vector2(Key(C))*Cell_Size + Cell_Size*0.5 - New_Game_Size*0.5, New_Game_Size, Palette_RGB(COLOR_NEW_GAME));
-                    end;
                 when Key => Draw_Key(Key(C));
                 when Checkpoint =>
                     declare
@@ -765,8 +754,6 @@ procedure Game is
                begin
                    if Has_Element(C) then
                        case Element(C).Kind is
-                           when New_Game =>
-                               Load_Game_From_Image("map.png", Game, Update_Player => True);
                            when Key =>
                                Game.Player.Keys := Game.Player.Keys + 1;
                                Game.Items.Delete(C);
@@ -1366,7 +1353,6 @@ begin
 end;
 
 --  TODO: Rename some definitions within the code
---    - Mother -> Mother
 --    - New_Game -> Father
 --  TODO: Smarter Path Finding
 --    - Recompute Path Map on each boss move. Not the Player turn. Because each Eeper position change may affect the Path Map
