@@ -338,7 +338,9 @@ procedure Game is
                 if not Within_Map(Game, (X, Y)) then
                     return False;
                 end if;
-                if Game.Map(Y, X) /= Floor then
+                -- NOTE: it's fine to step into the explosions, because they don't live long enough.
+                -- They disappear on the next turn.
+                if Game.Map(Y, X) /= Floor and Game.Map(Y, X) /= Explosion then
                     return False;
                 end if;
                 for Index in Eeper_Index loop
@@ -924,20 +926,26 @@ procedure Game is
                             if Game.Eepers(Me).Attack_Cooldown <= 0 then
                                 declare
                                     Current : constant Integer := Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X);
+                                    Available_Positions: array (0..Direction_Vector'Length-1) of IVector2;
+                                    Count: Integer := 0;
                                 begin
-                                Search: for Dir in Direction loop
+                                    for Dir in Direction loop
                                         declare
                                             Position: IVector2 := Game.Eepers(Me).Position;
                                         begin
                                             while Eeper_Can_Stand_Here(Game, Position, Me) loop
                                                 Position := Position + Direction_Vector(Dir);
                                                 if Within_Map(Game, Position) and then Game.Eepers(Me).Path(Position.Y, Position.X) = Current - 1 then
-                                                    Game.Eepers(Me).Position := Position;
-                                                    exit Search;
+                                                    Available_Positions(Count) := Position;
+                                                    Count := Count + 1;
+                                                    exit;
                                                 end if;
                                             end loop;
                                         end;
-                                    end loop Search;
+                                    end loop;
+                                    if Count > 0 then
+                                        Game.Eepers(Me).Position := Available_Positions(Random_Integer.Random(Gen) mod Count);
+                                    end if;
                                 end;
                                 Game.Eepers(Me).Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
                             else
@@ -1354,10 +1362,9 @@ begin
     Close_Window;
 end;
 
---  TODO: During Path Finding maybe pick the equal paths randomly.
---    to introduce a bit of RNG into this pretty deterministic game
---  TODO: Path finding considers explosion impenetrable @bug
---  TODO: Bug with pushing Eepers back on timer 0
+--  TODO: Special Eeper Eyes expression when something explodes.
+--  TODO: Special Eeper Eyes on Damage
+--  TODO: Bug with pushing Eepers back on timer 0 (dodging)
 --  TODO: Place bombs directly at the Player's position
 --  TODO: Disallow placing bomb on the same position more than once
 --    Especially important if we gonna allow placing bombs at the position of the Player
@@ -1385,14 +1392,14 @@ end;
 --  TODO: Default 16:9 resolution
 --  TODO: Fullscreen mode
 --  TODO: Compile MinGW build with Windows Subsystem (so it does not show cmd window)
---  TODO: Don't reset cooldown timer for bosses (might be duplicate)
+--  TODO: Don't reset cooldown timer for eepers (might be duplicate)
+--    Maybe just pause
 --  TODO: Try MSAA (if too slow, don't)
 --  TODO: Bake assets into executable
 --  TODO: Rename executable to "eepers"
 --  TODO: Icon on for Windows build
 --  TODO: Checkpoints must refill the bombs
 --  TODO: Closed eyes should always point down
---  TODO: Special Eeper Eyes on Damage
 --  TODO: Show Eeper Cooldown timer outside of the screen somehow
 --  TODO: Visual Clue that the Eeper is about to kill the Player when Completely outside of the Screen
 --    - Cooldown ball is shaking
