@@ -473,12 +473,14 @@ procedure Game is
     begin
         for Eeper of Game.Eepers loop
             if Eeper.Dead then
-                  Eeper.Kind := Eeper_Gnome;
-                  Eeper.Dead := False;
-                  Eeper.Background := COLOR_GNOME;
-                  Eeper.Position := Position;
-                  Eeper.Prev_Position := Position;
-                  Eeper.Size := (1, 1);
+                Eeper.Prev_Eyes := Eyes_Closed;
+                Eeper.Eyes := Eyes_Closed;
+                Eeper.Kind := Eeper_Gnome;
+                Eeper.Dead := False;
+                Eeper.Background := COLOR_GNOME;
+                Eeper.Position := Position;
+                Eeper.Prev_Position := Position;
+                Eeper.Size := (1, 1);
                 exit;
             end if;
         end loop;
@@ -488,13 +490,15 @@ procedure Game is
     begin
         for Eeper of Game.Eepers loop
             if Eeper.Dead then
-                  Eeper.Kind := Eeper_Father;
-                  Eeper.Dead := False;
-                  Eeper.Background := COLOR_FATHER;
-                  Eeper.Position := Position;
-                  Eeper.Prev_Position := Position;
-                  Eeper.Health := 1.0;
-                  Eeper.Size := (7, 7);
+                Eeper.Prev_Eyes := Eyes_Closed;
+                Eeper.Eyes := Eyes_Closed;
+                Eeper.Kind := Eeper_Father;
+                Eeper.Dead := False;
+                Eeper.Background := COLOR_FATHER;
+                Eeper.Position := Position;
+                Eeper.Prev_Position := Position;
+                Eeper.Health := 1.0;
+                Eeper.Size := (7, 7);
                 exit;
             end if;
         end loop;
@@ -505,13 +509,15 @@ procedure Game is
     begin
         for Eeper of Game.Eepers loop
             if Eeper.Dead then
-                  Eeper.Kind := Eeper_Mother;
-                  Eeper.Dead := False;
-                  Eeper.Background := COLOR_MOTHER;
-                  Eeper.Position := Position;
-                  Eeper.Prev_Position := Position;
-                  Eeper.Health := 1.0;
-                  Eeper.Size := (7, 7);
+                Eeper.Prev_Eyes := Eyes_Closed;
+                Eeper.Eyes := Eyes_Closed;
+                Eeper.Kind := Eeper_Mother;
+                Eeper.Dead := False;
+                Eeper.Background := COLOR_MOTHER;
+                Eeper.Position := Position;
+                Eeper.Prev_Position := Position;
+                Eeper.Health := 1.0;
+                Eeper.Size := (7, 7);
                 exit;
             end if;
         end loop;
@@ -521,6 +527,8 @@ procedure Game is
     begin
         for Eeper of Game.Eepers loop
             if Eeper.Dead then
+                Eeper.Prev_Eyes := Eyes_Closed;
+                Eeper.Eyes := Eyes_Closed;
                 Eeper.Kind := Eeper_Guard;
                 Eeper.Background := COLOR_GUARD;
                 Eeper.Dead := False;
