@@ -1061,6 +1061,10 @@ procedure Game is
     procedure Game_Player(Game: in out Game_State) is
     begin
         if Game.Player.Dead then
+            if Game.Turn_Animation >= 0.0 then
+                Draw_Rectangle_V(Screen_Player_Position(Game), Cell_Size, Palette_RGB(COLOR_PLAYER));
+            end if;
+
             if Space_Pressed then
                 Game_Restore_Checkpoint(Game);
                 Game.Player.Dead := False;
@@ -1405,8 +1409,6 @@ end;
 --    - Closed
 --    - Open
 --    - Happy (very important to indicate that he's not hostile)
---  TODO: Keep rendering Player on Turn_Animation even if Dead
---    Because otherwise it just awkwardly disappears before running into the thing that killed them.
 --  TODO: Eye Angle Speed
 --    For smoother transitions. Especially from Open to Closed if we decide
 --    that the Closed eyes should always point down
