@@ -937,7 +937,10 @@ procedure Game is
                     when Eeper_Father => null;
                     when Eeper_Guard | Eeper_Mother =>
                         Recompute_Path_For_Eeper(Game, Me, GUARD_STEPS_LIMIT, GUARD_STEP_LENGTH_LIMIT);
-                        if Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X) >= 0 then
+                        if Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X) = 0 then
+                            Game.Player.Dead := True;
+                            Game.Eepers(Me).Eyes := Eyes_Surprised;
+                        elsif Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X) > 0 then
                             if Game.Eepers(Me).Attack_Cooldown <= 0 then
                                 declare
                                     Current : constant Integer := Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X);
@@ -972,14 +975,15 @@ procedure Game is
                             else
                                 Game.Eepers(Me).Eyes := Eyes_Open;
                             end if;
+
+                            if Inside_Of_Rect(Game.Eepers(Me).Position, Game.Eepers(Me).Size, Game.Player.Position) then
+                                Game.Player.Dead := True;
+                            end if;
                         else
                             Game.Eepers(Me).Eyes := Eyes_Closed;
                             Game.Eepers(Me).Attack_Cooldown := GUARD_ATTACK_COOLDOWN + 1;
                         end if;
 
-                        if Inside_Of_Rect(Game.Eepers(Me).Position, Game.Eepers(Me).Size, Game.Player.Position) then
-                            Game.Player.Dead := True;
-                        end if;
                         if Game.Eepers(Me).Health < 1.0 then
                             Game.Eepers(Me).Health := Game.Eepers(Me).Health + GUARD_TURN_REGENERATION;
                         end if;
@@ -1377,8 +1381,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Special Eeper Eyes expression when something explodes.
---  TODO: Bug with pushing Eepers back on timer 0 (dodging)
 --  TODO: Place bombs directly at the Player's position
 --  TODO: Disallow placing bomb on the same position more than once
 --    Especially important if we gonna allow placing bombs at the position of the Player
