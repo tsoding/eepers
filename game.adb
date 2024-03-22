@@ -1411,6 +1411,8 @@ end;
 --  TODO: If you are standing on the refilled bomb gen and place a bomb you should refill your bomb in that turn.
 --  TODO: Checkpoints should be circles (like all the items)
 --  TODO: Custom font
+--  TODO: Background is too boring
+--    Maybe some sort of repeating pattern would be better.
 --  TODO: Determenistically choose the paths again, but make them more interesting
 --    - Gnomes are just being deterministic
 --    - Mother and Guard always pick the longest path. Or generally the path that brings the Euclidean Distance closer
