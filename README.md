@@ -3,5 +3,6 @@
 ## Quick Start
 
 ```console
-$ ./build.sh
+$ ./build-linux.sh
+$ ./game
 ```
