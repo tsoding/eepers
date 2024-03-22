@@ -287,7 +287,7 @@ procedure Game is
 
     type Bomb_State_Array is array (1..10) of Bomb_State;
 
-    type Eeper_Index is range 1..10;
+    type Eeper_Index is range 1..15;
     type Eeper_Array is array (Eeper_Index) of Eeper_State;
 
     type Checkpoint_State is record
@@ -737,14 +737,16 @@ procedure Game is
         end loop;
     end;
 
-    procedure Open_Adjacent_Doors(Game: in out Game_State; Start: IVector2) is
+    procedure Flood_Fill(Game: in out Game_State; Start: IVector2; Fill: Cell) is
         Q: Queue.Vector;
+        Background: Cell;
     begin
-        if not Within_Map(Game, Start) or else Game.Map(Start.Y, Start.X) /= Door then
+        if not Within_Map(Game, Start) then
             return;
         end if;
 
-        Game.Map(Start.Y, Start.X) := Floor;
+        Background := Game.Map(Start.Y, Start.X);
+        Game.Map(Start.Y, Start.X) := Fill;
         Q.Append(Start);
 
         while not Q.Is_Empty loop
@@ -757,8 +759,8 @@ procedure Game is
                     declare
                         New_Position: constant IVector2 := Position + Direction_Vector(Dir);
                     begin
-                        if Within_Map(Game, New_Position) and then Game.Map(New_Position.Y, New_Position.X) = Door then
-                            Game.Map(New_Position.Y, New_Position.X) := Floor;
+                        if Within_Map(Game, New_Position) and then Game.Map(New_Position.Y, New_Position.X) = Background then
+                            Game.Map(New_Position.Y, New_Position.X) := Fill;
                             Q.Append(New_Position);
                         end if;
                     end;
@@ -771,7 +773,6 @@ procedure Game is
         New_Position: constant IVector2 := Game.Player.Position + Direction_Vector(Dir);
     begin
         Game.Player.Prev_Position := Game.Player.Position;
-        Game.Turn_Animation := 1.0;
 
         if not Within_Map(Game, New_Position) then
             return;
@@ -805,7 +806,7 @@ procedure Game is
            when Door =>
                if Game.Player.Keys > 0 then
                    Game.Player.Keys := Game.Player.Keys - 1;
-                   Open_Adjacent_Doors(Game, New_Position);
+                   Flood_Fill(Game, New_Position, Floor);
                    Game.Player.Position := New_Position;
                end if;
            when others => null;
@@ -860,7 +861,7 @@ procedure Game is
 
                        New_Position := New_Position + Direction_Vector(Dir);
                    when Barricade =>
-                       Game.Map(New_Position.Y, New_Position.X) := Explosion;
+                       Flood_Fill(Game, New_Position, Floor);
                        return;
                    when others =>
                        return;
@@ -1080,21 +1081,24 @@ procedure Game is
         end if;
 
         if Space_Pressed and then Game.Player.Bombs > 0 then
-            for Bomb of Game.Bombs loop
-                if Bomb.Countdown <= 0 then
-                    Bomb.Countdown := 3;
-                    Bomb.Position := Game.Player.Position;
-                    exit;
-                end if;
-            end loop;
-            Game.Player.Bombs := Game.Player.Bombs - 1;
-
             declare
                 Start_Of_Turn: constant Double := Get_Time;
             begin
+                Game.Turn_Animation := 1.0;
                 Game_Explosions_Turn(Game);
                 Game_Items_Turn(Game);
+
                 --  Game_Player_Turn(Game, Dir);
+                Game.Player.Prev_Position := Game.Player.Position;
+                for Bomb of Game.Bombs loop
+                    if Bomb.Countdown <= 0 then
+                        Bomb.Countdown := 3;
+                        Bomb.Position := Game.Player.Position;
+                        exit;
+                    end if;
+                end loop;
+                Game.Player.Bombs := Game.Player.Bombs - 1;
+
                 Game_Eepers_Turn(Game);
                 --  Game_Bombs_Turn(Game);
                 Game.Duration_Of_Last_Turn := Get_Time - Start_Of_Turn;
@@ -1105,6 +1109,7 @@ procedure Game is
                     declare
                         Start_Of_Turn: constant Double := Get_Time;
                     begin
+                        Game.Turn_Animation := 1.0;
                         Game_Explosions_Turn(Game);
                         Game_Items_Turn(Game);
                         Game_Player_Turn(Game, Dir);
@@ -1403,7 +1408,6 @@ end;
 --  TODO: Disallow placing bomb on the same position more than once
 --    Especially important if we gonna allow placing bombs at the position of the Player
 --  TODO: Do not stack up damage for Eepers per the tiles of their body.
---  TODO: Keys for the bomb gens of Mother
 --  TODO: Second boss room is boring
 --  TODO: Eyes of Father changing as the Player gets closer:
 --    - Closed
@@ -1435,7 +1439,6 @@ end;
 --  TODO: Visual Clue that the Eeper is about to kill the Player when Completely outside of the Screen
 --    - Cooldown ball is shaking
 --  TODO: Cool animation for New Game
---  TODO: The role of Barriers is not explored enough
 --  TODO: Tutorial sign that says "WASD" to move when you start the game for the first time
 --  TODO: "Tutorial" does not "explain" how to place bomb @content
 --  TODO: keep steping while you are holding a certain direction
