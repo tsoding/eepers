@@ -1244,6 +1244,10 @@ procedure Game is
     Palette_Editor_Component: HSV_Comp := Hue;
 
 begin
+    if not Change_Directory(Get_Application_Directory) then
+        Put_Line("WARNING: Could not change working directory to the application directory");
+    end if;
+
     Set_Config_Flags(FLAG_WINDOW_RESIZABLE);
     Init_Window(1600, 900, Title);
     Set_Target_FPS(60);
@@ -1396,7 +1400,10 @@ begin
     Close_Window;
 end;
 
---  TODO: Window title icon
+--  TODO: Eye Angle Speed
+--    For smoother transitions. Especially from Open to Closed if we decide
+--    that the Closed eyes should always point down
+--  TODO: Closed eyes should always point down
 --  TODO: If you are standing on the refilled bomb gen and place a bomb you should refill your bomb in that turn.
 --  TODO: Checkpoints should be circles (like all the items)
 --  TODO: Custom font
@@ -1409,15 +1416,9 @@ end;
 --    - Closed
 --    - Open
 --    - Happy (very important to indicate that he's not hostile)
---  TODO: Eye Angle Speed
---    For smoother transitions. Especially from Open to Closed if we decide
---    that the Closed eyes should always point down
---  TODO: Set working directory to where the exe is
---    So it will search the resources there.
 --  TODO: Eyes for the Player.
 --    The denote last direction of the step.
 --  TODO: Enemies should attack on zero just like a bomb.
---  TODO: Desaturate the colors
 --  TODO: Properly disablable DEV features
 --  TODO: Fullscreen mode
 --  TODO: Don't reset cooldown timer for eepers (might be duplicate)
@@ -1425,7 +1426,7 @@ end;
 --  TODO: Try MSAA (if too slow, don't)
 --  TODO: Rename executable to "eepers"
 --  TODO: Icon on for Windows build
---  TODO: Closed eyes should always point down
+--  TODO: Window title icon
 --  TODO: Show Eeper Cooldown timer outside of the screen somehow
 --  TODO: Visual Clue that the Eeper is about to kill the Player when Completely outside of the Screen
 --    - Cooldown ball is shaking

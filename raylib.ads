@@ -1,4 +1,5 @@
 with Interfaces.C; use Interfaces.C;
+with Interfaces.C.Strings; use Interfaces.C.Strings;
 with Raymath; use Raymath;
 
 package Raylib is
@@ -209,4 +210,20 @@ package Raylib is
     type Vector2_Array is array (size_t range <>) of aliased Vector2;
 
     procedure Draw_Triangle_Strip(Points: Vector2_Array; C: Color);
+
+    function Get_Working_Directory return chars_ptr
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "GetWorkingDirectory";
+    function Get_Application_Directory return chars_ptr
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "GetApplicationDirectory";
+    function Change_Directory(dir: chars_ptr) return C_Bool
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "ChangeDirectory";
 end Raylib;
