@@ -1396,7 +1396,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Linux build (libgnat)
 --  TODO: Window title icon
 --  TODO: If you are standing on the refilled bomb gen and place a bomb you should refill your bomb in that turn.
 --  TODO: Checkpoints should be circles (like all the items)
