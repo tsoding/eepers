@@ -486,20 +486,19 @@ procedure Game is
     end;
 
     procedure Spawn_Gnome(Game: in out Game_State; Position: IVector2) is
-        Gnome: constant Eeper_Index := Allocate_Eeper(Game);
+        Gnome: Eeper_State renames Game.Eepers(Allocate_Eeper(Game));
     begin
-        Game.Eepers(Gnome).Kind := Eeper_Gnome;
-        Game.Eepers(Gnome).Prev_Eyes := Eyes_Closed;
-        Game.Eepers(Gnome).Eyes := Eyes_Closed;
-        Game.Eepers(Gnome).Background := COLOR_GNOME;
-        Game.Eepers(Gnome).Position := Position;
-        Game.Eepers(Gnome).Prev_Position := Position;
-        Game.Eepers(Gnome).Size := (1, 1);
+        Gnome.Kind := Eeper_Gnome;
+        Gnome.Prev_Eyes := Eyes_Closed;
+        Gnome.Eyes := Eyes_Closed;
+        Gnome.Background := COLOR_GNOME;
+        Gnome.Position := Position;
+        Gnome.Prev_Position := Position;
+        Gnome.Size := (1, 1);
     end;
 
     procedure Spawn_Father(Game: in out Game_State; Position: IVector2) is
-        Father_Index: constant Eeper_Index := Allocate_Eeper(Game);
-        Father: Eeper_State renames Game.Eepers(Father_Index);
+        Father: Eeper_State renames Game.Eepers(Allocate_Eeper(Game));
     begin
         Father.Kind := Eeper_Father;
         Father.Prev_Eyes := Eyes_Closed;
@@ -512,30 +511,30 @@ procedure Game is
     end;
 
     procedure Spawn_Mother(Game: in out Game_State; Position: IVector2) is
-        Mother: constant Eeper_Index := Allocate_Eeper(Game);
+        Mother: Eeper_State renames Game.Eepers(Allocate_Eeper(Game));
     begin
-        Game.Eepers(Mother).Kind := Eeper_Mother;
-        Game.Eepers(Mother).Prev_Eyes := Eyes_Closed;
-        Game.Eepers(Mother).Eyes := Eyes_Closed;
-        Game.Eepers(Mother).Background := COLOR_MOTHER;
-        Game.Eepers(Mother).Position := Position;
-        Game.Eepers(Mother).Prev_Position := Position;
-        Game.Eepers(Mother).Health := 1.0;
-        Game.Eepers(Mother).Size := (7, 7);
+        Mother.Kind := Eeper_Mother;
+        Mother.Prev_Eyes := Eyes_Closed;
+        Mother.Eyes := Eyes_Closed;
+        Mother.Background := COLOR_MOTHER;
+        Mother.Position := Position;
+        Mother.Prev_Position := Position;
+        Mother.Health := 1.0;
+        Mother.Size := (7, 7);
     end;
 
     procedure Spawn_Guard(Game: in out Game_State; Position: IVector2) is
-        Guard: constant Eeper_Index := Allocate_Eeper(Game);
+        Guard: Eeper_State renames Game.Eepers(Allocate_Eeper(Game));
     begin
-        Game.Eepers(Guard).Kind := Eeper_Guard;
-        Game.Eepers(Guard).Prev_Eyes := Eyes_Closed;
-        Game.Eepers(Guard).Eyes := Eyes_Closed;
-        Game.Eepers(Guard).Background := COLOR_GUARD;
-        Game.Eepers(Guard).Position := Position;
-        Game.Eepers(Guard).Prev_Position := Position;
-        Game.Eepers(Guard).Health := 1.0;
-        Game.Eepers(Guard).Size := (3, 3);
-        Game.Eepers(Guard).Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
+        Guard.Kind := Eeper_Guard;
+        Guard.Prev_Eyes := Eyes_Closed;
+        Guard.Eyes := Eyes_Closed;
+        Guard.Background := COLOR_GUARD;
+        Guard.Position := Position;
+        Guard.Prev_Position := Position;
+        Guard.Health := 1.0;
+        Guard.Size := (3, 3);
+        Guard.Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
     end;
 
     type Level_Cell is (
