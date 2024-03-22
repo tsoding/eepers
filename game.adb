@@ -1395,7 +1395,9 @@ begin
     Close_Window;
 end;
 
-
+--  TODO: Determenistically choose the paths again, but make them more interesting
+--    - Gnomes are just being deterministic
+--    - Mother and Guard always pick the longest path
 --  TODO: Mother should require several attacks before being "split"
 --  TODO: Disallow placing bomb on the same position more than once
 --    Especially important if we gonna allow placing bombs at the position of the Player
