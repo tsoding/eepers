@@ -386,20 +386,21 @@ procedure Game is
        Stop_At_Me: Boolean := True)
     is
         Q: Queue.Vector;
+        Eeper: Eeper_State renames Game.Eepers(Me);
     begin
-        for Y in Game.Eepers(Me).Path'Range(1) loop
-            for X in Game.Eepers(Me).Path'Range(2) loop
-                Game.Eepers(Me).Path(Y, X) := -1;
+        for Y in Eeper.Path'Range(1) loop
+            for X in Eeper.Path'Range(2) loop
+                Eeper.Path(Y, X) := -1;
             end loop;
         end loop;
 
-        for Dy in 0..Game.Eepers(Me).Size.Y-1 loop
-            for Dx in 0..Game.Eepers(Me).Size.X-1 loop
+        for Dy in 0..Eeper.Size.Y-1 loop
+            for Dx in 0..Eeper.Size.X-1 loop
                 declare
                     Position: constant IVector2 := Game.Player.Position - (Dx, Dy);
                 begin
                     if Eeper_Can_Stand_Here(Game, Position, Me) then
-                        Game.Eepers(Me).Path(Position.Y, Position.X) := 0;
+                        Eeper.Path(Position.Y, Position.X) := 0;
                         Q.Append(Position);
                     end if;
                 end;
@@ -412,11 +413,11 @@ procedure Game is
             begin
                 Q.Delete_First;
 
-                if Stop_At_Me and then Position = Game.Eepers(Me).Position then
+                if Stop_At_Me and then Position = Eeper.Position then
                     exit;
                 end if;
 
-                if Game.Eepers(Me).Path(Position.Y, Position.X) >= Steps_Limit then
+                if Eeper.Path(Position.Y, Position.X) >= Steps_Limit then
                     exit;
                 end if;
 
@@ -428,10 +429,10 @@ procedure Game is
                             if not Eeper_Can_Stand_Here(Game, New_Position, Me) then
                                 exit;
                             end if;
-                            if Game.Eepers(Me).Path(New_Position.Y, New_Position.X) >= 0 then
+                            if Eeper.Path(New_Position.Y, New_Position.X) >= 0 then
                                 exit;
                             end if;
-                            Game.Eepers(Me).Path(New_Position.Y, New_Position.X) := Game.Eepers(Me).Path(Position.Y, Position.X) + 1;
+                            Eeper.Path(New_Position.Y, New_Position.X) := Eeper.Path(Position.Y, Position.X) + 1;
                             Q.Append(New_Position);
                             New_Position := New_Position + Direction_Vector(Dir);
                         end loop;
@@ -940,113 +941,116 @@ procedure Game is
 
     procedure Game_Eepers_Turn(Game: in out Game_State) is
     begin
-        -- TODO: use "renames" to get rid of that "Game.Eepers(Me)"
         for Me in Eeper_Index loop
-            if not Game.Eepers(Me).Dead then
-                Game.Eepers(Me).Prev_Position := Game.Eepers(Me).Position;
-                Game.Eepers(Me).Prev_Eyes := Game.Eepers(Me).Eyes;
-                case Game.Eepers(Me).Kind is
-                    when Eeper_Father =>
-                        if Inside_Of_Rect(Game.Eepers(Me).Position, Game.Eepers(Me).Size, Game.Player.Position) then
-                            Load_Game_From_Image("map.png", Game, True);
-                        elsif Inside_Of_Rect(Game.Eepers(Me).Position - (2, 2), Game.Eepers(Me).Size + (4, 4), Game.Player.Position) then
-                            Game.Eepers(Me).Eyes_Target := Game.Player.Position;
-                            Game.Eepers(Me).Eyes := Eyes_Open;
-                        else
-                            Game.Eepers(Me).Eyes_Target := Game.Eepers(Me).Position + (Game.Eepers(Me).Size.X/2, Game.Eepers(Me).Size.Y);
-                            Game.Eepers(Me).Eyes := Eyes_Closed;
-                        end if;
-                    when Eeper_Guard | Eeper_Mother =>
-                        Recompute_Path_For_Eeper(Game, Me, GUARD_STEPS_LIMIT, GUARD_STEP_LENGTH_LIMIT);
-                        if Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X) = 0 then
-                            Game.Player.Dead := True;
-                            Game.Eepers(Me).Eyes := Eyes_Surprised;
-                        elsif Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X) > 0 then
-                            if Game.Eepers(Me).Attack_Cooldown <= 0 then
-                                declare
-                                    Current : constant Integer := Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X);
-                                    Available_Positions: array (0..Direction_Vector'Length-1) of IVector2;
-                                    Count: Integer := 0;
-                                begin
-                                    for Dir in Direction loop
-                                        declare
-                                            Position: IVector2 := Game.Eepers(Me).Position;
-                                        begin
-                                            while Eeper_Can_Stand_Here(Game, Position, Me) loop
-                                                Position := Position + Direction_Vector(Dir);
-                                                if Within_Map(Game, Position) and then Game.Eepers(Me).Path(Position.Y, Position.X) = Current - 1 then
-                                                    Available_Positions(Count) := Position;
-                                                    Count := Count + 1;
-                                                    exit;
-                                                end if;
-                                            end loop;
-                                        end;
-                                    end loop;
-                                    if Count > 0 then
-                                        Game.Eepers(Me).Position := Available_Positions(Random_Integer.Random(Gen) mod Count);
-                                    end if;
-                                end;
-                                Game.Eepers(Me).Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
+            declare
+                Eeper: Eeper_State renames Game.Eepers(Me);
+            begin
+                if not Eeper.Dead then
+                    Eeper.Prev_Position := Eeper.Position;
+                    Eeper.Prev_Eyes := Eeper.Eyes;
+                    case Eeper.Kind is
+                        when Eeper_Father =>
+                            if Inside_Of_Rect(Eeper.Position, Eeper.Size, Game.Player.Position) then
+                                Load_Game_From_Image("map.png", Game, True);
+                            elsif Inside_Of_Rect(Eeper.Position - (2, 2), Eeper.Size + (4, 4), Game.Player.Position) then
+                                Eeper.Eyes_Target := Game.Player.Position;
+                                Eeper.Eyes := Eyes_Open;
                             else
-                                Game.Eepers(Me).Attack_Cooldown := Game.Eepers(Me).Attack_Cooldown - 1;
+                                Eeper.Eyes_Target := Eeper.Position + (Eeper.Size.X/2, Eeper.Size.Y);
+                                Eeper.Eyes := Eyes_Closed;
                             end if;
-
-                            if Game.Eepers(Me).Path(Game.Eepers(Me).Position.Y, Game.Eepers(Me).Position.X) = 1 then
-                                Game.Eepers(Me).Eyes := Eyes_Angry;
-                            else
-                                Game.Eepers(Me).Eyes := Eyes_Open;
-                            end if;
-                            Game.Eepers(Me).Eyes_Target := Game.Player.Position;
-
-                            if Inside_Of_Rect(Game.Eepers(Me).Position, Game.Eepers(Me).Size, Game.Player.Position) then
+                        when Eeper_Guard | Eeper_Mother =>
+                            Recompute_Path_For_Eeper(Game, Me, GUARD_STEPS_LIMIT, GUARD_STEP_LENGTH_LIMIT);
+                            if Eeper.Path(Eeper.Position.Y, Eeper.Position.X) = 0 then
                                 Game.Player.Dead := True;
-                            end if;
-                        else
-                            Game.Eepers(Me).Eyes := Eyes_Closed;
-                            Game.Eepers(Me).Eyes_Target := Game.Eepers(Me).Position + (Game.Eepers(Me).Size.X/2, Game.Eepers(Me).Size.Y);
-                            Game.Eepers(Me).Attack_Cooldown := GUARD_ATTACK_COOLDOWN + 1;
-                        end if;
+                                Eeper.Eyes := Eyes_Surprised;
+                            elsif Eeper.Path(Eeper.Position.Y, Eeper.Position.X) > 0 then
+                                if Eeper.Attack_Cooldown <= 0 then
+                                    declare
+                                        Current : constant Integer := Eeper.Path(Eeper.Position.Y, Eeper.Position.X);
+                                        Available_Positions: array (0..Direction_Vector'Length-1) of IVector2;
+                                        Count: Integer := 0;
+                                    begin
+                                        for Dir in Direction loop
+                                            declare
+                                                Position: IVector2 := Eeper.Position;
+                                            begin
+                                                while Eeper_Can_Stand_Here(Game, Position, Me) loop
+                                                    Position := Position + Direction_Vector(Dir);
+                                                    if Within_Map(Game, Position) and then Eeper.Path(Position.Y, Position.X) = Current - 1 then
+                                                        Available_Positions(Count) := Position;
+                                                        Count := Count + 1;
+                                                        exit;
+                                                    end if;
+                                                end loop;
+                                            end;
+                                        end loop;
+                                        if Count > 0 then
+                                            Eeper.Position := Available_Positions(Random_Integer.Random(Gen) mod Count);
+                                        end if;
+                                    end;
+                                    Eeper.Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
+                                else
+                                    Eeper.Attack_Cooldown := Eeper.Attack_Cooldown - 1;
+                                end if;
 
-                        if Game.Eepers(Me).Health < 1.0 then
-                            Game.Eepers(Me).Health := Game.Eepers(Me).Health + GUARD_TURN_REGENERATION;
-                        end if;
-                    when Eeper_Gnome =>
-                        Recompute_Path_For_Eeper(Game, Me, 9, 1, Stop_At_Me => False);
-                        declare
-                            Position: constant IVector2 := Game.Eepers(Me).Position;
-                        begin
-                            if Game.Eepers(Me).Path(Position.Y, Position.X) >= 0 then
-                                declare
-                                    Available_Positions: array (0..Direction_Vector'Length-1) of IVector2;
-                                    Count: Integer := 0;
-                                begin
-                                    for Dir in Direction loop
-                                        declare
-                                            New_Position: constant IVector2 := Position + Direction_Vector(Dir);
-                                        begin
-                                            if Within_Map(Game, New_Position)
-                                              and then Game.Map(New_Position.Y, New_Position.X) = Cell_Floor
-                                              and then Game.Eepers(Me).Path(New_Position.Y, New_Position.X) > Game.Eepers(Me).Path(Position.Y, Position.X)
-                                            then
-                                                Available_Positions(Count) := New_Position;
-                                                Count := Count + 1;
-                                            end if;
-                                        end;
-                                    end loop;
+                                if Eeper.Path(Eeper.Position.Y, Eeper.Position.X) = 1 then
+                                    Eeper.Eyes := Eyes_Angry;
+                                else
+                                    Eeper.Eyes := Eyes_Open;
+                                end if;
+                                Eeper.Eyes_Target := Game.Player.Position;
 
-                                    if Count > 0 then
-                                        Game.Eepers(Me).Position := Available_Positions(Random_Integer.Random(Gen) mod Count);
-                                    end if;
-                                end;
-                                Game.Eepers(Me).Eyes := Eyes_Open;
-                                Game.Eepers(Me).Eyes_Target := Game.Player.Position;
+                                if Inside_Of_Rect(Eeper.Position, Eeper.Size, Game.Player.Position) then
+                                    Game.Player.Dead := True;
+                                end if;
                             else
-                                Game.Eepers(Me).Eyes := Eyes_Closed;
-                                Game.Eepers(Me).Eyes_Target := Game.Eepers(Me).Position + (Game.Eepers(Me).Size.X/2, Game.Eepers(Me).Size.Y);
+                                Eeper.Eyes := Eyes_Closed;
+                                Eeper.Eyes_Target := Eeper.Position + (Eeper.Size.X/2, Eeper.Size.Y);
+                                Eeper.Attack_Cooldown := GUARD_ATTACK_COOLDOWN + 1;
                             end if;
-                        end;
-                end case;
-            end if;
+
+                            if Eeper.Health < 1.0 then
+                                Eeper.Health := Eeper.Health + GUARD_TURN_REGENERATION;
+                            end if;
+                        when Eeper_Gnome =>
+                            Recompute_Path_For_Eeper(Game, Me, 9, 1, Stop_At_Me => False);
+                            declare
+                                Position: constant IVector2 := Eeper.Position;
+                            begin
+                                if Eeper.Path(Position.Y, Position.X) >= 0 then
+                                    declare
+                                        Available_Positions: array (0..Direction_Vector'Length-1) of IVector2;
+                                        Count: Integer := 0;
+                                    begin
+                                        for Dir in Direction loop
+                                            declare
+                                                New_Position: constant IVector2 := Position + Direction_Vector(Dir);
+                                            begin
+                                                if Within_Map(Game, New_Position)
+                                                    and then Game.Map(New_Position.Y, New_Position.X) = Cell_Floor
+                                                    and then Eeper.Path(New_Position.Y, New_Position.X) > Eeper.Path(Position.Y, Position.X)
+                                                then
+                                                    Available_Positions(Count) := New_Position;
+                                                    Count := Count + 1;
+                                                end if;
+                                            end;
+                                        end loop;
+
+                                        if Count > 0 then
+                                            Eeper.Position := Available_Positions(Random_Integer.Random(Gen) mod Count);
+                                        end if;
+                                    end;
+                                    Eeper.Eyes := Eyes_Open;
+                                    Eeper.Eyes_Target := Game.Player.Position;
+                                else
+                                    Eeper.Eyes := Eyes_Closed;
+                                    Eeper.Eyes_Target := Eeper.Position + (Eeper.Size.X/2, Eeper.Size.Y);
+                                end if;
+                            end;
+                    end case;
+                end if;
+            end;
         end loop;
     end;
 
