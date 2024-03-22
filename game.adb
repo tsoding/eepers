@@ -487,53 +487,61 @@ procedure Game is
 
     procedure Spawn_Gnome(Game: in out Game_State; Position: IVector2) is
         Gnome: Eeper_State renames Game.Eepers(Allocate_Eeper(Game));
+        Size: constant IVector2 := (1, 1);
     begin
         Gnome.Kind := Eeper_Gnome;
         Gnome.Prev_Eyes := Eyes_Closed;
         Gnome.Eyes := Eyes_Closed;
+        Gnome.Eyes_Target := Position + (Size.X/2, Size.Y);
         Gnome.Background := COLOR_GNOME;
         Gnome.Position := Position;
         Gnome.Prev_Position := Position;
-        Gnome.Size := (1, 1);
+        Gnome.Size := Size;
     end;
 
     procedure Spawn_Father(Game: in out Game_State; Position: IVector2) is
         Father: Eeper_State renames Game.Eepers(Allocate_Eeper(Game));
+        Size: constant IVector2 := (7, 7);
     begin
         Father.Kind := Eeper_Father;
         Father.Prev_Eyes := Eyes_Closed;
         Father.Eyes := Eyes_Closed;
         Father.Eyes_Angle := Pi*0.5;
+        Father.Eyes_Target := Position + (Size.X/2, Size.Y);
         Father.Background := COLOR_FATHER;
         Father.Position := Position;
         Father.Prev_Position := Position;
-        Father.Size := (7, 7);
+        Father.Size := Size;
     end;
 
     procedure Spawn_Mother(Game: in out Game_State; Position: IVector2) is
         Mother: Eeper_State renames Game.Eepers(Allocate_Eeper(Game));
+        Size: constant IVector2 := (7, 7);
     begin
         Mother.Kind := Eeper_Mother;
         Mother.Prev_Eyes := Eyes_Closed;
         Mother.Eyes := Eyes_Closed;
+        Mother.Eyes_Target := Position + (Size.X/2, Size.Y);
         Mother.Background := COLOR_MOTHER;
         Mother.Position := Position;
         Mother.Prev_Position := Position;
         Mother.Health := 1.0;
-        Mother.Size := (7, 7);
+        Mother.Size := Size;
     end;
 
     procedure Spawn_Guard(Game: in out Game_State; Position: IVector2) is
         Guard: Eeper_State renames Game.Eepers(Allocate_Eeper(Game));
+        Size: constant IVector2 := (3, 3);
     begin
         Guard.Kind := Eeper_Guard;
         Guard.Prev_Eyes := Eyes_Closed;
         Guard.Eyes := Eyes_Closed;
+        Guard.Eyes_Target := Position + (Size.X/2, Size.Y);
         Guard.Background := COLOR_GUARD;
         Guard.Position := Position;
         Guard.Prev_Position := Position;
         Guard.Health := 1.0;
-        Guard.Size := (3, 3);
+        Guard.Size := Size;
         Guard.Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
     end;
 
@@ -1454,7 +1462,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Initialize Eye Angles of Eepers
 --  TODO: Eyes for the Player.
 --  TODO: Eyes of Father changing as the Player gets closer:
 --    - Happy (very important to indicate that he's not hostile)
