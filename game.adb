@@ -1396,12 +1396,13 @@ begin
     Close_Window;
 end;
 
+--  TODO: Checkpoints should be circles (like all the items)
+--  TODO: Custom font
 --  TODO: Determenistically choose the paths again, but make them more interesting
 --    - Gnomes are just being deterministic
 --    - Mother and Guard always pick the longest path
 --  TODO: Mother should require several attacks before being "split"
 --  TODO: Do not stack up damage for Eepers per the tiles of their body.
---  TODO: Second boss room is boring
 --  TODO: Eyes of Father changing as the Player gets closer:
 --    - Closed
 --    - Open
