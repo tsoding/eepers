@@ -226,7 +226,7 @@ procedure Game is
         Prev_Position: IVector2;
         Position: IVector2;
         Keys: Integer := 0;
-        Bombs: Integer := 1;
+        Bombs: Integer := 0;
         Bomb_Slots: Integer := 1;
         Dead: Boolean := False;
     end record;
@@ -791,6 +791,7 @@ procedure Game is
                            end if;
                            when Item_Checkpoint =>
                                Game.Items.Delete(C);
+                               Game.Player.Bombs := Game.Player.Bomb_Slots;
                                Game_Save_Checkpoint(Game);
                        end case;
                    end if;
@@ -1422,7 +1423,6 @@ end;
 --  TODO: Try MSAA (if too slow, don't)
 --  TODO: Rename executable to "eepers"
 --  TODO: Icon on for Windows build
---  TODO: Checkpoints must refill the bombs
 --  TODO: Closed eyes should always point down
 --  TODO: Show Eeper Cooldown timer outside of the screen somehow
 --  TODO: Visual Clue that the Eeper is about to kill the Player when Completely outside of the Screen
