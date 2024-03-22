@@ -24,16 +24,6 @@ procedure Game is
     Gen: Random_Integer.Generator;
     DEVELOPMENT : constant Boolean := True;
 
-    function Actual_Fmod(A, B: Float) return Float is
-        function Fmodf(A, B: C_Float) return C_Float
-            with
-                Import => True,
-                Convention => C,
-                External_Name => "fmodf";
-    begin
-        return Float(Fmodf(Fmodf(C_Float(A), C_Float(B)) + C_Float(B), C_Float(B)));
-    end;
-
     type Palette is (
       COLOR_BACKGROUND,
       COLOR_FLOOR,
@@ -1461,6 +1451,7 @@ begin
     Close_Window;
 end;
 
+--  TODO: Initialize Eye Angles of Eepers
 --  TODO: Eyes for the Player.
 --  TODO: Eyes of Father changing as the Player gets closer:
 --    - Happy (very important to indicate that he's not hostile)
