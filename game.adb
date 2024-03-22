@@ -1396,6 +1396,9 @@ begin
     Close_Window;
 end;
 
+--  TODO: Linux build (libgnat)
+--  TODO: Window title icon
+--  TODO: If you are standing on the refilled bomb gen and place a bomb you should refill your bomb in that turn.
 --  TODO: Checkpoints should be circles (like all the items)
 --  TODO: Custom font
 --  TODO: Determenistically choose the paths again, but make them more interesting
@@ -1418,7 +1421,6 @@ end;
 --  TODO: Desaturate the colors
 --  TODO: Properly disablable DEV features
 --  TODO: Fullscreen mode
---  TODO: Compile MinGW build with Windows Subsystem (so it does not show cmd window)
 --  TODO: Don't reset cooldown timer for eepers (might be duplicate)
 --    Maybe just pause
 --  TODO: Try MSAA (if too slow, don't)
