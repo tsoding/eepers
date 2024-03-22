@@ -1413,7 +1413,7 @@ end;
 --  TODO: Custom font
 --  TODO: Determenistically choose the paths again, but make them more interesting
 --    - Gnomes are just being deterministic
---    - Mother and Guard always pick the longest path
+--    - Mother and Guard always pick the longest path. Or generally the path that brings the Euclidean Distance closer
 --  TODO: Mother should require several attacks before being "split"
 --  TODO: Do not stack up damage for Eepers per the tiles of their body.
 --  TODO: Eyes of Father changing as the Player gets closer:
