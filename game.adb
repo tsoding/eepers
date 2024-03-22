@@ -142,18 +142,18 @@ procedure Game is
         X, Y: Integer;
     end record;
 
-    type Cell is (None, Floor, Wall, Barricade, Door, Explosion);
+    type Cell is (Cell_None, Cell_Floor, Cell_Wall, Cell_Barricade, Cell_Door, Cell_Explosion);
     Cell_Size : constant Vector2 := (x => 50.0, y => 50.0);
 
     function Cell_Colors(C: Cell) return Color is
     begin
         case C is
-            when None      => return Palette_RGB(COLOR_BACKGROUND);
-            when Floor     => return Palette_RGB(COLOR_FLOOR);
-            when Wall      => return Palette_RGB(COLOR_WALL);
-            when Barricade => return Palette_RGB(COLOR_BARRICADE);
-            when Door      => return Palette_RGB(COLOR_DOORKEY);
-            when Explosion => return Palette_RGB(COLOR_EXPLOSION);
+            when Cell_None      => return Palette_RGB(COLOR_BACKGROUND);
+            when Cell_Floor     => return Palette_RGB(COLOR_FLOOR);
+            when Cell_Wall      => return Palette_RGB(COLOR_WALL);
+            when Cell_Barricade => return Palette_RGB(COLOR_BARRICADE);
+            when Cell_Door      => return Palette_RGB(COLOR_DOORKEY);
+            when Cell_Explosion => return Palette_RGB(COLOR_EXPLOSION);
         end case;
     end;
 
@@ -354,7 +354,7 @@ procedure Game is
                 end if;
                 -- NOTE: it's fine to step into the explosions, because they don't live long enough.
                 -- They disappear on the next turn.
-                if Game.Map(Y, X) /= Floor and Game.Map(Y, X) /= Explosion then
+                if Game.Map(Y, X) /= Cell_Floor and Game.Map(Y, X) /= Cell_Explosion then
                     return False;
                 end if;
                 for Index in Eeper_Index loop
@@ -625,43 +625,43 @@ procedure Game is
                     if Cell_By_Color(Pixel.all, Cel) then
                         case Cel is
                             when Level_None =>
-                                Game.Map(Row, Column) := None;
+                                Game.Map(Row, Column) := Cell_None;
                             when Level_Gnome =>
                                 Spawn_Gnome(Game, (Column, Row));
-                                Game.Map(Row, Column) := Floor;
+                                Game.Map(Row, Column) := Cell_Floor;
                             when Level_Mother =>
                                 Spawn_Mother(Game, (Column, Row));
-                                Game.Map(Row, Column) := Floor;
+                                Game.Map(Row, Column) := Cell_Floor;
                             when Level_Guard =>
                                 Spawn_Guard(Game, (Column, Row));
-                                Game.Map(Row, Column) := Floor;
+                                Game.Map(Row, Column) := Cell_Floor;
                             when Level_Father =>
                                 Game.Camera_Position := Screen_Size*0.5 - (To_Vector2((Column, Row))*Cell_Size + To_Vector2((7, 7))*Cell_Size*0.5);
                                 Spawn_Father(Game, (Column, Row));
-                                Game.Map(Row, Column) := Floor;
-                            when Level_Floor => Game.Map(Row, Column) := Floor;
-                            when Level_Wall => Game.Map(Row, Column) := Wall;
-                            when Level_Door => Game.Map(Row, Column) := Door;
+                                Game.Map(Row, Column) := Cell_Floor;
+                            when Level_Floor => Game.Map(Row, Column) := Cell_Floor;
+                            when Level_Wall => Game.Map(Row, Column) := Cell_Wall;
+                            when Level_Door => Game.Map(Row, Column) := Cell_Door;
                             when Level_Checkpoint =>
-                                Game.Map(Row, Column) := Floor;
+                                Game.Map(Row, Column) := Cell_Floor;
                                 Game.Items.Insert((Column, Row), (Kind => Item_Checkpoint));
                             when Level_Bomb_Gen =>
-                                Game.Map(Row, Column) := Floor;
+                                Game.Map(Row, Column) := Cell_Floor;
                                 Game.Items.Insert((Column, Row), (Kind => Item_Bomb_Gen, Cooldown => 0));
                             when Level_Barricade =>
-                                Game.Map(Row, Column) := Barricade;
+                                Game.Map(Row, Column) := Cell_Barricade;
                             when Level_Key =>
-                                Game.Map(Row, Column) := Floor;
+                                Game.Map(Row, Column) := Cell_Floor;
                                 Game.Items.Insert((Column, Row), (Kind => Item_Key));
                             when Level_Player =>
-                                Game.Map(Row, Column) := Floor;
+                                Game.Map(Row, Column) := Cell_Floor;
                                 if Update_Player then
                                     Game.Player.Position := (Column, Row);
                                     Game.Player.Prev_Position := (Column, Row);
                                 end if;
                         end case;
                     else
-                        Game.Map(Row, Column) := None;
+                        Game.Map(Row, Column) := Cell_None;
                     end if;
                 end;
             end loop;
@@ -771,7 +771,7 @@ procedure Game is
         end if;
 
         case Game.Map(New_Position.Y, New_Position.X) is
-           when Floor =>
+           when Cell_Floor =>
                Game.Player.Position := New_Position;
                declare
                    use Hashed_Map_Items;
@@ -795,10 +795,10 @@ procedure Game is
                        end case;
                    end if;
                end;
-           when Door =>
+           when Cell_Door =>
                if Game.Player.Keys > 0 then
                    Game.Player.Keys := Game.Player.Keys - 1;
-                   Flood_Fill(Game, New_Position, Floor);
+                   Flood_Fill(Game, New_Position, Cell_Floor);
                    Game.Player.Position := New_Position;
                end if;
            when others => null;
@@ -815,8 +815,8 @@ procedure Game is
                 end if;
 
                 case Game.Map(New_Position.Y, New_Position.X) is
-                   when Floor | Explosion =>
-                       Game.Map(New_Position.Y, New_Position.X) := Explosion;
+                   when Cell_Floor | Cell_Explosion =>
+                       Game.Map(New_Position.Y, New_Position.X) := Cell_Explosion;
 
                        if New_Position = Game.Player.Position then
                            Game.Player.Dead := True;
@@ -852,8 +852,8 @@ procedure Game is
                        end loop;
 
                        New_Position := New_Position + Direction_Vector(Dir);
-                   when Barricade =>
-                       Flood_Fill(Game, New_Position, Floor);
+                   when Cell_Barricade =>
+                       Flood_Fill(Game, New_Position, Cell_Floor);
                        return;
                    when others =>
                        return;
@@ -922,8 +922,8 @@ procedure Game is
     begin
         for Y in Game.Map'Range(1) loop
             for X in Game.Map'Range(2) loop
-                if Game.Map(Y, X) = Explosion then
-                    Game.Map(Y, X) := Floor;
+                if Game.Map(Y, X) = Cell_Explosion then
+                    Game.Map(Y, X) := Cell_Floor;
                 end if;
             end loop;
         end loop;
@@ -1007,7 +1007,7 @@ procedure Game is
                                             New_Position: constant IVector2 := Position + Direction_Vector(Dir);
                                         begin
                                             if Within_Map(Game, New_Position)
-                                              and then Game.Map(New_Position.Y, New_Position.X) = Floor
+                                              and then Game.Map(New_Position.Y, New_Position.X) = Cell_Floor
                                               and then Game.Eepers(Me).Path(New_Position.Y, New_Position.X) > Game.Eepers(Me).Path(Position.Y, Position.X)
                                             then
                                                 Available_Positions(Count) := New_Position;
