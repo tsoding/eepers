@@ -1399,8 +1399,6 @@ end;
 --    - Gnomes are just being deterministic
 --    - Mother and Guard always pick the longest path
 --  TODO: Mother should require several attacks before being "split"
---  TODO: Disallow placing bomb on the same position more than once
---    Especially important if we gonna allow placing bombs at the position of the Player
 --  TODO: Do not stack up damage for Eepers per the tiles of their body.
 --  TODO: Second boss room is boring
 --  TODO: Eyes of Father changing as the Player gets closer:
@@ -1410,21 +1408,18 @@ end;
 --  TODO: Eye Angle Speed
 --    For smoother transitions. Especially from Open to Closed if we decide
 --    that the Closed eyes should always point down
---  TODO: Surprised Eeper face you run into it by yourself (something like this o_O)
 --  TODO: Set working directory to where the exe is
 --    So it will search the resources there.
 --  TODO: Eyes for the Player.
 --    The denote last direction of the step.
---  TODO: Eeper should attack on zero just like a bomb.
+--  TODO: Enemies should attack on zero just like a bomb.
 --  TODO: Desaturate the colors
 --  TODO: Properly disablable DEV features
---  TODO: Default 16:9 resolution
 --  TODO: Fullscreen mode
 --  TODO: Compile MinGW build with Windows Subsystem (so it does not show cmd window)
 --  TODO: Don't reset cooldown timer for eepers (might be duplicate)
 --    Maybe just pause
 --  TODO: Try MSAA (if too slow, don't)
---  TODO: Bake assets into executable
 --  TODO: Rename executable to "eepers"
 --  TODO: Icon on for Windows build
 --  TODO: Checkpoints must refill the bombs
@@ -1433,9 +1428,8 @@ end;
 --  TODO: Visual Clue that the Eeper is about to kill the Player when Completely outside of the Screen
 --    - Cooldown ball is shaking
 --  TODO: Cool animation for New Game
---  TODO: Tutorial sign that says "WASD" to move when you start the game for the first time
---  TODO: "Tutorial" does not "explain" how to place bomb @content
---  TODO: keep steping while you are holding a certain direction
+--  TODO: Tutorial sign that says "WASD" to move when you start the game for the first time. And how to place the bomb on picking it up
+--  TODO: Keep steping while you are holding a certain direction
 --    Cause constantly tapping it feels like ass.
 --  TODO: count the player's turns towards the final score of the game
 --    We can even collect different stats, like bombs collected, bombs used,
@@ -1444,15 +1438,12 @@ end;
 --    Smoothly move it into the HUD.
 --  TODO: Different palettes depending on the area
 --    Or maybe different palette for each NG+
---  TODO: Eeper slide attack animation is pretty boring @polish
 --  TODO: Restart on any key press after ded
 --  TODO: Sounds
---  TODO: Player Death animation
---    Particles
---  TODO: Eeper Death animation
---    Particles
---  TODO: Cool effects when you pick up items and checkpoints
---    Particles
+--  TODO: Particles
+--    - Player Death animation
+--    - Eeper Death animation
+--    - Cool effects when you pick up items and checkpoints
 --  TODO: Allow moving with arrows too
 --  TODO: Camera shaking when big bosses (Guard and Mother) make moves
 --  TODO: Indicate how many bomb slots we have in HUD
@@ -1460,24 +1451,7 @@ end;
 --    Could be just a splash with the game name and logo.
 --  TODO: WebAssembly build
 --    https://blog.adacore.com/use-of-gnat-llvm-to-translate-ada-applications-to-webassembly
---  TODO: Placing a bomb is not a turn (should it be tho?)
 --  TODO: Explosions should trigger other primed bombs?
 --  TODO: Path finding in a separate thread
---  TODO: Player pushing bombs mechanic
---    May not be relevant after we do not make bombs barriers
---  TODO: Gnome should have triangular hats in the form of keys
---    And key must become triangles intead of circles.
---    I don't think it's relevant anymore within the current lore of the game.
---  TODO: When the player revives themselves they are being put into bomb selection mode if they hold the space key which is weird.
---    May not be relevant if we allow placing bombs directly on the player position,
---    because then the direction selection mechanism becomes obsolete.
---  TODO: Primed bombs should be barriers
---    - Be careful with the order of Path Finding Map Recomputation
---    and the Player Bomb Placement. Map must be recomputed only after
---    the bombs are placed for the turn. This is related to making placement
---    of the bombs a legit turn.
---    - That enables escaping first boss btw.
---    - I think they should be not. Because on top of breaking bosses
---    they remove the possibility to spawn the bomb on the player.
---    Something that makes the controls actually simpler.
---  TODO: Set back the gnome distance limit to 10 and try to solve the problem enviromentally
+--  TODO: Eeper slide attack animation is pretty boring @polish
+--  TODO: Bake assets into executable
