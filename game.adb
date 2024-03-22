@@ -15,6 +15,7 @@ with Ada.Exceptions; use Ada.Exceptions;
 with Ada.Numerics.Discrete_Random;
 with Interfaces.C.Pointers;
 with Ada.Unchecked_Conversion;
+with Ada.Numerics; use Ada.Numerics;
 
 procedure Game is
     package Random_Integer is
@@ -22,6 +23,16 @@ procedure Game is
 
     Gen: Random_Integer.Generator;
     DEVELOPMENT : constant Boolean := True;
+
+    function Actual_Fmod(A, B: Float) return Float is
+        function Fmodf(A, B: C_Float) return C_Float
+            with
+                Import => True,
+                Convention => C,
+                External_Name => "fmodf";
+    begin
+        return Float(Fmodf(Fmodf(C_Float(A), C_Float(B)) + C_Float(B), C_Float(B)));
+    end;
 
     type Palette is (
       COLOR_BACKGROUND,
@@ -270,6 +281,8 @@ procedure Game is
         Kind: Eeper_Kind;
         Dead: Boolean := True;
         Position, Prev_Position: IVector2;
+        Eyes_Angle: Float;
+        Eyes_Target: IVector2;
         Prev_Eyes: Eyes_Kind;
         Eyes: Eyes_Kind := Eyes_Closed;
         Size: IVector2;
@@ -311,7 +324,6 @@ procedure Game is
         Items: Hashed_Map_Items.Map;
         Bombs: Bomb_State_Array;
         Camera_Position: Vector2 := (x => 0.0, y => 0.0);
-        Camera_Velocity: Vector2 := (x => 0.0, y => 0.0);
 
         Checkpoint: Checkpoint_State;
 
@@ -495,17 +507,18 @@ procedure Game is
     end;
 
     procedure Spawn_Father(Game: in out Game_State; Position: IVector2) is
-        Father: constant Eeper_Index := Allocate_Eeper(Game);
+        Father_Index: constant Eeper_Index := Allocate_Eeper(Game);
+        Father: Eeper_State renames Game.Eepers(Father_Index);
     begin
-        Game.Eepers(Father).Kind := Eeper_Father;
-        Game.Eepers(Father).Prev_Eyes := Eyes_Closed;
-        Game.Eepers(Father).Eyes := Eyes_Closed;
-        Game.Eepers(Father).Background := COLOR_FATHER;
-        Game.Eepers(Father).Position := Position;
-        Game.Eepers(Father).Prev_Position := Position;
-        Game.Eepers(Father).Size := (7, 7);
+        Father.Kind := Eeper_Father;
+        Father.Prev_Eyes := Eyes_Closed;
+        Father.Eyes := Eyes_Closed;
+        Father.Eyes_Angle := Pi*0.5;
+        Father.Background := COLOR_FATHER;
+        Father.Position := Position;
+        Father.Prev_Position := Position;
+        Father.Size := (7, 7);
     end;
-
 
     procedure Spawn_Mother(Game: in out Game_State; Position: IVector2) is
         Mother: constant Eeper_Index := Allocate_Eeper(Game);
@@ -877,9 +890,9 @@ procedure Game is
     procedure Game_Update_Camera(Game: in out Game_State) is
         Camera_Target: constant Vector2 :=
           Screen_Size*0.5 - To_Vector2(Game.Player.Position)*Cell_Size - Cell_Size*0.5;
+        Camera_Velocity: constant Vector2 := (Camera_Target - Game.Camera_Position)*2.0;
     begin
-        Game.Camera_Position := Game.Camera_Position + Game.Camera_Velocity*Get_Frame_Time;
-        Game.Camera_Velocity := (Camera_Target - Game.Camera_Position)*2.0;
+        Game.Camera_Position := Game.Camera_Position + Camera_Velocity*Get_Frame_Time;
     end;
 
     function Game_Camera(Game: in Game_State) return Camera2D is
@@ -930,8 +943,14 @@ procedure Game is
         end loop;
     end;
 
+    function Look_At(Looker, Target: Vector2) return Float is
+    begin
+        return -Float(Vector2_Line_Angle(Looker, Target));
+    end;
+
     procedure Game_Eepers_Turn(Game: in out Game_State) is
     begin
+        -- TODO: use "renames" to get rid of that "Game.Eepers(Me)"
         for Me in Eeper_Index loop
             if not Game.Eepers(Me).Dead then
                 Game.Eepers(Me).Prev_Position := Game.Eepers(Me).Position;
@@ -940,6 +959,12 @@ procedure Game is
                     when Eeper_Father =>
                         if Inside_Of_Rect(Game.Eepers(Me).Position, Game.Eepers(Me).Size, Game.Player.Position) then
                             Load_Game_From_Image("map.png", Game, True);
+                        elsif Inside_Of_Rect(Game.Eepers(Me).Position - (2, 2), Game.Eepers(Me).Size + (4, 4), Game.Player.Position) then
+                            Game.Eepers(Me).Eyes_Target := Game.Player.Position;
+                            Game.Eepers(Me).Eyes := Eyes_Open;
+                        else
+                            Game.Eepers(Me).Eyes_Target := Game.Eepers(Me).Position + (Game.Eepers(Me).Size.X/2, Game.Eepers(Me).Size.Y);
+                            Game.Eepers(Me).Eyes := Eyes_Closed;
                         end if;
                     when Eeper_Guard | Eeper_Mother =>
                         Recompute_Path_For_Eeper(Game, Me, GUARD_STEPS_LIMIT, GUARD_STEP_LENGTH_LIMIT);
@@ -981,12 +1006,14 @@ procedure Game is
                             else
                                 Game.Eepers(Me).Eyes := Eyes_Open;
                             end if;
+                            Game.Eepers(Me).Eyes_Target := Game.Player.Position;
 
                             if Inside_Of_Rect(Game.Eepers(Me).Position, Game.Eepers(Me).Size, Game.Player.Position) then
                                 Game.Player.Dead := True;
                             end if;
                         else
                             Game.Eepers(Me).Eyes := Eyes_Closed;
+                            Game.Eepers(Me).Eyes_Target := Game.Eepers(Me).Position + (Game.Eepers(Me).Size.X/2, Game.Eepers(Me).Size.Y);
                             Game.Eepers(Me).Attack_Cooldown := GUARD_ATTACK_COOLDOWN + 1;
                         end if;
 
@@ -1022,8 +1049,10 @@ procedure Game is
                                     end if;
                                 end;
                                 Game.Eepers(Me).Eyes := Eyes_Open;
+                                Game.Eepers(Me).Eyes_Target := Game.Player.Position;
                             else
                                 Game.Eepers(Me).Eyes := Eyes_Closed;
+                                Game.Eepers(Me).Eyes_Target := Game.Eepers(Me).Position + (Game.Eepers(Me).Size.X/2, Game.Eepers(Me).Size.Y);
                             end if;
                         end;
                 end case;
@@ -1196,6 +1225,36 @@ procedure Game is
         Draw_Number(Bubble_Center - (Bubble_Radius, Bubble_Radius), (Bubble_Radius, Bubble_Radius)*2.0, Cooldown, Text_Color);
     end;
 
+    function Clamp(X, Lo, Hi: Float) return Float is
+    begin
+        if X < Lo then
+            return Lo;
+        elsif X > Hi then
+            return Hi;
+        else
+            return X;
+        end if;
+    end;
+
+    function Repeat(T, Length: Float) return Float is
+        function Floorf(A: C_Float) return C_Float
+            with
+                Import => True,
+                Convention => C,
+                External_Name => "floorf";
+    begin
+        return Clamp(T - Float(Floorf(C_Float(T/Length)))*Length, 0.0, Length);
+    end;
+
+    function Delta_Angle(A, B: Float) return Float is
+        Dlt: Float := Repeat(B - A, 2.0*Pi);
+    begin
+        if Dlt > Pi then
+            Dlt := Dlt - 2.0*Pi;
+        end if;
+        return Dlt;
+    end;
+
     procedure Game_Eepers(Game: in out Game_State) is
     begin
         for Eeper of Game.Eepers loop
@@ -1205,12 +1264,14 @@ procedure Game is
                    then Interpolate_Positions(Eeper.Prev_Position, Eeper.Position, Game.Turn_Animation)
                    else To_Vector2(Eeper.Position)*Cell_Size);
                 Size: constant Vector2 := To_Vector2(Eeper.Size)*Cell_Size;
+                Eyes_Angular_Velocity: constant Float := Delta_Angle(Eeper.Eyes_Angle, Look_At(Position + Size*0.5, To_Vector2(Eeper.Eyes_Target)*Cell_Size + Cell_Size*0.5));
             begin
                 if not Eeper.Dead then
+                    Eeper.Eyes_Angle := Eeper.Eyes_Angle + Eyes_Angular_Velocity*6.0*Float(Get_Frame_Time);
                     case Eeper.Kind is
                         when Eeper_Father =>
                             Draw_Rectangle_V(Position, Size, Palette_RGB(Eeper.Background));
-                            Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eyes_Closed, Eyes_Closed, 1.0);
+                            Draw_Eyes(Position, Size, Eeper.Eyes_Angle, Eeper.Prev_Eyes, Eeper.Eyes, Game.Turn_Animation);
                         when Eeper_Guard | Eeper_Mother =>
                             Draw_Rectangle_V(Position, Size, Palette_RGB(Eeper.Background));
                             Health_Bar(Position, Size, C_Float(Eeper.Health));
@@ -1219,7 +1280,7 @@ procedure Game is
                             elsif Eeper.Path(Eeper.Position.Y, Eeper.Position.X) >= 0 then
                                 Draw_Cooldown_Timer_Bubble(Position, Size, Eeper.Attack_Cooldown, Eeper.Background);
                             end if;
-                            Draw_Eyes(Position, Size, -Float(Vector2_Line_Angle(Position + Size*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eeper.Prev_Eyes, Eeper.Eyes, Game.Turn_Animation);
+                            Draw_Eyes(Position, Size, Eeper.Eyes_Angle, Eeper.Prev_Eyes, Eeper.Eyes, Game.Turn_Animation);
                         when Eeper_Gnome =>
                             declare
                                 GNOME_RATIO: constant C_Float := 0.7;
@@ -1227,7 +1288,7 @@ procedure Game is
                                 GNOME_START: constant Vector2 := Position + Cell_Size*0.5 - GNOME_SIZE*0.5;
                             begin
                                 Draw_Rectangle_V(GNOME_START, GNOME_SIZE, Palette_RGB(Eeper.Background));
-                                Draw_Eyes(GNOME_START, GNOME_SIZE, -Float(Vector2_Line_Angle(GNOME_START + GNOME_SIZE*0.5, Screen_Player_Position(Game) + Cell_Size*0.5)), Eeper.Prev_Eyes, Eeper.Eyes, Game.Turn_Animation);
+                                Draw_Eyes(GNOME_START, GNOME_SIZE, Eeper.Eyes_Angle, Eeper.Prev_Eyes, Eeper.Eyes, Game.Turn_Animation);
                             end;
                     end case;
                 end if;
@@ -1400,13 +1461,12 @@ begin
     Close_Window;
 end;
 
+--  TODO: Eyes for the Player.
+--  TODO: Eyes of Father changing as the Player gets closer:
+--    - Happy (very important to indicate that he's not hostile)
 --  TODO: Restarting should be considered a turn
 --    It's very useful to update Path Maps and stuff.
 --    Or maybe we should save Path Maps too?
---  TODO: Eye Angle Speed
---    For smoother transitions. Especially from Open to Closed if we decide
---    that the Closed eyes should always point down
---  TODO: Closed eyes should always point down
 --  TODO: Items in HUD may sometimes blend with the background
 --  TODO: If you are standing on the refilled bomb gen and place a bomb you should refill your bomb in that turn.
 --  TODO: Checkpoints should be circles (like all the items)
@@ -1418,11 +1478,6 @@ end;
 --    - Mother and Guard always pick the longest path. Or generally the path that brings the Euclidean Distance closer
 --  TODO: Mother should require several attacks before being "split"
 --  TODO: Do not stack up damage for Eepers per the tiles of their body.
---  TODO: Eyes of Father changing as the Player gets closer:
---    - Closed
---    - Open
---    - Happy (very important to indicate that he's not hostile)
---  TODO: Eyes for the Player.
 --    The denote last direction of the step.
 --  TODO: Enemies should attack on zero just like a bomb.
 --  TODO: Properly disablable DEV features
