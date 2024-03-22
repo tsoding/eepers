@@ -1400,10 +1400,14 @@ begin
     Close_Window;
 end;
 
+--  TODO: Restarting should be considered a turn
+--    It's very useful to update Path Maps and stuff.
+--    Or maybe we should save Path Maps too?
 --  TODO: Eye Angle Speed
 --    For smoother transitions. Especially from Open to Closed if we decide
 --    that the Closed eyes should always point down
 --  TODO: Closed eyes should always point down
+--  TODO: Items in HUD may sometimes blend with the background
 --  TODO: If you are standing on the refilled bomb gen and place a bomb you should refill your bomb in that turn.
 --  TODO: Checkpoints should be circles (like all the items)
 --  TODO: Custom font
