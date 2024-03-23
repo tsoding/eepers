@@ -982,7 +982,7 @@ procedure Game is
                                 Wake_Up_Radius: constant IVector2 := (3, 3);
                             begin
                                 if Inside_Of_Rect(Eeper.Position, Eeper.Size, Game.Player.Position) then
-                                    Load_Game_From_Image("map.png", Game, True);
+                                    Load_Game_From_Image("assets/map.png", Game, True);
                                 elsif Inside_Of_Rect(Eeper.Position - Wake_Up_Radius, Eeper.Size + Wake_Up_Radius*2, Game.Player.Position) then
                                     Eeper.Eyes_Target := Game.Player.Position;
                                     Eeper.Eyes := Eyes_Open;
@@ -1347,8 +1347,8 @@ begin
     Set_Exit_Key(KEY_NULL);
 
     Random_Integer.Reset(Gen);
-    Load_Colors("colors.txt");
-    Load_Game_From_Image("map.png", Game, True);
+    Load_Colors("assets/colors.txt");
+    Load_Game_From_Image("assets/map.png", Game, True);
     Game_Save_Checkpoint(Game);
 
     while not Window_Should_Close loop
@@ -1375,13 +1375,13 @@ begin
 
             if DEVELOPMENT then
                 if Is_Key_Pressed(KEY_R) then
-                    Load_Game_From_Image("map.png", Game, False);
+                    Load_Game_From_Image("assets/map.png", Game, False);
                 end if;
 
                 if Is_Key_Pressed(KEY_O) then
                     Palette_Editor := not Palette_Editor;
                     if not Palette_Editor then
-                        Save_Colors("colors.txt");
+                        Save_Colors("assets/colors.txt");
                     end if;
                 end if;
 
@@ -1563,3 +1563,4 @@ end;
 --  TODO: Indicate how many bomb slots we have in HUD
 --  TODO: Eyes of Father changing as the Player gets closer:
 --    - Happy (very important to indicate that he's not hostile)
+--  TODO: Transition Player's eyes linearly in Euclidean space instead of angularly.
