@@ -37,7 +37,7 @@ procedure Eepers is
     Guard_Step_Sound: Sound;
     Ambient_Music: Music;
 
-    DEVELOPMENT : constant Boolean := False;
+    DEVELOPMENT : constant Boolean := True;
 
     type Palette is (
       COLOR_BACKGROUND,
@@ -301,6 +301,7 @@ procedure Eepers is
         Eyes: Eyes_Kind := Eyes_Closed;
         Size: IVector2;
         Path: Path_Map_Access;
+        Damaged: Boolean;
 
         Background: Palette;
         Health: Float := 1.0;
@@ -614,7 +615,7 @@ procedure Eepers is
         return To_Vector2((Integer(Get_Screen_Width), Integer(Get_Screen_Height)));
     end;
 
-    procedure Load_Game_From_Image(File_Name: in String; Game: in out Game_State; Update_Player: Boolean) is
+    procedure Load_Game_From_Image(File_Name: in String; Game: in out Game_State; Update_Player: Boolean; Update_Camera: Boolean) is
         type Color_Array is array (Natural range <>) of aliased Raylib.Color;
         package Color_Pointer is new Interfaces.C.Pointers(
           Index => Natural,
@@ -671,7 +672,9 @@ procedure Eepers is
                                 Spawn_Guard(Game, (Column, Row));
                                 Game.Map(Row, Column) := Cell_Floor;
                             when Level_Father =>
-                                Game.Camera_Position := Screen_Size*0.5 - (To_Vector2((Column, Row))*Cell_Size + To_Vector2((7, 7))*Cell_Size*0.5);
+                                if Update_Camera then
+                                    Game.Camera_Position := Screen_Size*0.5 - (To_Vector2((Column, Row))*Cell_Size + To_Vector2((7, 7))*Cell_Size*0.5);
+                                end if;
                                 Spawn_Father(Game, (Column, Row));
                                 Game.Map(Row, Column) := Cell_Floor;
                             when Level_Floor => Game.Map(Row, Column) := Cell_Floor;
@@ -708,9 +711,6 @@ procedure Eepers is
                 end;
             end loop;
         end loop;
-
-        Stop_Music_Stream(Ambient_Music);
-        Play_Music_Stream(Ambient_Music);
     end;
 
     procedure Draw_Bomb(Position: IVector2; C: Color) is
@@ -806,56 +806,60 @@ procedure Eepers is
         end loop;
     end;
 
-    procedure Game_Player_Turn(Game: in out Game_State; Dir: Direction) is
-        New_Position: constant IVector2 := Game.Player.Position + Direction_Vector(Dir);
+    procedure Game_Player_Turn(Game: in out Game_State; Step_Direction: Direction) is
     begin
         Game.Player.Prev_Eyes := Game.Player.Eyes;
         Game.Player.Prev_Position := Game.Player.Position;
-        Game.Player.Eyes_Target := New_Position + Direction_Vector(Dir);
 
-        if not Within_Map(Game, New_Position) then
-            return;
-        end if;
+        declare
+            New_Position: constant IVector2 := Game.Player.Position + Direction_Vector(Step_Direction);
+        begin
+            Game.Player.Eyes_Target := New_Position + Direction_Vector(Step_Direction);
 
-        case Game.Map(New_Position.Y, New_Position.X) is
-           when Cell_Floor =>
-               Game.Player.Position := New_Position;
-               declare
-                   use Hashed_Map_Items;
-                   C: Cursor := Game.Items.Find(New_Position);
-               begin
-                   if Has_Element(C) then
-                       case Element(C).Kind is
-                           when Item_Key =>
-                               Game.Player.Keys := Game.Player.Keys + 1;
-                               Game.Items.Delete(C);
-                               Play_Sound(Key_Pickup_Sound);
-                           when Item_Bomb_Gen => if
-                               Game.Player.Bombs < Game.Player.Bomb_Slots
-                               and then Element(C).Cooldown <= 0
-                           then
-                               Game.Player.Bombs := Game.Player.Bombs + 1;
-                               Game.Items.Replace_Element(C, (Kind => Item_Bomb_Gen, Cooldown => BOMB_GENERATOR_COOLDOWN));
-                               Play_Sound(Bomb_Pickup_Sound);
-                           end if;
-                           when Item_Checkpoint =>
-                               Game.Items.Delete(C);
-                               Game.Player.Bombs := Game.Player.Bomb_Slots;
-                               Game_Save_Checkpoint(Game);
-                               Play_Sound(Checkpoint_Sound);
-                       end case;
-                   end if;
-               end;
-           when Cell_Door =>
-               if Game.Player.Keys > 0 then
-                   Game.Player.Keys := Game.Player.Keys - 1;
-                   Flood_Fill(Game, New_Position, Cell_Floor);
-                   Game.Player.Position := New_Position;
-                   Play_Sound(Open_Door_Sound);
-               end if;
-           when others => null;
-        end case;
-        Play_Sound(Footsteps_Sounds(Random_Footsteps.Random(Footsteps_Gen)));
+            if not Within_Map(Game, New_Position) then
+                return;
+            end if;
+
+            case Game.Map(New_Position.Y, New_Position.X) is
+                when Cell_Floor =>
+                    Game.Player.Position := New_Position;
+                    declare
+                        use Hashed_Map_Items;
+                        C: Cursor := Game.Items.Find(New_Position);
+                    begin
+                        if Has_Element(C) then
+                            case Element(C).Kind is
+                                when Item_Key =>
+                                    Game.Player.Keys := Game.Player.Keys + 1;
+                                    Game.Items.Delete(C);
+                                    Play_Sound(Key_Pickup_Sound);
+                                when Item_Bomb_Gen => if
+                                    Game.Player.Bombs < Game.Player.Bomb_Slots
+                                    and then Element(C).Cooldown <= 0
+                                then
+                                    Game.Player.Bombs := Game.Player.Bombs + 1;
+                                    Game.Items.Replace_Element(C, (Kind => Item_Bomb_Gen, Cooldown => BOMB_GENERATOR_COOLDOWN));
+                                    Play_Sound(Bomb_Pickup_Sound);
+                                end if;
+                                when Item_Checkpoint =>
+                                    Game.Items.Delete(C);
+                                    Game.Player.Bombs := Game.Player.Bomb_Slots;
+                                    Game_Save_Checkpoint(Game);
+                                    Play_Sound(Checkpoint_Sound);
+                            end case;
+                        end if;
+                    end;
+                when Cell_Door =>
+                    if Game.Player.Keys > 0 then
+                        Game.Player.Keys := Game.Player.Keys - 1;
+                        Flood_Fill(Game, New_Position, Cell_Floor);
+                        Game.Player.Position := New_Position;
+                        Play_Sound(Open_Door_Sound);
+                    end if;
+                when others => null;
+            end case;
+            Play_Sound(Footsteps_Sounds(Random_Footsteps.Random(Footsteps_Gen)));
+        end;
     end;
 
     procedure Explode(Game: in out Game_State; Position: in IVector2) is
@@ -873,40 +877,18 @@ procedure Eepers is
 
                        if New_Position = Game.Player.Position then
                            Game.Player.Dead := True;
-                           return;
                        end if;
 
                        for Eeper of Game.Eepers loop
                            if not Eeper.Dead and then Inside_Of_Rect(Eeper.Position, Eeper.Size, New_Position) then
-                               case Eeper.Kind is
-                                   when Eeper_Father => null;
-                                   when Eeper_Gnome =>
-                                       Game.Items.Insert(Eeper.Position, (Kind => Item_Key));
-                                       Eeper.Dead := True;
-                                   when Eeper_Guard =>
-                                       Eeper.Eyes := Eyes_Cringe;
-                                       Eeper.Health := Eeper.Health - EEPER_EXPLOSION_DAMAGE;
-                                       if Eeper.Health <= 0.0 then
-                                           Eeper.Dead := True;
-                                       end if;
-                                   when Eeper_Mother =>
-                                       declare
-                                           Position: constant IVector2 := Eeper.Position;
-                                       begin
-                                           Eeper.Dead := True;
-                                           Spawn_Guard(Game, Position + (0, 0));
-                                           Spawn_Guard(Game, Position + (4, 0));
-                                           Spawn_Guard(Game, Position + (0, 4));
-                                           Spawn_Guard(Game, Position + (4, 4));
-                                       end;
-                               end case;
-                               return;
+                               Eeper.Damaged := True;
                            end if;
                        end loop;
 
                        New_Position := New_Position + Direction_Vector(Dir);
                    when Cell_Barricade =>
-                       Flood_Fill(Game, New_Position, Cell_Floor);
+                       Flood_Fill(Game, New_Position, Cell_Explosion);
+                       Game.Map(New_Position.Y, New_Position.X) := Cell_Explosion;
                        return;
                    when others =>
                        return;
@@ -963,6 +945,9 @@ procedure Eepers is
 
     procedure Game_Bombs_Turn(Game: in out Game_State) is
     begin
+        for Eeper of Game.Eepers Loop
+            Eeper.Damaged := False;
+        end loop;
         for Bomb of Game.Bombs loop
             if Bomb.Countdown > 0 then
                 Bomb.Countdown := Bomb.Countdown - 1;
@@ -970,6 +955,32 @@ procedure Eepers is
                     Play_Sound(Blast_Sound);
                     Explode(Game, Bomb.Position);
                 end if;
+            end if;
+        end loop;
+        for Eeper of Game.Eepers loop
+            if not Eeper.Dead and then Eeper.Damaged then
+                case Eeper.Kind is
+                    when Eeper_Father => null;
+                    when Eeper_Mother =>
+                        declare
+                            Position: constant IVector2 := Eeper.Position;
+                        begin
+                            Eeper.Dead := True;
+                            Spawn_Guard(Game, Position + (0, 0));
+                            Spawn_Guard(Game, Position + (4, 0));
+                            Spawn_Guard(Game, Position + (0, 4));
+                            Spawn_Guard(Game, Position + (4, 4));
+                        end;
+                    when Eeper_Guard =>
+                        Eeper.Eyes := Eyes_Cringe;
+                        Eeper.Health := Eeper.Health - EEPER_EXPLOSION_DAMAGE;
+                        if Eeper.Health <= 0.0 then
+                            Eeper.Dead := True;
+                        end if;
+                    when Eeper_Gnome =>
+                        Eeper.Dead := True;
+                        Game.Items.Insert(Eeper.Position, (Kind => Item_Key));
+                end case;
             end if;
         end loop;
     end;
@@ -1005,7 +1016,9 @@ procedure Eepers is
                                 Wake_Up_Radius: constant IVector2 := (3, 3);
                             begin
                                 if Inside_Of_Rect(Eeper.Position, Eeper.Size, Game.Player.Position) then
-                                    Load_Game_From_Image("assets/map.png", Game, True);
+                                    Load_Game_From_Image("assets/map.png", Game, Update_Player => True, Update_Camera => False);
+                                    Game_Save_Checkpoint(Game);
+                                    Play_Sound(Checkpoint_Sound);
                                 elsif Inside_Of_Rect(Eeper.Position - Wake_Up_Radius, Eeper.Size + Wake_Up_Radius*2, Game.Player.Position) then
                                     Eeper.Eyes_Target := Game.Player.Position;
                                     Eeper.Eyes := Eyes_Open;
@@ -1214,20 +1227,25 @@ procedure Eepers is
                 Game_Explosions_Turn(Game);
                 Game_Items_Turn(Game);
 
-                --  Game_Player_Turn(Game, Dir);
+                --  Game_Player_Turn(Game, Action_Plant_Bomb, Left);
+                Game.Player.Prev_Eyes := Game.Player.Eyes;
                 Game.Player.Prev_Position := Game.Player.Position;
-                for Bomb of Game.Bombs loop
-                    if Bomb.Countdown <= 0 then
-                        Bomb.Countdown := 3;
-                        Bomb.Position := Game.Player.Position;
-                        exit;
-                    end if;
-                end loop;
-                Game.Player.Bombs := Game.Player.Bombs - 1;
-                Play_Sound(Plant_Bomb_Sound);
 
                 Game_Eepers_Turn(Game);
-                --  Game_Bombs_Turn(Game);
+                Game_Bombs_Turn(Game);
+
+                if Game.Player.Bombs > 0 then
+                    for Bomb of Game.Bombs loop
+                        if Bomb.Countdown <= 0 then
+                            Bomb.Countdown := 3;
+                            Bomb.Position := Game.Player.Position;
+                            exit;
+                        end if;
+                    end loop;
+                    Game.Player.Bombs := Game.Player.Bombs - 1;
+                    Play_Sound(Plant_Bomb_Sound);
+                end if;
+
                 Game.Duration_Of_Last_Turn := Get_Time - Start_Of_Turn;
             end;
         else
@@ -1393,7 +1411,7 @@ begin
 
     Random_Integer.Reset(Gen);
     Load_Colors("assets/colors.txt");
-    Load_Game_From_Image("assets/map.png", Game, True);
+    Load_Game_From_Image("assets/map.png", Game, Update_Player => True, Update_Camera => True);
     Game_Save_Checkpoint(Game);
     Play_Music_Stream(Ambient_Music);
 
@@ -1424,7 +1442,7 @@ begin
 
             if DEVELOPMENT then
                 if Is_Key_Pressed(KEY_R) then
-                    Load_Game_From_Image("assets/map.png", Game, False);
+                    Load_Game_From_Image("assets/map.png", Game, Update_Player => False, Update_Camera => False);
                 end if;
 
                 if Is_Key_Pressed(KEY_O) then
@@ -1575,8 +1593,6 @@ end;
 --    - Gnomes are just being deterministic
 --    - Mother and Guard always pick the longest path. Or generally the path that brings the Euclidean Distance closer
 --  TODO: Mother should require several attacks before being "split"
---  TODO: Do not stack up damage for Eepers per the tiles of their body.
---    The denote last direction of the step.
 --  TODO: Enemies should attack on zero just like a bomb.
 --  TODO: Properly disablable DEV features
 --  TODO: Fullscreen mode
