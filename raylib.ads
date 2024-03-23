@@ -78,6 +78,8 @@ package Raylib is
     KEY_SPACE:  constant int := 32;
     KEY_ESCAPE: constant int := 256;
     KEY_ENTER: constant Int := 257;
+    KEY_LEFT_SHIFT: constant Int := 340;
+
     function Is_Key_Pressed(key: int) return C_bool
         with
             Import => True,
