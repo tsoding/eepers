@@ -1359,14 +1359,18 @@ procedure Eepers is
     Palette_Editor_Choice: Palette := Palette'First;
     Palette_Editor_Selected: Boolean := False;
     Palette_Editor_Component: HSV_Comp := Hue;
+    Icon: Image;
 
 begin
     if not Change_Directory(Get_Application_Directory) then
         Put_Line("WARNING: Could not change working directory to the application directory");
     end if;
 
+    Icon := Load_Image("assets/icon.png");
+
     Set_Config_Flags(FLAG_WINDOW_RESIZABLE);
     Init_Window(1600, 900, Title);
+    Set_Window_Icon(Icon);
     Set_Target_FPS(60);
     Set_Exit_Key(KEY_NULL);
 
@@ -1551,7 +1555,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Window title icon
 --  TODO: Loop the music
 --  TODO: Sound on Finishing Round
 --  TODO: Footstep variation for Mother/Guard bosses (depending on the distance traveled?)
