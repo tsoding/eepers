@@ -20,9 +20,24 @@ with Ada.Numerics; use Ada.Numerics;
 procedure Game is
     package Random_Integer is
         new Ada.Numerics.Discrete_Random(Result_Subtype => Integer);
-
     Gen: Random_Integer.Generator;
-    DEVELOPMENT : constant Boolean := True;
+
+    type Footsteps_Range is mod 4;
+    Footsteps_Sounds: array (Footsteps_Range) of Sound;
+    Footsteps_Pitches: constant array (Footsteps_Range) of C_Float := [1.7, 1.6, 1.5, 1.4];
+    package Random_Footsteps is
+        new Ada.Numerics.Discrete_Random(Result_Subtype => Footsteps_Range);
+    Footsteps_Gen: Random_Footsteps.Generator;
+    Blast_Sound: Sound;
+    Key_Pickup_Sound: Sound;
+    Bomb_Pickup_Sound: Sound;
+    Open_Door_Sound: Sound;
+    Checkpoint_Sound: Sound;
+    Plant_Bomb_Sound: Sound;
+    Guard_Step_Sound: Sound;
+    Ambient_Music: Music;
+
+    DEVELOPMENT : constant Boolean := False;
 
     type Palette is (
       COLOR_BACKGROUND,
@@ -35,7 +50,6 @@ procedure Game is
       COLOR_LABEL,
       COLOR_GUARD,
       COLOR_MOTHER,
-      COLOR_GNOME,
       COLOR_CHECKPOINT,
       COLOR_EXPLOSION,
       COLOR_HEALTHBAR,
@@ -503,7 +517,7 @@ procedure Game is
         Gnome.Prev_Eyes := Eyes_Closed;
         Gnome.Eyes := Eyes_Closed;
         Gnome.Eyes_Target := Position + (Size.X/2, Size.Y);
-        Gnome.Background := COLOR_GNOME;
+        Gnome.Background := COLOR_DOORKEY;
         Gnome.Position := Position;
         Gnome.Prev_Position := Position;
         Gnome.Size := Size;
@@ -694,6 +708,9 @@ procedure Game is
                 end;
             end loop;
         end loop;
+
+        Stop_Music_Stream(Ambient_Music);
+        Play_Music_Stream(Ambient_Music);
     end;
 
     procedure Draw_Bomb(Position: IVector2; C: Color) is
@@ -812,17 +829,20 @@ procedure Game is
                            when Item_Key =>
                                Game.Player.Keys := Game.Player.Keys + 1;
                                Game.Items.Delete(C);
+                               Play_Sound(Key_Pickup_Sound);
                            when Item_Bomb_Gen => if
                                Game.Player.Bombs < Game.Player.Bomb_Slots
                                and then Element(C).Cooldown <= 0
                            then
                                Game.Player.Bombs := Game.Player.Bombs + 1;
                                Game.Items.Replace_Element(C, (Kind => Item_Bomb_Gen, Cooldown => BOMB_GENERATOR_COOLDOWN));
+                               Play_Sound(Bomb_Pickup_Sound);
                            end if;
                            when Item_Checkpoint =>
                                Game.Items.Delete(C);
                                Game.Player.Bombs := Game.Player.Bomb_Slots;
                                Game_Save_Checkpoint(Game);
+                               Play_Sound(Checkpoint_Sound);
                        end case;
                    end if;
                end;
@@ -831,9 +851,11 @@ procedure Game is
                    Game.Player.Keys := Game.Player.Keys - 1;
                    Flood_Fill(Game, New_Position, Cell_Floor);
                    Game.Player.Position := New_Position;
+                   Play_Sound(Open_Door_Sound);
                end if;
            when others => null;
         end case;
+        Play_Sound(Footsteps_Sounds(Random_Footsteps.Random(Footsteps_Gen)));
     end;
 
     procedure Explode(Game: in out Game_State; Position: in IVector2) is
@@ -945,6 +967,7 @@ procedure Game is
             if Bomb.Countdown > 0 then
                 Bomb.Countdown := Bomb.Countdown - 1;
                 if Bomb.Countdown <= 0 then
+                    Play_Sound(Blast_Sound);
                     Explode(Game, Bomb.Position);
                 end if;
             end if;
@@ -1019,6 +1042,7 @@ procedure Game is
                                         end loop;
                                         if Count > 0 then
                                             Eeper.Position := Available_Positions(Random_Integer.Random(Gen) mod Count);
+                                            Play_Sound(Guard_Step_Sound);
                                         end if;
                                     end;
                                     Eeper.Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
@@ -1200,6 +1224,7 @@ procedure Game is
                     end if;
                 end loop;
                 Game.Player.Bombs := Game.Player.Bombs - 1;
+                Play_Sound(Plant_Bomb_Sound);
 
                 Game_Eepers_Turn(Game);
                 --  Game_Bombs_Turn(Game);
@@ -1254,8 +1279,7 @@ procedure Game is
 
         if Game.Player.Dead then
             declare
-                -- TODO: Put "(Press Any Key)" on a new line
-                Label: constant Char_Array := To_C("You Died! (Press Any Key)");
+                Label: constant Char_Array := To_C("You Died!");
                 Label_Height: constant Integer := 48;
                 Label_Width: constant Integer := Integer(Measure_Text(Label, Int(Label_Height)));
                 Text_Size: constant Vector2 := To_Vector2((Label_Width, Label_Height));
@@ -1346,12 +1370,33 @@ begin
     Set_Target_FPS(60);
     Set_Exit_Key(KEY_NULL);
 
+    Init_Audio_Device;
+    for Index in Footsteps_Range loop
+        Footsteps_Sounds(Index) := Load_Sound(To_C("assets/sounds/footsteps.mp3"));
+        Set_Sound_Pitch(Footsteps_Sounds(Index), Footsteps_Pitches(Index));
+    end loop;
+    Blast_Sound := Load_Sound(To_C("assets/sounds/blast.ogg")); -- https://opengameart.org/content/magic-sfx-sample
+    Key_Pickup_Sound := Load_Sound(To_C("assets/sounds/key-pickup.wav"));        -- https://opengameart.org/content/beep-tone-sound-sfx
+    Ambient_Music := Load_Music_Stream("assets/sounds/ambient.wav");      -- https://opengameart.org/content/ambient-soundtrack
+    Set_Music_Volume(Ambient_Music, 0.5);
+    Bomb_Pickup_Sound := Load_Sound(To_C("assets/sounds/bomb-pickup.ogg"));     -- https://opengameart.org/content/pickupplastic-sound
+    Open_Door_Sound := Load_Sound(To_C("assets/sounds/open-door.wav")); -- https://opengameart.org/content/picked-coin-echo
+    Set_Sound_Volume(Open_Door_Sound, 0.5);
+    Checkpoint_Sound := Load_Sound(To_C("assets/sounds/checkpoint.ogg")); -- https://opengameart.org/content/level-up-power-up-coin-get-13-sounds
+    Set_Sound_Pitch(Checkpoint_Sound, 0.8);
+    Guard_Step_Sound := Load_Sound(To_C("assets/sounds/guard-step.ogg")); -- https://opengameart.org/content/fire-whip-hit-yo-frankie
+    Plant_Bomb_Sound := Load_Sound(To_C("assets/sounds/plant-bomb.wav")); -- https://opengameart.org/content/ui-soundpack-by-m1chiboi-bleeps-and-clicks
+
     Random_Integer.Reset(Gen);
     Load_Colors("assets/colors.txt");
     Load_Game_From_Image("assets/map.png", Game, True);
     Game_Save_Checkpoint(Game);
+    Play_Music_Stream(Ambient_Music);
 
     while not Window_Should_Close loop
+        if Is_Music_Stream_Playing(Ambient_Music) then
+            Update_Music_Stream(Ambient_Music);
+        end if;
         Begin_Drawing;
             Clear_Background(Palette_RGB(COLOR_BACKGROUND));
 
@@ -1506,6 +1551,13 @@ begin
     Close_Window;
 end;
 
+--  TODO: Loop the music
+--  TODO: Sound on Finishing Round
+--  TODO: Footstep variation for Mother/Guard bosses (depending on the distance traveled?)
+--  TODO: Footsteps for mother should be lower
+--  TODO: Eyes_Cringe as triangles
+--    The current ones look out of style
+--  TODO: Restarting the game does not reset bombs and keys of the Player
 --  TODO: Can you escape boss rooms using Gnomes?
 --    It's very hard because you need to somehow put them behind yourself
 --  TODO: Restarting should be considered a turn
@@ -1544,7 +1596,6 @@ end;
 --    Smoothly move it into the HUD.
 --  TODO: Different palettes depending on the area
 --    Or maybe different palette for each NG+
---  TODO: Sounds
 --  TODO: Particles
 --    - Player Death animation
 --    - Eeper Death animation
