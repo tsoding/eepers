@@ -1,7 +1,7 @@
 *.ali
 *.o
-game
-game.exe
+eepers
+eepers.exe
 test
 test.exe
 *.swp

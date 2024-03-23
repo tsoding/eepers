@@ -17,7 +17,7 @@ with Interfaces.C.Pointers;
 with Ada.Unchecked_Conversion;
 with Ada.Numerics; use Ada.Numerics;
 
-procedure Game is
+procedure Eepers is
     package Random_Integer is
         new Ada.Numerics.Discrete_Random(Result_Subtype => Integer);
     Gen: Random_Integer.Generator;
@@ -1551,6 +1551,8 @@ begin
     Close_Window;
 end;
 
+--  TODO: Icon on for Windows build
+--  TODO: Window title icon
 --  TODO: Loop the music
 --  TODO: Sound on Finishing Round
 --  TODO: Footstep variation for Mother/Guard bosses (depending on the distance traveled?)
@@ -1579,9 +1581,6 @@ end;
 --  TODO: Don't reset cooldown timer for eepers (might be duplicate)
 --    Maybe just pause
 --  TODO: Try MSAA (if too slow, don't)
---  TODO: Rename executable to "eepers"
---  TODO: Icon on for Windows build
---  TODO: Window title icon
 --  TODO: Show Eeper Cooldown timer outside of the screen somehow
 --  TODO: Visual Clue that the Eeper is about to kill the Player when Completely outside of the Screen
 --    - Cooldown ball is shaking
