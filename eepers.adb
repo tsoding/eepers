@@ -1158,13 +1158,8 @@ procedure Eepers is
     end;
 
     function Repeat(T, Length: Float) return Float is
-        function Floorf(A: C_Float) return C_Float
-            with
-                Import => True,
-                Convention => C,
-                External_Name => "floorf";
     begin
-        return Clamp(T - Float(Floorf(C_Float(T/Length)))*Length, 0.0, Length);
+        return Clamp(T - Float'Floor(T/Length)*Length, 0.0, Length);
     end;
 
     function Delta_Angle(A, B: Float) return Float is
