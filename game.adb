@@ -138,6 +138,7 @@ procedure Game is
     GUARD_STEPS_LIMIT       : constant Integer := 4;
     GUARD_STEP_LENGTH_LIMIT : constant Integer := 100;
     EXPLOSION_LENGTH        : constant Integer := 10;
+    EYES_ANGULAR_VELOCITY   : constant Float := 10.0;
 
     type IVector2 is record
         X, Y: Integer;
@@ -223,15 +224,6 @@ procedure Game is
         return (X => C_float(iv.X), Y => C_float(iv.Y));
     end;
 
-    type Player_State is record
-        Prev_Position: IVector2;
-        Position: IVector2;
-        Keys: Integer := 0;
-        Bombs: Integer := 0;
-        Bomb_Slots: Integer := 1;
-        Dead: Boolean := False;
-    end record;
-
     type Eyes_Kind is (Eyes_Open, Eyes_Closed, Eyes_Angry, Eyes_Cringe, Eyes_Surprised);
     type Eye_Mesh is new Vector2_Array(1..4);
     type Eye is (Left_Eye, Right_Eye);
@@ -264,6 +256,19 @@ procedure Game is
             Right_Eye => [ (0.0, 1.0), (1.0, 1.0), (0.0, 0.0), (1.0, 0.0) ]
         ]
     ];
+
+    type Player_State is record
+        Prev_Position: IVector2;
+        Position: IVector2;
+        Prev_Eyes: Eyes_Kind;
+        Eyes: Eyes_Kind;
+        Eyes_Angle: Float;
+        Eyes_Target: IVector2;
+        Keys: Integer := 0;
+        Bombs: Integer := 0;
+        Bomb_Slots: Integer := 1;
+        Dead: Boolean := False;
+    end record;
 
     type Eeper_Kind is (Eeper_Guard, Eeper_Mother, Eeper_Gnome, Eeper_Father);
 
@@ -669,6 +674,13 @@ procedure Game is
                                 if Update_Player then
                                     Game.Player.Position := (Column, Row);
                                     Game.Player.Prev_Position := (Column, Row);
+                                    -- TODO: should we save the state of the eyes in the checkpoint?
+                                    --   Or maybe checkpoint should just save the entirety of the Player_State.
+                                    --   'Cause that's what we do Eepers anyway. It works for them.
+                                    Game.Player.Prev_Eyes := Eyes_Closed;
+                                    Game.Player.Eyes := Eyes_Open;
+                                    Game.Player.Eyes_Angle := Pi*0.5;
+                                    Game.Player.Eyes_Target := Game.Player.Position + Direction_Vector(Right);
                                 end if;
                         end case;
                     else
@@ -775,7 +787,9 @@ procedure Game is
     procedure Game_Player_Turn(Game: in out Game_State; Dir: Direction) is
         New_Position: constant IVector2 := Game.Player.Position + Direction_Vector(Dir);
     begin
+        Game.Player.Prev_Eyes := Game.Player.Eyes;
         Game.Player.Prev_Position := Game.Player.Position;
+        Game.Player.Eyes_Target := New_Position + Direction_Vector(Dir);
 
         if not Within_Map(Game, New_Position) then
             return;
@@ -1082,11 +1096,64 @@ procedure Game is
         end if;
     end;
 
-    procedure Game_Player(Game: in out Game_State) is
+    function Clamp(X, Lo, Hi: Float) return Float is
     begin
+        if X < Lo then
+            return Lo;
+        elsif X > Hi then
+            return Hi;
+        else
+            return X;
+        end if;
+    end;
+
+    function Repeat(T, Length: Float) return Float is
+        function Floorf(A: C_Float) return C_Float
+            with
+                Import => True,
+                Convention => C,
+                External_Name => "floorf";
+    begin
+        return Clamp(T - Float(Floorf(C_Float(T/Length)))*Length, 0.0, Length);
+    end;
+
+    function Delta_Angle(A, B: Float) return Float is
+        Dlt: Float := Repeat(B - A, 2.0*Pi);
+    begin
+        if Dlt > Pi then
+            Dlt := Dlt - 2.0*Pi;
+        end if;
+        return Dlt;
+    end;
+
+    procedure Draw_Eyes(Start, Size: Vector2; Angle: Float; Prev_Kind, Kind: Eyes_Kind; T: Float) is
+        Dir: constant Vector2 := Vector2_Rotate((1.0, 0.0), C_Float(Angle));
+        Eyes_Ratio: constant Vector2 := (13.0/64.0, 23.0/64.0);
+        Eyes_Size: constant Vector2 := Eyes_Ratio*Size;
+        Center: constant Vector2 := Start + Size*0.5;
+        Position: constant Vector2 := Center + Dir*Eyes_Size.X*0.6;
+        Positions: constant array (Eye) of Vector2 := [
+            Left_Eye => Position - Eyes_Size*(0.5, 0.0) - Eyes_Size*(1.0, 0.5),
+            Right_Eye => Position + Eyes_Size*(0.5, 0.0) - Eyes_Size*(0.0, 0.5)
+        ];
+        Mesh: Eye_Mesh;
+    begin
+        for Eye_Index in Eye loop
+            for Vertex_Index in Eye_Mesh'Range loop
+                Mesh(Vertex_Index) := Positions(Eye_Index) + Eyes_Size*Vector2_Lerp(Eyes_Meshes(Prev_Kind)(Eye_Index)(Vertex_Index), Eyes_Meshes(Kind)(Eye_Index)(Vertex_Index), C_Float(1.0 - T*T));
+            end loop;
+            Draw_Triangle_Strip(Mesh, Palette_RGB(COLOR_EYES));
+        end loop;
+    end;
+
+    procedure Game_Player(Game: in out Game_State) is
+        Eyes_Angular_Direction: constant Float := Delta_Angle(Game.Player.Eyes_Angle, Look_At(To_Vector2(Game.Player.Position)*Cell_Size + Cell_Size*0.5, To_Vector2(Game.Player.Eyes_Target)*Cell_Size + Cell_Size*0.5));
+    begin
+        Game.Player.Eyes_Angle := Game.Player.Eyes_Angle + Eyes_Angular_Direction*EYES_ANGULAR_VELOCITY*Float(Get_Frame_Time);
         if Game.Player.Dead then
             if Game.Turn_Animation >= 0.0 then
                 Draw_Rectangle_V(Screen_Player_Position(Game), Cell_Size, Palette_RGB(COLOR_PLAYER));
+                Draw_Eyes(Screen_Player_Position(Game), Cell_Size, Game.Player.Eyes_Angle, Game.Player.Prev_Eyes, Game.Player.Eyes, Game.Turn_Animation);
             end if;
 
             if Space_Pressed then
@@ -1098,6 +1165,7 @@ procedure Game is
         end if;
 
         Draw_Rectangle_V(Screen_Player_Position(Game), Cell_Size, Palette_RGB(COLOR_PLAYER));
+        Draw_Eyes(Screen_Player_Position(Game), Cell_Size, Game.Player.Eyes_Angle, Game.Player.Prev_Eyes, Game.Player.Eyes, Game.Turn_Animation);
 
         if Game.Turn_Animation > 0.0 then
             return;
@@ -1197,25 +1265,6 @@ procedure Game is
           Palette_RGB(COLOR_HEALTHBAR));
     end;
 
-    procedure Draw_Eyes(Start, Size: Vector2; Angle: Float; Prev_Kind, Kind: Eyes_Kind; T: Float) is
-        Dir: constant Vector2 := Vector2_Rotate((1.0, 0.0), C_Float(Angle));
-        Eyes_Ratio: constant Vector2 := (13.0/64.0, 23.0/64.0);
-        Eyes_Size: constant Vector2 := Eyes_Ratio*Size;
-        Center: constant Vector2 := Start + Size*0.5;
-        Position: constant Vector2 := Center + Dir*Eyes_Size.X*0.6;
-        Positions: constant array (Eye) of Vector2 := [
-            Left_Eye => Position - Eyes_Size*(0.5, 0.0) - Eyes_Size*(1.0, 0.5),
-            Right_Eye => Position + Eyes_Size*(0.5, 0.0) - Eyes_Size*(0.0, 0.5)
-        ];
-        Mesh: Eye_Mesh;
-    begin
-        for Eye_Index in Eye loop
-            for Vertex_Index in Eye_Mesh'Range loop
-                Mesh(Vertex_Index) := Positions(Eye_Index) + Eyes_Size*Vector2_Lerp(Eyes_Meshes(Prev_Kind)(Eye_Index)(Vertex_Index), Eyes_Meshes(Kind)(Eye_Index)(Vertex_Index), C_Float(1.0 - T*T));
-            end loop;
-            Draw_Triangle_Strip(Mesh, Palette_RGB(COLOR_EYES));
-        end loop;
-    end;
 
     procedure Draw_Cooldown_Timer_Bubble(Start, Size: Vector2; Cooldown: Integer; Background: Palette) is
         Text_Color: constant Color := (A => 255, others => 0);
@@ -1224,36 +1273,6 @@ procedure Game is
     begin
         Draw_Circle_V(Bubble_Center, Bubble_Radius, Palette_RGB(Background));
         Draw_Number(Bubble_Center - (Bubble_Radius, Bubble_Radius), (Bubble_Radius, Bubble_Radius)*2.0, Cooldown, Text_Color);
-    end;
-
-    function Clamp(X, Lo, Hi: Float) return Float is
-    begin
-        if X < Lo then
-            return Lo;
-        elsif X > Hi then
-            return Hi;
-        else
-            return X;
-        end if;
-    end;
-
-    function Repeat(T, Length: Float) return Float is
-        function Floorf(A: C_Float) return C_Float
-            with
-                Import => True,
-                Convention => C,
-                External_Name => "floorf";
-    begin
-        return Clamp(T - Float(Floorf(C_Float(T/Length)))*Length, 0.0, Length);
-    end;
-
-    function Delta_Angle(A, B: Float) return Float is
-        Dlt: Float := Repeat(B - A, 2.0*Pi);
-    begin
-        if Dlt > Pi then
-            Dlt := Dlt - 2.0*Pi;
-        end if;
-        return Dlt;
     end;
 
     procedure Game_Eepers(Game: in out Game_State) is
@@ -1265,10 +1284,10 @@ procedure Game is
                    then Interpolate_Positions(Eeper.Prev_Position, Eeper.Position, Game.Turn_Animation)
                    else To_Vector2(Eeper.Position)*Cell_Size);
                 Size: constant Vector2 := To_Vector2(Eeper.Size)*Cell_Size;
-                Eyes_Angular_Velocity: constant Float := Delta_Angle(Eeper.Eyes_Angle, Look_At(Position + Size*0.5, To_Vector2(Eeper.Eyes_Target)*Cell_Size + Cell_Size*0.5));
+                Eyes_Angular_Direction: constant Float := Delta_Angle(Eeper.Eyes_Angle, Look_At(Position + Size*0.5, To_Vector2(Eeper.Eyes_Target)*Cell_Size + Cell_Size*0.5));
             begin
                 if not Eeper.Dead then
-                    Eeper.Eyes_Angle := Eeper.Eyes_Angle + Eyes_Angular_Velocity*6.0*Float(Get_Frame_Time);
+                    Eeper.Eyes_Angle := Eeper.Eyes_Angle + Eyes_Angular_Direction*EYES_ANGULAR_VELOCITY*Float(Get_Frame_Time);
                     case Eeper.Kind is
                         when Eeper_Father =>
                             Draw_Rectangle_V(Position, Size, Palette_RGB(Eeper.Background));
@@ -1462,12 +1481,11 @@ begin
     Close_Window;
 end;
 
---  TODO: Eyes for the Player.
 --  TODO: Eyes of Father changing as the Player gets closer:
 --    - Happy (very important to indicate that he's not hostile)
 --  TODO: Restarting should be considered a turn
 --    It's very useful to update Path Maps and stuff.
---    Or maybe we should save Path Maps too?
+--    Or maybe we should just save Path Maps too?
 --  TODO: Items in HUD may sometimes blend with the background
 --  TODO: If you are standing on the refilled bomb gen and place a bomb you should refill your bomb in that turn.
 --  TODO: Checkpoints should be circles (like all the items)
