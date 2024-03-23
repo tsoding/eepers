@@ -191,6 +191,11 @@ procedure Game is
         return (A.X - B.X, A.Y - B.Y);
     end;
 
+    function "*"(A: IVector2; S: Integer) return IVector2 is
+    begin
+        return (A.X*S, A.Y*S);
+    end;
+
     function Equivalent_IVector2(Left, Right: IVector2) return Boolean is
     begin
         return Left.X = Right.X and then Left.Y = Right.Y;
@@ -973,15 +978,19 @@ procedure Game is
                     Eeper.Prev_Eyes := Eeper.Eyes;
                     case Eeper.Kind is
                         when Eeper_Father =>
-                            if Inside_Of_Rect(Eeper.Position, Eeper.Size, Game.Player.Position) then
-                                Load_Game_From_Image("map.png", Game, True);
-                            elsif Inside_Of_Rect(Eeper.Position - (2, 2), Eeper.Size + (4, 4), Game.Player.Position) then
-                                Eeper.Eyes_Target := Game.Player.Position;
-                                Eeper.Eyes := Eyes_Open;
-                            else
-                                Eeper.Eyes_Target := Eeper.Position + (Eeper.Size.X/2, Eeper.Size.Y);
-                                Eeper.Eyes := Eyes_Closed;
-                            end if;
+                            declare
+                                Wake_Up_Radius: constant IVector2 := (3, 3);
+                            begin
+                                if Inside_Of_Rect(Eeper.Position, Eeper.Size, Game.Player.Position) then
+                                    Load_Game_From_Image("map.png", Game, True);
+                                elsif Inside_Of_Rect(Eeper.Position - Wake_Up_Radius, Eeper.Size + Wake_Up_Radius*2, Game.Player.Position) then
+                                    Eeper.Eyes_Target := Game.Player.Position;
+                                    Eeper.Eyes := Eyes_Open;
+                                else
+                                    Eeper.Eyes_Target := Eeper.Position + (Eeper.Size.X/2, Eeper.Size.Y);
+                                    Eeper.Eyes := Eyes_Closed;
+                                end if;
+                            end;
                         when Eeper_Guard | Eeper_Mother =>
                             Recompute_Path_For_Eeper(Game, Me, GUARD_STEPS_LIMIT, GUARD_STEP_LENGTH_LIMIT);
                             if Eeper.Path(Eeper.Position.Y, Eeper.Position.X) = 0 then
@@ -1497,8 +1506,8 @@ begin
     Close_Window;
 end;
 
---  TODO: Eyes of Father changing as the Player gets closer:
---    - Happy (very important to indicate that he's not hostile)
+--  TODO: Can you escape boss rooms using Gnomes?
+--    It's very hard because you need to somehow put them behind yourself
 --  TODO: Restarting should be considered a turn
 --    It's very useful to update Path Maps and stuff.
 --    Or maybe we should just save Path Maps too?
@@ -1506,8 +1515,6 @@ end;
 --  TODO: If you are standing on the refilled bomb gen and place a bomb you should refill your bomb in that turn.
 --  TODO: Checkpoints should be circles (like all the items)
 --  TODO: Custom font
---  TODO: Background is too boring
---    Maybe some sort of repeating pattern would be better.
 --  TODO: Determenistically choose the paths again, but make them more interesting
 --    - Gnomes are just being deterministic
 --    - Mother and Guard always pick the longest path. Or generally the path that brings the Euclidean Distance closer
@@ -1543,7 +1550,6 @@ end;
 --    - Eeper Death animation
 --    - Cool effects when you pick up items and checkpoints
 --  TODO: Camera shaking when big bosses (Guard and Mother) make moves
---  TODO: Indicate how many bomb slots we have in HUD
 --  TODO: Menu
 --    Could be just a splash with the game name and logo.
 --  TODO: WebAssembly build
@@ -1552,3 +1558,8 @@ end;
 --  TODO: Path finding in a separate thread
 --  TODO: Eeper slide attack animation is pretty boring @polish
 --  TODO: Bake assets into executable
+--  TODO: Background is too boring
+--    Maybe some sort of repeating pattern would be better.
+--  TODO: Indicate how many bomb slots we have in HUD
+--  TODO: Eyes of Father changing as the Player gets closer:
+--    - Happy (very important to indicate that he's not hostile)
