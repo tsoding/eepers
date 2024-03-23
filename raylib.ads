@@ -316,4 +316,9 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "SetSoundVolume";
+    procedure Set_Window_Icon(Img: Image)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "SetWindowIcon";
 end Raylib;
