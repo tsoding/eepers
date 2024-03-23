@@ -62,6 +62,7 @@ package Raylib is
             Convention => C,
             External_Name => "SetConfigFlags";
     KEY_NULL:   constant int := 0;
+    KEY_C:      constant int := 67;
     KEY_R:      constant int := 82;
     KEY_S:      constant int := 83;
     KEY_W:      constant int := 87;
@@ -235,4 +236,84 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "ChangeDirectory";
+
+    type Audio_Stream is record
+        Buffer: Addr;
+        Processor: Addr;
+        Sample_Rate: unsigned;
+        Sample_Size: unsigned;
+        Channels: unsigned;
+    end record
+        with Convention => C_Pass_By_Copy;
+
+    type Sound is record
+        Stream: Audio_Stream;
+        Frame_Count: unsigned;
+    end record
+        with Convention => C_Pass_By_Copy;
+
+    type Music is record
+        Stream: Audio_Stream;
+        Frame_Count: unsigned;
+        Looping: C_Bool;
+        Ctx_Type: Int;
+        Ctx_Data: Addr;
+    end record
+        with Convention => C_Pass_By_Copy;
+
+    function Load_Sound(File_Name: char_array) return Sound
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "LoadSound";
+    function Load_Music_Stream(File_Name: char_array) return Music
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "LoadMusicStream";
+    procedure Play_Music_Stream(M: Music)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "PlayMusicStream";
+    procedure Stop_Music_Stream(M: Music)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "StopMusicStream";
+    function Is_Music_Stream_Playing(M: Music) return C_Bool
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "IsMusicStreamPlaying";
+    procedure Update_Music_Stream(M: Music)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "UpdateMusicStream";
+    procedure Set_Music_Volume(M: Music; Volume: C_Float)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "SetMusicVolume";
+    procedure Init_Audio_Device
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "InitAudioDevice";
+    procedure Play_Sound(S: Sound)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "PlaySound";
+    procedure Set_Sound_Pitch(S: Sound; Pitch: C_Float)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "SetSoundPitch";
+    procedure Set_Sound_Volume(S: Sound; Volume: C_Float)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "SetSoundVolume";
 end Raylib;
