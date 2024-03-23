@@ -1575,12 +1575,12 @@ begin
     Close_Window;
 end;
 
+--  TODO: Items in HUD may sometimes blend with the background
 --  TODO: Footstep variation for Mother/Guard bosses (depending on the distance traveled?)
 --  TODO: Footsteps for mother should be lower
 --  TODO: Restarting should be considered a turn
 --    It's very useful to update Path Maps and stuff.
 --    Or maybe we should just save Path Maps too?
---  TODO: Items in HUD may sometimes blend with the background
 --  TODO: If you are standing on the refilled bomb gen and place a bomb you should refill your bomb in that turn.
 --  TODO: Checkpoints should be circles (like all the items)
 --  TODO: Custom font
@@ -1591,8 +1591,6 @@ end;
 --  TODO: Enemies should attack on zero just like a bomb.
 --  TODO: Properly disablable DEV features
 --  TODO: Fullscreen mode
---  TODO: Don't reset cooldown timer for eepers (might be duplicate)
---    Maybe just pause
 --  TODO: Try MSAA (if too slow, don't)
 --  TODO: Show Eeper Cooldown timer outside of the screen somehow
 --  TODO: Visual Clue that the Eeper is about to kill the Player when Completely outside of the Screen
