@@ -70,6 +70,10 @@ package Raylib is
     KEY_P:      constant int := 80;
     KEY_O:      constant int := 79;
     KEY_X:      constant int := 88;
+    KEY_RIGHT:  constant int := 262;
+    KEY_LEFT:   constant int := 263;
+    KEY_DOWN:   constant int := 264;
+    KEY_UP:     constant int := 265;
     KEY_SPACE:  constant int := 32;
     KEY_ESCAPE: constant int := 256;
     KEY_ENTER: constant Int := 257;
@@ -78,6 +82,11 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "IsKeyPressed";
+    function Get_Key_Pressed return int
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "GetKeyPressed";
 
     procedure Draw_Rectangle_V(position: Vector2; size: Vector2; c: Color)
         with

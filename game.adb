@@ -680,7 +680,7 @@ procedure Game is
                                     Game.Player.Prev_Eyes := Eyes_Closed;
                                     Game.Player.Eyes := Eyes_Open;
                                     Game.Player.Eyes_Angle := Pi*0.5;
-                                    Game.Player.Eyes_Target := Game.Player.Position + Direction_Vector(Right);
+                                    Game.Player.Eyes_Target := Game.Player.Position + Direction_Vector(Up);
                                 end if;
                         end case;
                     else
@@ -925,10 +925,12 @@ procedure Game is
 
     Space_Pressed: Boolean := False;
     Dir_Pressed: array (Direction) of Boolean := [others => False];
+    Any_Key_Pressed: Boolean := False;
 
     procedure Swallow_Player_Input is
     begin
         Space_Pressed := False;
+        Any_Key_Pressed := False;
         Dir_Pressed := [others => False];
     end;
 
@@ -1156,7 +1158,7 @@ procedure Game is
                 Draw_Eyes(Screen_Player_Position(Game), Cell_Size, Game.Player.Eyes_Angle, Game.Player.Prev_Eyes, Game.Player.Eyes, Game.Turn_Animation);
             end if;
 
-            if Space_Pressed then
+            if Any_Key_Pressed then
                 Game_Restore_Checkpoint(Game);
                 Game.Player.Dead := False;
             end if;
@@ -1243,7 +1245,8 @@ procedure Game is
 
         if Game.Player.Dead then
             declare
-                Label: constant Char_Array := To_C("Ded");
+                -- TODO: Put "(Press Any Key)" on a new line
+                Label: constant Char_Array := To_C("You Died! (Press Any Key)");
                 Label_Height: constant Integer := 48;
                 Label_Width: constant Integer := Integer(Measure_Text(Label, Int(Label_Height)));
                 Text_Size: constant Vector2 := To_Vector2((Label_Width, Label_Height));
@@ -1343,10 +1346,23 @@ begin
         Begin_Drawing;
             Clear_Background(Palette_RGB(COLOR_BACKGROUND));
 
-            Space_Pressed := Boolean(Is_Key_Pressed(KEY_SPACE));
-            for Dir in Direction loop
-                Dir_Pressed(Dir) := Boolean(Is_Key_Pressed(Keys(Dir)));
-            end loop;
+            Swallow_Player_Input;
+            Polling: loop
+                declare
+                    Key: constant int := Get_Key_Pressed;
+                begin
+                    case Key is
+                        when KEY_NULL => exit Polling;
+                        when KEY_SPACE => Space_Pressed := True;
+                        when KEY_A | KEY_LEFT => Dir_Pressed(Left) := True;
+                        when KEY_D | KEY_RIGHT => Dir_Pressed(Right) := True;
+                        when KEY_S | KEY_DOWN => Dir_Pressed(Down) := True;
+                        when KEY_W | KEY_UP => Dir_Pressed(Up) := True;
+                        when others => null;
+                    end case;
+                    Any_Key_Pressed := True;
+                end;
+            end loop Polling;
 
             if DEVELOPMENT then
                 if Is_Key_Pressed(KEY_R) then
@@ -1521,13 +1537,11 @@ end;
 --    Smoothly move it into the HUD.
 --  TODO: Different palettes depending on the area
 --    Or maybe different palette for each NG+
---  TODO: Restart on any key press after ded
 --  TODO: Sounds
 --  TODO: Particles
 --    - Player Death animation
 --    - Eeper Death animation
 --    - Cool effects when you pick up items and checkpoints
---  TODO: Allow moving with arrows too
 --  TODO: Camera shaking when big bosses (Guard and Mother) make moves
 --  TODO: Indicate how many bomb slots we have in HUD
 --  TODO: Menu
