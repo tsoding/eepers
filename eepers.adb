@@ -267,8 +267,8 @@ procedure Eepers is
             Right_Eye => [ (0.0, 1.0), (1.0, 1.0), (0.0, 0.3), (1.0, 0.0) ]
         ],
         Eyes_Cringe => [
-            Left_Eye => [ (0.0, 0.5), (0.5, 0.75), (1.3, 0.75), (0.0, 1.0) ],
-            Right_Eye => [ (1.0, 1.0), (0.5, 0.75), (-0.3, 0.75), (1.0, 0.5) ]
+            Left_Eye => [ (0.0, 0.5), (0.25, 0.75), (1.3, 0.75), (0.0, 1.0) ],
+            Right_Eye => [ (1.0, 1.0), (0.75, 0.75), (-0.3, 0.75), (1.0, 0.5) ]
         ],
         Eyes_Surprised => [
             Left_Eye => [ (0.0, 0.3), (0.0, 1.0), (1.0, 0.3), (1.0, 1.0) ],
@@ -696,9 +696,11 @@ procedure Eepers is
                                 if Update_Player then
                                     Game.Player.Position := (Column, Row);
                                     Game.Player.Prev_Position := (Column, Row);
+                                    Game.Player.Bombs := 0;
+                                    Game.Player.Keys := 0;
                                     -- TODO: should we save the state of the eyes in the checkpoint?
                                     --   Or maybe checkpoint should just save the entirety of the Player_State.
-                                    --   'Cause that's what we do Eepers anyway. It works for them.
+                                    --   'Cause that's what we do for Eepers anyway. It works for them.
                                     Game.Player.Prev_Eyes := Eyes_Closed;
                                     Game.Player.Eyes := Eyes_Open;
                                     Game.Player.Eyes_Angle := Pi*0.5;
@@ -1575,11 +1577,6 @@ end;
 
 --  TODO: Footstep variation for Mother/Guard bosses (depending on the distance traveled?)
 --  TODO: Footsteps for mother should be lower
---  TODO: Eyes_Cringe as triangles
---    The current ones look out of style
---  TODO: Restarting the game does not reset bombs and keys of the Player
---  TODO: Can you escape boss rooms using Gnomes?
---    It's very hard because you need to somehow put them behind yourself
 --  TODO: Restarting should be considered a turn
 --    It's very useful to update Path Maps and stuff.
 --    Or maybe we should just save Path Maps too?
@@ -1628,3 +1625,5 @@ end;
 --  TODO: Eyes of Father changing as the Player gets closer:
 --    - Happy (very important to indicate that he's not hostile)
 --  TODO: Transition Player's eyes linearly in Euclidean space instead of angularly.
+--  TODO: Can you escape boss rooms using Gnomes?
+--    It's very hard because you need to somehow put them behind yourself
