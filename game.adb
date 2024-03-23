@@ -1375,17 +1375,17 @@ begin
         Footsteps_Sounds(Index) := Load_Sound(To_C("assets/sounds/footsteps.mp3"));
         Set_Sound_Pitch(Footsteps_Sounds(Index), Footsteps_Pitches(Index));
     end loop;
-    Blast_Sound := Load_Sound(To_C("assets/sounds/blast.ogg")); -- https://opengameart.org/content/magic-sfx-sample
-    Key_Pickup_Sound := Load_Sound(To_C("assets/sounds/key-pickup.wav"));        -- https://opengameart.org/content/beep-tone-sound-sfx
-    Ambient_Music := Load_Music_Stream("assets/sounds/ambient.wav");      -- https://opengameart.org/content/ambient-soundtrack
+    Blast_Sound := Load_Sound(To_C("assets/sounds/blast.ogg"));             -- https://opengameart.org/content/magic-sfx-sample
+    Key_Pickup_Sound := Load_Sound(To_C("assets/sounds/key-pickup.wav"));   -- https://opengameart.org/content/beep-tone-sound-sfx
+    Ambient_Music := Load_Music_Stream(To_C("assets/sounds/ambient.wav"));  -- https://opengameart.org/content/ambient-soundtrack
     Set_Music_Volume(Ambient_Music, 0.5);
-    Bomb_Pickup_Sound := Load_Sound(To_C("assets/sounds/bomb-pickup.ogg"));     -- https://opengameart.org/content/pickupplastic-sound
-    Open_Door_Sound := Load_Sound(To_C("assets/sounds/open-door.wav")); -- https://opengameart.org/content/picked-coin-echo
+    Bomb_Pickup_Sound := Load_Sound(To_C("assets/sounds/bomb-pickup.ogg")); -- https://opengameart.org/content/pickupplastic-sound
+    Open_Door_Sound := Load_Sound(To_C("assets/sounds/open-door.wav"));     -- https://opengameart.org/content/picked-coin-echo
     Set_Sound_Volume(Open_Door_Sound, 0.5);
-    Checkpoint_Sound := Load_Sound(To_C("assets/sounds/checkpoint.ogg")); -- https://opengameart.org/content/level-up-power-up-coin-get-13-sounds
+    Checkpoint_Sound := Load_Sound(To_C("assets/sounds/checkpoint.ogg"));   -- https://opengameart.org/content/level-up-power-up-coin-get-13-sounds
     Set_Sound_Pitch(Checkpoint_Sound, 0.8);
-    Guard_Step_Sound := Load_Sound(To_C("assets/sounds/guard-step.ogg")); -- https://opengameart.org/content/fire-whip-hit-yo-frankie
-    Plant_Bomb_Sound := Load_Sound(To_C("assets/sounds/plant-bomb.wav")); -- https://opengameart.org/content/ui-soundpack-by-m1chiboi-bleeps-and-clicks
+    Guard_Step_Sound := Load_Sound(To_C("assets/sounds/guard-step.ogg"));   -- https://opengameart.org/content/fire-whip-hit-yo-frankie
+    Plant_Bomb_Sound := Load_Sound(To_C("assets/sounds/plant-bomb.wav"));   -- https://opengameart.org/content/ui-soundpack-by-m1chiboi-bleeps-and-clicks
 
     Random_Integer.Reset(Gen);
     Load_Colors("assets/colors.txt");
