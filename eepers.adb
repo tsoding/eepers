@@ -1551,7 +1551,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Icon on for Windows build
 --  TODO: Window title icon
 --  TODO: Loop the music
 --  TODO: Sound on Finishing Round
