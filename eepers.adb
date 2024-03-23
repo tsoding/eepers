@@ -37,7 +37,7 @@ procedure Eepers is
     Guard_Step_Sound: Sound;
     Ambient_Music: Music;
 
-    DEVELOPMENT : constant Boolean := True;
+    DEVELOPMENT : constant Boolean := False;
 
     type Palette is (
       COLOR_BACKGROUND,
