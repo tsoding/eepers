@@ -1261,6 +1261,7 @@ procedure Eepers is
                         Game_Eepers_Turn(Game);
                         Game_Bombs_Turn(Game);
                         Game.Duration_Of_Last_Turn := Get_Time - Start_Of_Turn;
+                        exit;
                     end;
                 end if;
             end loop;
@@ -1423,22 +1424,21 @@ begin
             Clear_Background(Palette_RGB(COLOR_BACKGROUND));
 
             Swallow_Player_Input;
-            Polling: loop
-                declare
-                    Key: constant int := Get_Key_Pressed;
-                begin
-                    case Key is
-                        when KEY_NULL => exit Polling;
-                        when KEY_SPACE => Space_Pressed := True;
-                        when KEY_A | KEY_LEFT => Dir_Pressed(Left) := True;
-                        when KEY_D | KEY_RIGHT => Dir_Pressed(Right) := True;
-                        when KEY_S | KEY_DOWN => Dir_Pressed(Down) := True;
-                        when KEY_W | KEY_UP => Dir_Pressed(Up) := True;
-                        when others => null;
-                    end case;
-                    Any_Key_Pressed := True;
-                end;
-            end loop Polling;
+            if Is_Key_Down(KEY_LEFT_SHIFT) then
+                Dir_Pressed(Left) := Boolean(Is_Key_Down(KEY_A)) or else Boolean(Is_Key_Down(KEY_LEFT));
+                Dir_Pressed(Right) := Boolean(Is_Key_Down(KEY_D)) or else Boolean(Is_Key_Down(KEY_RIGHT));
+                Dir_Pressed(Down) := Boolean(Is_Key_Down(KEY_S)) or else Boolean(Is_Key_Down(KEY_DOWN));
+                Dir_Pressed(Up) := Boolean(Is_Key_Down(KEY_W)) or else Boolean(Is_Key_Down(KEY_UP));
+            else
+                Dir_Pressed(Left) := Boolean(Is_Key_Pressed(KEY_A)) or else Boolean(Is_Key_Pressed(KEY_LEFT));
+                Dir_Pressed(Right) := Boolean(Is_Key_Pressed(KEY_D)) or else Boolean(Is_Key_Pressed(KEY_RIGHT));
+                Dir_Pressed(Down) := Boolean(Is_Key_Pressed(KEY_S)) or else Boolean(Is_Key_Pressed(KEY_DOWN));
+                Dir_Pressed(Up) := Boolean(Is_Key_Pressed(KEY_W)) or else Boolean(Is_Key_Pressed(KEY_UP));
+            end if;
+            Space_Pressed := Boolean(Is_Key_Pressed(KEY_SPACE));
+            while not Any_Key_Pressed and then Get_Key_Pressed /= KEY_NULL loop
+                Any_Key_Pressed := True;
+            end loop;
 
             if DEVELOPMENT then
                 if Is_Key_Pressed(KEY_R) then
@@ -1573,8 +1573,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Loop the music
---  TODO: Sound on Finishing Round
 --  TODO: Footstep variation for Mother/Guard bosses (depending on the distance traveled?)
 --  TODO: Footsteps for mother should be lower
 --  TODO: Eyes_Cringe as triangles
@@ -1604,8 +1602,6 @@ end;
 --    - Cooldown ball is shaking
 --  TODO: Cool animation for New Game
 --  TODO: Tutorial sign that says "WASD" to move when you start the game for the first time. And how to place the bomb on picking it up
---  TODO: Keep steping while you are holding a certain direction
---    Cause constantly tapping it feels like ass.
 --  TODO: count the player's turns towards the final score of the game
 --    We can even collect different stats, like bombs collected, bombs used,
 --    times died etc.
