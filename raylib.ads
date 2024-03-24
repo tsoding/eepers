@@ -68,6 +68,7 @@ package Raylib is
     KEY_W:      constant int := 87;
     KEY_A:      constant int := 65;
     KEY_D:      constant int := 68;
+    KEY_I:      constant int := 73;
     KEY_P:      constant int := 80;
     KEY_O:      constant int := 79;
     KEY_X:      constant int := 88;
