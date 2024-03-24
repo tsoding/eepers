@@ -158,6 +158,11 @@ procedure Eepers is
         X, Y: Integer;
     end record;
 
+	function "="(A, B: IVector2) return Boolean is
+	begin
+	    return A.X = B.X and then A.Y = B.Y;
+	end;
+
     type Cell is (Cell_None, Cell_Floor, Cell_Wall, Cell_Barricade, Cell_Door, Cell_Explosion);
     Cell_Size : constant Vector2 := (x => 50.0, y => 50.0);
 
@@ -188,11 +193,6 @@ procedure Eepers is
     function "<"(A, B: IVector2) return Boolean is
     begin
         return A.X < B.X and then A.Y < B.Y;
-    end;
-
-    function "="(A, B: IVector2) return Boolean is
-    begin
-        return A.X = B.X and then A.Y = B.Y;
     end;
 
     function "+"(A, B: IVector2) return IVector2 is
