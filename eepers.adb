@@ -1405,7 +1405,7 @@ procedure Eepers is
     end;
 
     Game: Game_State;
-    Title: constant Char_Array := To_C("Eepers (v1.1)");
+    Title: constant Char_Array := To_C("Eepers (v1.2)");
 
     Palette_Editor: Boolean := False;
     Palette_Editor_Choice: Palette := Palette'First;
