@@ -7,7 +7,6 @@ with Ada.Strings.Unbounded;
 use Ada.Strings.Unbounded;
 with Ada.Containers.Vectors;
 with Ada.Unchecked_Deallocation;
-with Ada.Containers.Hashed_Maps;
 use Ada.Containers;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings;
@@ -210,33 +209,14 @@ procedure Eepers is
         return (A.X*S, A.Y*S);
     end;
 
-    function Equivalent_IVector2(Left, Right: IVector2) return Boolean is
-    begin
-        return Left.X = Right.X and then Left.Y = Right.Y;
-    end;
-
-    function Hash_IVector2(V: IVector2) return Hash_Type is
-        M31: constant Hash_Type := 2**31-1; -- a nice Mersenne prime
-    begin
-        return Hash_Type(V.X) * M31 + Hash_Type(V.Y);
-    end;
-
-    type Item_Kind is (Item_Key, Item_Bomb_Gen, Item_Checkpoint);
-
-    type Item(Kind: Item_Kind := Item_Key) is record
-        case Kind is
-            when Item_Bomb_Gen =>
-                Cooldown: Integer;
-            when others => null;
-        end case;
+    type Item_Kind is (Item_None, Item_Key, Item_Bomb_Gen, Item_Checkpoint);
+    type Item is record
+        Kind: Item_Kind := Item_None;
+        Position: IVector2;
+        Cooldown: Integer;
     end record;
-
-    package Hashed_Map_Items is new
-        Ada.Containers.Hashed_Maps(
-            Key_Type => IVector2,
-            Element_Type => Item,
-            Hash => Hash_IVector2,
-            Equivalent_Keys => Equivalent_IVector2);
+    type Item_Index is range 1..100;
+    type Item_Array is array (Item_Index) of Item;
 
     function To_Vector2(iv: IVector2) return Vector2 is
     begin
@@ -325,7 +305,7 @@ procedure Eepers is
         Player_Bombs: Integer;
         Player_Bomb_Slots: Integer;
         Eepers: Eeper_Array;
-        Items: Hashed_Map_Items.Map;
+        Items: Item_Array;
         Bombs: Bomb_State_Array;
     end record;
 
@@ -336,7 +316,7 @@ procedure Eepers is
 
         Turn_Animation: Float := 0.0;
 
-        Items: Hashed_Map_Items.Map;
+        Items: Item_Array;
         Bombs: Bomb_State_Array;
         Camera_Position: Vector2 := (x => 0.0, y => 0.0);
 
@@ -497,9 +477,8 @@ procedure Eepers is
         Game.Bombs             := Game.Checkpoint.Bombs;
     end;
 
-    Too_Many_Entities: exception;
-
     function Allocate_Eeper(Game: in out Game_State) return Eeper_Index is
+        Too_Many_Entities: exception;
     begin
         for Eeper in Game.Eepers'Range loop
             if Game.Eepers(Eeper).Dead then
@@ -508,6 +487,21 @@ procedure Eepers is
             end if;
         end loop;
         raise Too_Many_Entities;
+    end;
+
+    procedure Allocate_Item(Game: in out Game_State; Position: IVector2; Kind: Item_Kind) is
+        Too_Many_Items: exception;
+    begin
+        Put_Line(Kind'Image);
+        for Item of Game.Items loop
+            if Item.Kind = Item_None then
+                Item.Kind := Kind;
+                Item.Position := Position;
+                Item.Cooldown := 0;
+                return;
+            end if;
+        end loop;
+        raise Too_Many_Items;
     end;
 
     procedure Spawn_Gnome(Game: in out Game_State; Position: IVector2) is
@@ -646,7 +640,9 @@ procedure Eepers is
             end loop;
         end loop;
 
-        Game.Items.Clear;
+        for Item of Game.Items loop
+            Item.Kind := Item_None;
+        end loop;
         for Bomb of Game.Bombs loop
             Bomb.Countdown := 0;
         end loop;
@@ -682,15 +678,15 @@ procedure Eepers is
                             when Level_Door => Game.Map(Row, Column) := Cell_Door;
                             when Level_Checkpoint =>
                                 Game.Map(Row, Column) := Cell_Floor;
-                                Game.Items.Insert((Column, Row), (Kind => Item_Checkpoint));
+                                Allocate_Item(Game, (Column, Row), Item_Checkpoint);
                             when Level_Bomb_Gen =>
                                 Game.Map(Row, Column) := Cell_Floor;
-                                Game.Items.Insert((Column, Row), (Kind => Item_Bomb_Gen, Cooldown => 0));
+                                Allocate_Item(Game, (Column, Row), Item_Bomb_Gen);
                             when Level_Barricade =>
                                 Game.Map(Row, Column) := Cell_Barricade;
                             when Level_Key =>
                                 Game.Map(Row, Column) := Cell_Floor;
-                                Game.Items.Insert((Column, Row), (Kind => Item_Key));
+                                Allocate_Item(Game, (Column, Row), Item_Key);
                             when Level_Player =>
                                 Game.Map(Row, Column) := Cell_Floor;
                                 if Update_Player then
@@ -754,23 +750,23 @@ procedure Eepers is
     end;
 
     procedure Game_Items(Game: in Game_State) is
-        use Hashed_Map_Items;
     begin
-        for C in Game.Items.Iterate loop
-            case Element(C).Kind is
-                when Item_Key => Draw_Key(Key(C));
+        for Item of Game.Items loop
+            case Item.Kind is
+                when Item_None => null;
+                when Item_Key => Draw_Key(Item.Position);
                 when Item_Checkpoint =>
                     declare
                         Checkpoint_Item_Size: constant Vector2 := Cell_Size*0.5;
                     begin
-                        Draw_Rectangle_V(To_Vector2(Key(C))*Cell_Size + Cell_Size*0.5 - Checkpoint_Item_Size*0.5, Checkpoint_Item_Size, Palette_RGB(COLOR_CHECKPOINT));
+                        Draw_Rectangle_V(To_Vector2(Item.Position)*Cell_Size + Cell_Size*0.5 - Checkpoint_Item_Size*0.5, Checkpoint_Item_Size, Palette_RGB(COLOR_CHECKPOINT));
                     end;
                 when Item_Bomb_Gen =>
-                    if Element(C).Cooldown > 0 then
-                        Draw_Bomb(Key(C), Color_Brightness(Palette_RGB(COLOR_BOMB), -0.5));
-                        Draw_Number(Key(C), Element(C).Cooldown, Palette_RGB(COLOR_LABEL));
+                    if Item.Cooldown > 0 then
+                        Draw_Bomb(Item.Position, Color_Brightness(Palette_RGB(COLOR_BOMB), -0.5));
+                        Draw_Number(Item.Position, Item.Cooldown, Palette_RGB(COLOR_LABEL));
                     else
-                        Draw_Bomb(Key(C), Palette_RGB(COLOR_BOMB));
+                        Draw_Bomb(Item.Position, Palette_RGB(COLOR_BOMB));
                     end if;
             end case;
         end loop;
@@ -825,32 +821,30 @@ procedure Eepers is
             case Game.Map(New_Position.Y, New_Position.X) is
                 when Cell_Floor =>
                     Game.Player.Position := New_Position;
-                    declare
-                        use Hashed_Map_Items;
-                        C: Cursor := Game.Items.Find(New_Position);
-                    begin
-                        if Has_Element(C) then
-                            case Element(C).Kind is
+                    for Item of Game.Items loop
+                        if Item.Position = New_Position then
+                            case Item.Kind is
+                                when Item_None => null;
                                 when Item_Key =>
                                     Game.Player.Keys := Game.Player.Keys + 1;
-                                    Game.Items.Delete(C);
+                                    Item.Kind := Item_None;
                                     Play_Sound(Key_Pickup_Sound);
                                 when Item_Bomb_Gen => if
                                     Game.Player.Bombs < Game.Player.Bomb_Slots
-                                    and then Element(C).Cooldown <= 0
+                                    and then Item.Cooldown <= 0
                                 then
                                     Game.Player.Bombs := Game.Player.Bombs + 1;
-                                    Game.Items.Replace_Element(C, (Kind => Item_Bomb_Gen, Cooldown => BOMB_GENERATOR_COOLDOWN));
+                                    Item.Cooldown := BOMB_GENERATOR_COOLDOWN;
                                     Play_Sound(Bomb_Pickup_Sound);
                                 end if;
                                 when Item_Checkpoint =>
-                                    Game.Items.Delete(C);
+                                    Item.Kind := Item_None;
                                     Game.Player.Bombs := Game.Player.Bomb_Slots;
                                     Game_Save_Checkpoint(Game);
                                     Play_Sound(Checkpoint_Sound);
                             end case;
                         end if;
-                    end;
+                    end loop;
                 when Cell_Door =>
                     if Game.Player.Keys > 0 then
                         Game.Player.Keys := Game.Player.Keys - 1;
@@ -1015,7 +1009,7 @@ procedure Eepers is
                         end if;
                     when Eeper_Gnome =>
                         Eeper.Dead := True;
-                        Game.Items.Insert(Eeper.Position, (Kind => Item_Key));
+                        Allocate_Item(Game, Eeper.Position, Item_Key);
                 end case;
             end if;
         end loop;
@@ -1160,12 +1154,11 @@ procedure Eepers is
     end;
 
     procedure Game_Items_Turn(Game: in out Game_State) is
-        use Hashed_Map_Items;
     begin
-        for C in Game.Items.Iterate loop
-            if Element(C).Kind = Item_Bomb_Gen then
-                if Element(C).Cooldown > 0 then
-                    Game.Items.Replace_Element(C, (Kind => Item_Bomb_Gen, Cooldown => Element(C).Cooldown - 1));
+        for Item of Game.Items loop
+            if Item.Kind = Item_Bomb_Gen then
+                if Item.Cooldown > 0 then
+                    Item.Cooldown := Item.Cooldown - 1;
                 end if;
             end if;
         end loop;
