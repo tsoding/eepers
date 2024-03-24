@@ -1427,15 +1427,15 @@ begin
 
             Swallow_Player_Input;
             if Is_Key_Down(KEY_LEFT_SHIFT) then
-                Dir_Pressed(Left) := Boolean(Is_Key_Down(KEY_A)) or else Boolean(Is_Key_Down(KEY_LEFT));
-                Dir_Pressed(Right) := Boolean(Is_Key_Down(KEY_D)) or else Boolean(Is_Key_Down(KEY_RIGHT));
-                Dir_Pressed(Down) := Boolean(Is_Key_Down(KEY_S)) or else Boolean(Is_Key_Down(KEY_DOWN));
-                Dir_Pressed(Up) := Boolean(Is_Key_Down(KEY_W)) or else Boolean(Is_Key_Down(KEY_UP));
+                Dir_Pressed(Left) := Boolean(Is_Key_Down(KEY_A)) or else Boolean(Is_Key_Down(KEY_LEFT)) or else Boolean(Is_Key_Down(KEY_H));
+                Dir_Pressed(Right) := Boolean(Is_Key_Down(KEY_D)) or else Boolean(Is_Key_Down(KEY_RIGHT))or else Boolean(Is_Key_Down(KEY_L));
+                Dir_Pressed(Down) := Boolean(Is_Key_Down(KEY_S)) or else Boolean(Is_Key_Down(KEY_DOWN)) or else Boolean(Is_Key_Down(KEY_J));
+                Dir_Pressed(Up) := Boolean(Is_Key_Down(KEY_W)) or else Boolean(Is_Key_Down(KEY_UP)) or else Boolean(Is_Key_Down(KEY_K));
             else
-                Dir_Pressed(Left) := Boolean(Is_Key_Pressed(KEY_A)) or else Boolean(Is_Key_Pressed(KEY_LEFT));
-                Dir_Pressed(Right) := Boolean(Is_Key_Pressed(KEY_D)) or else Boolean(Is_Key_Pressed(KEY_RIGHT));
-                Dir_Pressed(Down) := Boolean(Is_Key_Pressed(KEY_S)) or else Boolean(Is_Key_Pressed(KEY_DOWN));
-                Dir_Pressed(Up) := Boolean(Is_Key_Pressed(KEY_W)) or else Boolean(Is_Key_Pressed(KEY_UP));
+                Dir_Pressed(Left) := Boolean(Is_Key_Pressed(KEY_A)) or else Boolean(Is_Key_Pressed(KEY_LEFT)) or else Boolean(Is_Key_Pressed(KEY_H));
+                Dir_Pressed(Right) := Boolean(Is_Key_Pressed(KEY_D)) or else Boolean(Is_Key_Pressed(KEY_RIGHT)) or else Boolean(Is_Key_Pressed(KEY_L));
+                Dir_Pressed(Down) := Boolean(Is_Key_Pressed(KEY_S)) or else Boolean(Is_Key_Pressed(KEY_DOWN)) or else Boolean(Is_Key_Pressed(KEY_J));
+                Dir_Pressed(Up) := Boolean(Is_Key_Pressed(KEY_W)) or else Boolean(Is_Key_Pressed(KEY_UP)) or else Boolean(Is_Key_Pressed(KEY_K));
             end if;
             Space_Pressed := Boolean(Is_Key_Pressed(KEY_SPACE));
             while not Any_Key_Pressed and then Get_Key_Pressed /= KEY_NULL loop

@@ -62,6 +62,10 @@ package Raylib is
             Convention => C,
             External_Name => "SetConfigFlags";
     KEY_NULL:   constant int := 0;
+    KEY_J:      constant int := 74;
+    KEY_K:      constant int := 75;
+    KEY_H:      constant int := 72;
+    KEY_L:      constant int := 76;
     KEY_C:      constant int := 67;
     KEY_R:      constant int := 82;
     KEY_S:      constant int := 83;
