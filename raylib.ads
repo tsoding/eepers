@@ -85,6 +85,11 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "IsKeyPressed";
+    function Is_Key_Released(key: int) return C_bool
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "IsKeyReleased";
     function Get_Key_Pressed return int
         with
             Import => True,

@@ -934,15 +934,49 @@ procedure Eepers is
         return Vector2_Lerp(Prev_Position, Curr_Position, C_Float(1.0 - T*T));
     end;
 
-    Space_Pressed: Boolean := False;
-    Dir_Pressed: array (Direction) of Boolean := [others => False];
+    type Command_Kind is (Command_Step, Command_Plant);
+    type Command(Kind: Command_Kind := Command_Step) is record
+        case Kind is
+            when Command_Step => Dir: Direction;
+            when Command_Plant => null;
+        end case;
+    end record;
+    Command_Capacity: constant Natural := 5;
+    type Command_Array is array (0..Command_Capacity-1) of Command;
+    type Command_Queue_Record is record
+        Items: Command_Array;
+        Start: Natural := 0;
+        Size: Natural := 0;
+    end record;
+
+    procedure Command_Enqueue(Q: in out Command_Queue_Record; C: Command) is
+    begin
+        Q.Items((Q.Start + Q.Size) mod Command_Capacity) := C;
+        if Q.Size < Command_Capacity then
+            Q.Size := Q.Size + 1;
+        else
+            Q.Start := (Q.Start + 1) mod Command_Capacity;
+        end if;
+    end;
+
+    function Command_Dequeue(Q: in out Command_Queue_Record; C: out Command) return Boolean is
+    begin
+        if Q.Size = 0 then
+            return False;
+        end if;
+        C := Q.Items(Q.Start);
+        Q.Size := Q.Size - 1;
+        Q.Start := (Q.Start + 1) mod Command_Capacity;
+        return True;
+    end;
+
+    Command_Queue: Command_Queue_Record;
     Any_Key_Pressed: Boolean := False;
 
     procedure Swallow_Player_Input is
     begin
-        Space_Pressed := False;
+        Command_Queue.Size := 0;
         Any_Key_Pressed := False;
-        Dir_Pressed := [others => False];
     end;
 
     procedure Game_Bombs_Turn(Game: in out Game_State) is
@@ -1221,53 +1255,57 @@ procedure Eepers is
             return;
         end if;
 
-        if Space_Pressed and then Game.Player.Bombs > 0 then
-            declare
-                Start_Of_Turn: constant Double := Get_Time;
-            begin
-                Game.Turn_Animation := 1.0;
-                Game_Explosions_Turn(Game);
-                Game_Items_Turn(Game);
+        declare
+            C: Command;
+        begin
+            if Command_Dequeue(Command_Queue, C) then
+                case C.Kind is
+                    when Command_Step =>
+                        declare
+                            Start_Of_Turn: constant Double := Get_Time;
+                        begin
+                            Game.Turn_Animation := 1.0;
+                            Game_Explosions_Turn(Game);
+                            Game_Items_Turn(Game);
+                            Game_Player_Turn(Game, C.Dir);
+                            Game_Eepers_Turn(Game);
+                            Game_Bombs_Turn(Game);
+                            Game.Duration_Of_Last_Turn := Get_Time - Start_Of_Turn;
+                        end;
+                    when Command_Plant =>
+                        if  Game.Player.Bombs > 0 then
+                            declare
+                                Start_Of_Turn: constant Double := Get_Time;
+                            begin
+                                Game.Turn_Animation := 1.0;
+                                Game_Explosions_Turn(Game);
+                                Game_Items_Turn(Game);
 
-                --  Game_Player_Turn(Game, Action_Plant_Bomb, Left);
-                Game.Player.Prev_Eyes := Game.Player.Eyes;
-                Game.Player.Prev_Position := Game.Player.Position;
+                                --  Game_Player_Turn(Game, Action_Plant_Bomb, Left);
+                                Game.Player.Prev_Eyes := Game.Player.Eyes;
+                                Game.Player.Prev_Position := Game.Player.Position;
 
-                Game_Eepers_Turn(Game);
-                Game_Bombs_Turn(Game);
+                                Game_Eepers_Turn(Game);
+                                Game_Bombs_Turn(Game);
 
-                if Game.Player.Bombs > 0 then
-                    for Bomb of Game.Bombs loop
-                        if Bomb.Countdown <= 0 then
-                            Bomb.Countdown := 3;
-                            Bomb.Position := Game.Player.Position;
-                            exit;
+                                if Game.Player.Bombs > 0 then
+                                    for Bomb of Game.Bombs loop
+                                        if Bomb.Countdown <= 0 then
+                                            Bomb.Countdown := 3;
+                                            Bomb.Position := Game.Player.Position;
+                                            exit;
+                                        end if;
+                                    end loop;
+                                    Game.Player.Bombs := Game.Player.Bombs - 1;
+                                    Play_Sound(Plant_Bomb_Sound);
+                                end if;
+
+                                Game.Duration_Of_Last_Turn := Get_Time - Start_Of_Turn;
+                            end;
                         end if;
-                    end loop;
-                    Game.Player.Bombs := Game.Player.Bombs - 1;
-                    Play_Sound(Plant_Bomb_Sound);
-                end if;
-
-                Game.Duration_Of_Last_Turn := Get_Time - Start_Of_Turn;
-            end;
-        else
-            for Dir in Direction loop
-                if Dir_Pressed(Dir) then
-                    declare
-                        Start_Of_Turn: constant Double := Get_Time;
-                    begin
-                        Game.Turn_Animation := 1.0;
-                        Game_Explosions_Turn(Game);
-                        Game_Items_Turn(Game);
-                        Game_Player_Turn(Game, Dir);
-                        Game_Eepers_Turn(Game);
-                        Game_Bombs_Turn(Game);
-                        Game.Duration_Of_Last_Turn := Get_Time - Start_Of_Turn;
-                        exit;
-                    end;
-                end if;
-            end loop;
-        end if;
+                end case;
+            end if;
+        end;
     end;
 
     procedure Game_Bombs(Game: Game_State) is
@@ -1381,7 +1419,6 @@ procedure Eepers is
     Palette_Editor_Selected: Boolean := False;
     Palette_Editor_Component: HSV_Comp := Hue;
     Icon: Image;
-
 begin
     if not Change_Directory(Get_Application_Directory) then
         Put_Line("WARNING: Could not change working directory to the application directory");
@@ -1425,19 +1462,45 @@ begin
         Begin_Drawing;
             Clear_Background(Palette_RGB(COLOR_BACKGROUND));
 
-            Swallow_Player_Input;
-            if Is_Key_Down(KEY_LEFT_SHIFT) then
-                Dir_Pressed(Left) := Boolean(Is_Key_Down(KEY_A)) or else Boolean(Is_Key_Down(KEY_LEFT));
-                Dir_Pressed(Right) := Boolean(Is_Key_Down(KEY_D)) or else Boolean(Is_Key_Down(KEY_RIGHT));
-                Dir_Pressed(Down) := Boolean(Is_Key_Down(KEY_S)) or else Boolean(Is_Key_Down(KEY_DOWN));
-                Dir_Pressed(Up) := Boolean(Is_Key_Down(KEY_W)) or else Boolean(Is_Key_Down(KEY_UP));
+            if Game.Player.Dead then
+                Command_Queue.Size := 0;
             else
-                Dir_Pressed(Left) := Boolean(Is_Key_Pressed(KEY_A)) or else Boolean(Is_Key_Pressed(KEY_LEFT));
-                Dir_Pressed(Right) := Boolean(Is_Key_Pressed(KEY_D)) or else Boolean(Is_Key_Pressed(KEY_RIGHT));
-                Dir_Pressed(Down) := Boolean(Is_Key_Pressed(KEY_S)) or else Boolean(Is_Key_Pressed(KEY_DOWN));
-                Dir_Pressed(Up) := Boolean(Is_Key_Pressed(KEY_W)) or else Boolean(Is_Key_Pressed(KEY_UP));
+                if Boolean(Is_Key_Down(KEY_LEFT_SHIFT)) and then Game.Turn_Animation <= 0.0 then
+                    if Is_Key_Down(KEY_A) or else Is_Key_Down(KEY_LEFT) then
+                        Command_Queue.Size := 0;
+                        Command_Enqueue(Command_Queue, (Kind => Command_Step, Dir => Left));
+                    end if;
+                    if Is_Key_Down(KEY_D) or else Is_Key_Down(KEY_RIGHT) then
+                        Command_Queue.Size := 0;
+                        Command_Enqueue(Command_Queue, (Kind => Command_Step, Dir => Right));
+                    end if;
+                    if Is_Key_Down(KEY_S) or else Is_Key_Down(KEY_DOWN) then
+                        Command_Queue.Size := 0;
+                        Command_Enqueue(Command_Queue, (Kind => Command_Step, Dir => Down));
+                    end if;
+                    if Is_Key_Down(KEY_W) or else Is_Key_Down(KEY_UP) then
+                        Command_Queue.Size := 0;
+                        Command_Enqueue(Command_Queue, (Kind => Command_Step, Dir => Up));
+                    end if;
+                else
+                    if Is_Key_Pressed(KEY_A) or else Is_Key_Pressed(KEY_LEFT) then
+                        Command_Enqueue(Command_Queue, (Kind => Command_Step, Dir => Left));
+                    end if;
+                    if Is_Key_Pressed(KEY_D) or else Is_Key_Pressed(KEY_RIGHT) then
+                        Command_Enqueue(Command_Queue, (Kind => Command_Step, Dir => Right));
+                    end if;
+                    if Is_Key_Pressed(KEY_S) or else Is_Key_Pressed(KEY_DOWN) then
+                        Command_Enqueue(Command_Queue, (Kind => Command_Step, Dir => Down));
+                    end if;
+                    if Is_Key_Pressed(KEY_W) or else Is_Key_Pressed(KEY_UP) then
+                        Command_Enqueue(Command_Queue, (Kind => Command_Step, Dir => Up));
+                    end if;
+                end if;
+                if Is_Key_Pressed(KEY_SPACE) then
+                    Command_Enqueue(Command_Queue, (Kind => Command_Plant));
+                end if;
             end if;
-            Space_Pressed := Boolean(Is_Key_Pressed(KEY_SPACE));
+            Any_Key_Pressed := False;
             while not Any_Key_Pressed and then Get_Key_Pressed /= KEY_NULL loop
                 Any_Key_Pressed := True;
             end loop;
