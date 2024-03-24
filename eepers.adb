@@ -337,6 +337,7 @@ procedure Eepers is
         Turn_Animation: Float := 0.0;
 
         Items: Hashed_Map_Items.Map;
+		Show_Inventory: Boolean := False;	
         Bombs: Bomb_State_Array;
         Camera_Position: Vector2 := (x => 0.0, y => 0.0);
 
@@ -1282,21 +1283,23 @@ procedure Eepers is
 
     procedure Game_Hud(Game: in Game_State) is
     begin
-        for Index in 1..Game.Player.Keys loop
-            declare
-                Position: constant Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 100.0);
-            begin
-                Draw_Circle_V(Position, Cell_Size.X*0.25, Palette_RGB(COLOR_DOORKEY));
-            end;
-        end loop;
+		if Game.Show_Inventory then
+        	for Index in 1..Game.Player.Keys loop
+            	declare
+                	Position: constant Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 100.0);
+            	begin
+                	Draw_Circle_V(Position, Cell_Size.X*0.25, Palette_RGB(COLOR_DOORKEY));
+            	end;
+        	end loop;
 
-        for Index in 1..Game.Player.Bombs loop
-            declare
-                Position: constant Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 200.0);
-            begin
-                Draw_Circle_V(Position, Cell_Size.X*0.5, Palette_RGB(COLOR_BOMB));
-            end;
-        end loop;
+        	for Index in 1..Game.Player.Bombs loop
+            	declare
+                	Position: constant Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 200.0);
+            	begin
+                	Draw_Circle_V(Position, Cell_Size.X*0.5, Palette_RGB(COLOR_BOMB));
+            	end;
+        	end loop;
+		end if;
 
         if Game.Player.Dead then
             declare
