@@ -935,7 +935,7 @@ procedure Eepers is
             when Command_Plant => null;
         end case;
     end record;
-    Command_Capacity: constant Natural := 5;
+    Command_Capacity: constant Natural := 3;
     type Command_Array is array (0..Command_Capacity-1) of Command;
     type Command_Queue_Record is record
         Items: Command_Array;
@@ -1493,10 +1493,14 @@ begin
                     Command_Enqueue(Command_Queue, (Kind => Command_Plant));
                 end if;
             end if;
-            if Command_Queue.Size /= 0 then
-                TURN_DURATION_SECS := BASE_TURN_DURATION_SECS * (1.0 / Float(Command_Queue.Size));
+            if Is_Key_Down(KEY_LEFT_SHIFT) then
+                TURN_DURATION_SECS := BASE_TURN_DURATION_SECS * 0.8;
             else
-                TURN_DURATION_SECS := BASE_TURN_DURATION_SECS;
+                if Command_Queue.Size /= 0 then
+                    TURN_DURATION_SECS := BASE_TURN_DURATION_SECS * (1.0 / Float(Command_Queue.Size));
+                else
+                    TURN_DURATION_SECS := BASE_TURN_DURATION_SECS;
+                end if;
             end if;
             
             Any_Key_Pressed := False;
