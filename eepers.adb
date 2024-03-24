@@ -143,7 +143,8 @@ procedure Eepers is
             Put_Line("WARNING: could not load colors from file " & File_Name & ": " & Exception_Message(E));
     end;
 
-    TURN_DURATION_SECS      : constant Float := 0.125;
+    BASE_TURN_DURATION_SECS : constant Float := 0.125;
+    TURN_DURATION_SECS      :  Float := BASE_TURN_DURATION_SECS;
     GUARD_ATTACK_COOLDOWN   : constant Integer := 10;
     EEPER_EXPLOSION_DAMAGE  : constant Float := 0.45;
     GUARD_TURN_REGENERATION : constant Float := 0.01;
@@ -1492,6 +1493,12 @@ begin
                     Command_Enqueue(Command_Queue, (Kind => Command_Plant));
                 end if;
             end if;
+            if Command_Queue.Size /= 0 then
+                TURN_DURATION_SECS := BASE_TURN_DURATION_SECS * (1.0 / Float(Command_Queue.Size));
+            else
+                TURN_DURATION_SECS := BASE_TURN_DURATION_SECS;
+            end if;
+            
             Any_Key_Pressed := False;
             while not Any_Key_Pressed and then Get_Key_Pressed /= KEY_NULL loop
                 Any_Key_Pressed := True;
