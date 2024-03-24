@@ -492,7 +492,6 @@ procedure Eepers is
     procedure Allocate_Item(Game: in out Game_State; Position: IVector2; Kind: Item_Kind) is
         Too_Many_Items: exception;
     begin
-        Put_Line(Kind'Image);
         for Item of Game.Items loop
             if Item.Kind = Item_None then
                 Item.Kind := Kind;
@@ -1405,7 +1404,7 @@ procedure Eepers is
     end;
 
     Game: Game_State;
-    Title: constant Char_Array := To_C("Eepers (v1.0)");
+    Title: constant Char_Array := To_C("Eepers (v1.1)");
 
     Palette_Editor: Boolean := False;
     Palette_Editor_Choice: Palette := Palette'First;
