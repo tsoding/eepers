@@ -337,7 +337,7 @@ procedure Eepers is
         Turn_Animation: Float := 0.0;
 
         Items: Hashed_Map_Items.Map;
-		Show_Inventory: Boolean := False;	
+		Show_Inventory: Boolean := True;	
         Bombs: Bomb_State_Array;
         Camera_Position: Vector2 := (x => 0.0, y => 0.0);
 
