@@ -1445,6 +1445,10 @@ begin
                 Any_Key_Pressed := True;
             end loop;
 
+			if Is_Key_Pressed(KEY_I) then
+				Game.Show_Inventory := not Game.Show_Inventory;
+			end if;
+
             if DEVELOPMENT then
                 if Is_Key_Pressed(KEY_R) then
                     Load_Game_From_Image("assets/map.png", Game, Update_Player => False, Update_Camera => False);
@@ -1456,7 +1460,7 @@ begin
                         Save_Colors("assets/colors.txt");
                     end if;
                 end if;
-
+				
                 if Palette_Editor then
                     if Palette_Editor_Selected then
                         if Is_Key_Pressed(KEY_ESCAPE) then
