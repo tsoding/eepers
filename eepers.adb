@@ -1650,9 +1650,6 @@ end;
 --  TODO: If you are standing on the refilled bomb gen and place a bomb you should refill your bomb in that turn.
 --  TODO: Checkpoints should be circles (like all the items)
 --  TODO: Custom font
---  TODO: Determenistically choose the paths again, but make them more interesting
---    - Gnomes are just being deterministic
---    - Mother and Guard always pick the longest path. Or generally the path that brings the Euclidean Distance closer
 --  TODO: Mother should require several attacks before being "split"
 --  TODO: Enemies should attack on zero just like a bomb.
 --  TODO: Properly disablable DEV features
@@ -1662,8 +1659,11 @@ end;
 --  TODO: Visual Clue that the Eeper is about to kill the Player when Completely outside of the Screen
 --    - Cooldown ball is shaking
 --  TODO: Cool animation for New Game
---  TODO: Tutorial sign that says "WASD" to move when you start the game for the first time. And how to place the bomb on picking it up
---  TODO: count the player's turns towards the final score of the game
+--  TODO: Tutorial 
+--    - Sign that says "WASD" to move when you start the game for the first time. 
+--    - And how to place the bomb on picking it up.
+--    - How to sprint after you blow up firt Barricade.
+--  TODO: Count the player's turns towards the final score of the game
 --    We can even collect different stats, like bombs collected, bombs used,
 --    times died etc.
 --  TODO: Animate key when you pick it up
@@ -1676,18 +1676,13 @@ end;
 --    - Cool effects when you pick up items and checkpoints
 --  TODO: Camera shaking when big bosses (Guard and Mother) make moves
 --  TODO: Menu
---    Could be just a splash with the game name and logo.
 --  TODO: WebAssembly build
 --    https://blog.adacore.com/use-of-gnat-llvm-to-translate-ada-applications-to-webassembly
 --  TODO: Explosions should trigger other primed bombs?
 --  TODO: Path finding in a separate thread
 --  TODO: Eeper slide attack animation is pretty boring @polish
---  TODO: Bake assets into executable
 --  TODO: Background is too boring
 --    Maybe some sort of repeating pattern would be better.
 --  TODO: Indicate how many bomb slots we have in HUD
 --  TODO: Eyes of Father changing as the Player gets closer:
 --    - Happy (very important to indicate that he's not hostile)
---  TODO: Transition Player's eyes linearly in Euclidean space instead of angularly.
---  TODO: Can you escape boss rooms using Gnomes?
---    It's very hard because you need to somehow put them behind yourself
