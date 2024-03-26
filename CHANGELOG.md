@@ -1,6 +1,7 @@
 # Eepers v1.3
 
 - @Eropi4 - MacOS build - https://github.com/tsoding/eepers/pull/13
+- @cornishon - Sprint with Right Shift - https://github.com/tsoding/eepers/pull/18
 - ...
 
 # Eepers v1.2
