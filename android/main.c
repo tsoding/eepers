@@ -48,8 +48,6 @@ int main(void) {
 
 	ALOGD("Initializing with eepersinit()");
 	eepersinit();
-
-
 	ALOGD("Entering Eepers main: _ada_eepers");
 	_ada_eepers();
 	ALOGD("Deinitializing with eepersfinal()");

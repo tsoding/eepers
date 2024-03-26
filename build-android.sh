@@ -70,12 +70,12 @@ done
 #  Build APK
 # ______________________________________________________________________________
 #
-$BUILD_TOOLS/aapt package -f -m \
+$BUILD_TOOLS/aapt package -f -m --min-sdk-version 29 --target-sdk-version $API \
 	-S android/res -J android/build -M android/AndroidManifest.xml \
 	-I $ANDROID_HOME/Sdk/platforms/android-$API/android.jar
 
 # Add resources and assets to APK
-$BUILD_TOOLS/aapt package -f \
+$BUILD_TOOLS/aapt package -f --min-sdk-version 29 --target-sdk-version $API \
 	-M android/AndroidManifest.xml -S android/res -A assets \
 	-I $ANDROID_HOME/Sdk/platforms/android-$API/android.jar -F eepers.apk
 
