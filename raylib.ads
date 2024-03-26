@@ -79,6 +79,7 @@ package Raylib is
     KEY_ESCAPE: constant int := 256;
     KEY_ENTER: constant Int := 257;
     KEY_LEFT_SHIFT: constant Int := 340;
+    KEY_RIGHT_SHIFT: constant Int := 344;
 
     function Is_Key_Pressed(key: int) return C_bool
         with

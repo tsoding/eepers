@@ -1458,7 +1458,7 @@ begin
             if Game.Player.Dead then
                 Command_Queue.Size := 0;
             else
-                if Boolean(Is_Key_Down(KEY_LEFT_SHIFT)) and then Game.Turn_Animation <= 0.0 then
+                if (Boolean(Is_Key_Down(KEY_LEFT_SHIFT)) or else Boolean(Is_Key_Down(KEY_RIGHT_SHIFT))) and then Game.Turn_Animation <= 0.0 then
                     if Is_Key_Down(KEY_A) or else Is_Key_Down(KEY_LEFT) then
                         Command_Queue.Size := 0;
                         Command_Enqueue(Command_Queue, (Kind => Command_Step, Dir => Left));
@@ -1493,7 +1493,7 @@ begin
                     Command_Enqueue(Command_Queue, (Kind => Command_Plant));
                 end if;
             end if;
-            if Is_Key_Down(KEY_LEFT_SHIFT) then
+            if Boolean(Is_Key_Down(KEY_LEFT_SHIFT)) or else Boolean(Is_Key_Down(KEY_RIGHT_SHIFT)) then
                 TURN_DURATION_SECS := BASE_TURN_DURATION_SECS * 0.8;
             else
                 if Command_Queue.Size /= 0 then
