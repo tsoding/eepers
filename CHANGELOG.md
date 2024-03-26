@@ -2,6 +2,7 @@
 
 - @Eropi4 - MacOS build - https://github.com/tsoding/eepers/pull/13
 - @cornishon - Sprint with Right Shift - https://github.com/tsoding/eepers/pull/18
+- Port the Source Code to Ada 2012 making it accessible to more setups. We were not using anything important from Ada 2022 anyway.
 - ...
 
 # Eepers v1.2

@@ -23,7 +23,7 @@ procedure Eepers is
 
     type Footsteps_Range is mod 4;
     Footsteps_Sounds: array (Footsteps_Range) of Sound;
-    Footsteps_Pitches: constant array (Footsteps_Range) of C_Float := [1.7, 1.6, 1.5, 1.4];
+    Footsteps_Pitches: constant array (Footsteps_Range) of C_Float := (1.7, 1.6, 1.5, 1.4);
     package Random_Footsteps is
         new Ada.Numerics.Discrete_Random(Result_Subtype => Footsteps_Range);
     Footsteps_Gen: Random_Footsteps.Generator;
@@ -67,8 +67,8 @@ procedure Eepers is
         return Color_From_HSV(H, S, V);
     end;
 
-    Palette_RGB: array (Palette) of Color := [others => (A => 255, others => 0)];
-    Palette_HSV: array (Palette) of HSV := [others => [others => 0]];
+    Palette_RGB: array (Palette) of Color := (others => (A => 255, others => 0));
+    Palette_HSV: array (Palette) of HSV := (others => (others => 0));
 
     package Double_IO is new Ada.Text_IO.Float_IO(Double);
 
@@ -228,34 +228,34 @@ procedure Eepers is
     type Eye_Mesh is new Vector2_Array(1..4);
     type Eye is (Left_Eye, Right_Eye);
     type Eyes_Mesh is array (Eye) of Eye_Mesh;
-    Eyes_Meshes: constant array (Eyes_Kind) of Eyes_Mesh := [
-        Eyes_Open => [
+    Eyes_Meshes: constant array (Eyes_Kind) of Eyes_Mesh := (
+        Eyes_Open => (
             -- 1-3
             -- |/|
             -- 2-4
-            Left_Eye => [ (0.0, 0.0), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0) ],
+            Left_Eye => ( (0.0, 0.0), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0) ),
             -- 3-4
             -- |\|
             -- 1-2
-            Right_Eye => [ (0.0, 1.0), (1.0, 1.0), (0.0, 0.0), (1.0, 0.0) ]
-        ],
-        Eyes_Closed => [
-            Left_Eye => [ (0.0, 0.8), (0.0, 1.0), (1.0, 0.8), (1.0, 1.0) ],
-            Right_Eye => [ (0.0, 1.0), (1.0, 1.0), (0.0, 0.8), (1.0, 0.8) ]
-        ],
-        Eyes_Angry => [
-            Left_Eye => [ (0.0, 0.0), (0.0, 1.0), (1.0, 0.3), (1.0, 1.0) ],
-            Right_Eye => [ (0.0, 1.0), (1.0, 1.0), (0.0, 0.3), (1.0, 0.0) ]
-        ],
-        Eyes_Cringe => [
-            Left_Eye => [ (0.0, 0.5), (0.25, 0.75), (1.3, 0.75), (0.0, 1.0) ],
-            Right_Eye => [ (1.0, 1.0), (0.75, 0.75), (-0.3, 0.75), (1.0, 0.5) ]
-        ],
-        Eyes_Surprised => [
-            Left_Eye => [ (0.0, 0.3), (0.0, 1.0), (1.0, 0.3), (1.0, 1.0) ],
-            Right_Eye => [ (0.0, 1.0), (1.0, 1.0), (0.0, 0.0), (1.0, 0.0) ]
-        ]
-    ];
+            Right_Eye => ( (0.0, 1.0), (1.0, 1.0), (0.0, 0.0), (1.0, 0.0) )
+        ),
+        Eyes_Closed => (
+            Left_Eye => ( (0.0, 0.8), (0.0, 1.0), (1.0, 0.8), (1.0, 1.0) ),
+            Right_Eye => ( (0.0, 1.0), (1.0, 1.0), (0.0, 0.8), (1.0, 0.8) )
+        ),
+        Eyes_Angry => (
+            Left_Eye => ( (0.0, 0.0), (0.0, 1.0), (1.0, 0.3), (1.0, 1.0) ),
+            Right_Eye => ( (0.0, 1.0), (1.0, 1.0), (0.0, 0.3), (1.0, 0.0) )
+        ),
+        Eyes_Cringe => (
+            Left_Eye => ( (0.0, 0.5), (0.25, 0.75), (1.3, 0.75), (0.0, 1.0) ),
+            Right_Eye => ( (1.0, 1.0), (0.75, 0.75), (-0.3, 0.75), (1.0, 0.5) )
+        ),
+        Eyes_Surprised => (
+            Left_Eye => ( (0.0, 0.3), (0.0, 1.0), (1.0, 0.3), (1.0, 1.0) ),
+            Right_Eye => ( (0.0, 1.0), (1.0, 1.0), (0.0, 0.0), (1.0, 0.0) )
+        )
+    );
 
     type Player_State is record
         Prev_Position: IVector2;
@@ -341,11 +341,11 @@ procedure Eepers is
 
     type Direction is (Left, Right, Up, Down);
 
-    Direction_Vector: constant array (Direction) of IVector2 := [
+    Direction_Vector: constant array (Direction) of IVector2 := (
       Left  => (X => -1, Y => 0),
       Right => (X => 1, Y => 0),
       Up    => (X => 0, Y => -1),
-      Down  => (X => 0, Y => 1)];
+      Down  => (X => 0, Y => 1));
 
     function Inside_Of_Rect(Start, Size, Point: in IVector2) return Boolean is
     begin
@@ -578,7 +578,7 @@ procedure Eepers is
       Level_Key,
       Level_Player,
       Level_Father);
-    Level_Cell_Color: constant array (Level_Cell) of Color := [
+    Level_Cell_Color: constant array (Level_Cell) of Color := (
       Level_None       => Get_Color(16#00000000#),
       Level_Gnome      => Get_Color(16#FF9600FF#),
       Level_Mother     => Get_Color(16#96FF00FF#),
@@ -591,7 +591,7 @@ procedure Eepers is
       Level_Barricade  => Get_Color(16#FF0096FF#),
       Level_Key        => Get_Color(16#FFFF00FF#),
       Level_Player     => Get_Color(16#0000FFFF#),
-      Level_Father     => Get_Color(16#265FDAFF#)];
+      Level_Father     => Get_Color(16#265FDAFF#));
 
     function Cell_By_Color(Col: Color; Out_Cel: out Level_Cell) return Boolean is
     begin
@@ -897,12 +897,12 @@ procedure Eepers is
         end loop;
     end;
 
-    Keys: constant array (Direction) of int := [
+    Keys: constant array (Direction) of int := (
         Left  => KEY_A,
         Right => KEY_D,
         Up    => KEY_W,
         Down  => KEY_S
-    ];
+    );
 
     procedure Game_Update_Camera(Game: in out Game_State) is
         Camera_Target: constant Vector2 :=
@@ -1209,10 +1209,10 @@ procedure Eepers is
         Eyes_Size: constant Vector2 := Eyes_Ratio*Size;
         Center: constant Vector2 := Start + Size*0.5;
         Position: constant Vector2 := Center + Dir*Eyes_Size.X*0.6;
-        Positions: constant array (Eye) of Vector2 := [
+        Positions: constant array (Eye) of Vector2 := (
             Left_Eye => Position - Eyes_Size*(0.5, 0.0) - Eyes_Size*(1.0, 0.5),
             Right_Eye => Position + Eyes_Size*(0.5, 0.0) - Eyes_Size*(0.0, 0.5)
-        ];
+        );
         Mesh: Eye_Mesh;
     begin
         for Eye_Index in Eye loop
@@ -1502,7 +1502,7 @@ begin
                     TURN_DURATION_SECS := BASE_TURN_DURATION_SECS;
                 end if;
             end if;
-            
+
             Any_Key_Pressed := False;
             while not Any_Key_Pressed and then Get_Key_Pressed /= KEY_NULL loop
                 Any_Key_Pressed := True;
@@ -1659,8 +1659,8 @@ end;
 --  TODO: Visual Clue that the Eeper is about to kill the Player when Completely outside of the Screen
 --    - Cooldown ball is shaking
 --  TODO: Cool animation for New Game
---  TODO: Tutorial 
---    - Sign that says "WASD" to move when you start the game for the first time. 
+--  TODO: Tutorial
+--    - Sign that says "WASD" to move when you start the game for the first time.
 --    - And how to place the bomb on picking it up.
 --    - How to sprint after you blow up firt Barricade.
 --  TODO: Count the player's turns towards the final score of the game
