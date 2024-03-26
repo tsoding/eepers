@@ -8,5 +8,10 @@ test.exe
 *.res
 eepers.app
 
+*.apk.idsig
+android/lib
+android/build
+eepers.apk
+
 .idea
 .DS_Store
