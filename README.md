@@ -15,7 +15,11 @@ Music by Type 42
 Download:
 - https://github.com/tsoding/eepers/releases (Windows + Linux)
 
-## Quick Start
+## Building from Source Code
+
+### Linux
+
+Install GNAT Ada Compiler. It should be available in your Distro Repos.
 
 ```console
 $ ./build-linux.sh
