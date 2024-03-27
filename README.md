@@ -12,6 +12,8 @@ Music by Type 42
 - https://www.youtube.com/@Type42
 - https://type42.bandcamp.com/
 
+Download: https://github.com/tsoding/eepers/releases
+
 ## Quick Start
 
 ```console
