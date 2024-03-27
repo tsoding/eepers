@@ -1503,6 +1503,10 @@ begin
                 end if;
             end if;
 
+            if Is_Key_Pressed(KEY_F11) or (Is_Key_Down(KEY_LEFT_ALT) and Is_Key_Pressed(KEY_ENTER)) then
+                Toggle_Fullscreen;
+            end if;
+
             Any_Key_Pressed := False;
             while not Any_Key_Pressed and then Get_Key_Pressed /= KEY_NULL loop
                 Any_Key_Pressed := True;
@@ -1653,7 +1657,6 @@ end;
 --  TODO: Mother should require several attacks before being "split"
 --  TODO: Enemies should attack on zero just like a bomb.
 --  TODO: Properly disablable DEV features
---  TODO: Fullscreen mode
 --  TODO: Try MSAA (if too slow, don't)
 --  TODO: Show Eeper Cooldown timer outside of the screen somehow
 --  TODO: Visual Clue that the Eeper is about to kill the Player when Completely outside of the Screen
