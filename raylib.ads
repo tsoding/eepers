@@ -3,6 +3,10 @@ with Interfaces.C.Strings; use Interfaces.C.Strings;
 with Raymath; use Raymath;
 
 package Raylib is
+    -- NOTE: some older versions of GNAT don't have C_bool, so we are defining ours
+    type Bool is new Boolean;
+    pragma Convention (C, Bool);
+
     procedure Init_Window(Width, Height: int; Title: in char_array)
         with
             Import => True,
@@ -13,7 +17,7 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "CloseWindow";
-    function Window_Should_Close return C_Bool
+    function Window_Should_Close return Bool
         with
             Import => True,
             Convention => C,
@@ -81,12 +85,12 @@ package Raylib is
     KEY_LEFT_SHIFT: constant Int := 340;
     KEY_RIGHT_SHIFT: constant Int := 344;
 
-    function Is_Key_Pressed(key: int) return C_bool
+    function Is_Key_Pressed(key: int) return bool
         with
             Import => True,
             Convention => C,
             External_Name => "IsKeyPressed";
-    function Is_Key_Released(key: int) return C_bool
+    function Is_Key_Released(key: int) return bool
         with
             Import => True,
             Convention => C,
@@ -145,7 +149,7 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "DrawCircleV";
-    function Is_Key_Down(Key: int) return C_Bool
+    function Is_Key_Down(Key: int) return Bool
         with
             Import => True,
             Convention => C,
@@ -214,7 +218,7 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "GenImageColor";
-    function Export_Image(Img: Image; File_Name: Char_Array) return C_Bool
+    function Export_Image(Img: Image; File_Name: Char_Array) return Bool
         with
             Import => True,
             Convention => C,
@@ -239,7 +243,7 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "GetApplicationDirectory";
-    function Change_Directory(dir: chars_ptr) return C_Bool
+    function Change_Directory(dir: chars_ptr) return Bool
         with
             Import => True,
             Convention => C,
@@ -263,7 +267,7 @@ package Raylib is
     type Music is record
         Stream: Audio_Stream;
         Frame_Count: unsigned;
-        Looping: C_Bool;
+        Looping: Bool;
         Ctx_Type: Int;
         Ctx_Data: Addr;
     end record
@@ -289,7 +293,7 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "StopMusicStream";
-    function Is_Music_Stream_Playing(M: Music) return C_Bool
+    function Is_Music_Stream_Playing(M: Music) return Bool
         with
             Import => True,
             Convention => C,
