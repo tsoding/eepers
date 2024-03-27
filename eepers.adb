@@ -1,5 +1,4 @@
-with Ada.Text_IO;
-with Text_IO; use Text_IO;
+with Ada.Text_IO; use Ada.Text_IO;
 with Interfaces.C; use Interfaces.C;
 with Raylib; use Raylib;
 with Raymath; use Raymath;
