@@ -23,5 +23,4 @@ Install GNAT Ada Compiler. It should be available in your Distro Repos.
 
 ```console
 $ ./build-linux.sh
-$ ./game
 ```
