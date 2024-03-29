@@ -1,9 +1,15 @@
 # Eepers v1.3
 
-- @Eropi4 - MacOS build - https://github.com/tsoding/eepers/pull/13
+- @rexim - Implemented a Basic Tutorial that explains how to play the Game.
 - @cornishon - Sprint with Right Shift - https://github.com/tsoding/eepers/pull/18
-- @rexim - Port the Source Code to Ada 2012 making it accessible to more setups. We were not using anything important from Ada 2022 anyway.
-- @rexim - Implement a Basic Tutorial that explains how to play the Game.
+- @Eropi4 - MacOS build - https://github.com/tsoding/eepers/pull/13
+
+    Since I don't have a MacOS setup I'm not able to provide MacOS binaries.
+    So if you want to play on MacOS you will have to build the Game from the
+    Sour code yourself sorry.
+      - @rexim
+
+- @rexim - Ported the Source Code to Ada 2012 making it accessible to more setups.
 - ...
 
 # Eepers v1.2
