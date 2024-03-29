@@ -143,17 +143,18 @@ procedure Eepers is
             Put_Line("WARNING: could not load colors from file " & File_Name & ": " & Exception_Message(E));
     end;
 
-    BASE_TURN_DURATION_SECS : constant Float := 0.125;
-    TURN_DURATION_SECS      :  Float := BASE_TURN_DURATION_SECS;
-    GUARD_ATTACK_COOLDOWN   : constant Integer := 10;
-    EEPER_EXPLOSION_DAMAGE  : constant Float := 0.45;
-    GUARD_TURN_REGENERATION : constant Float := 0.01;
-    BOMB_GENERATOR_COOLDOWN : constant Integer := 10;
-    GUARD_STEPS_LIMIT       : constant Integer := 4;
-    GUARD_STEP_LENGTH_LIMIT : constant Integer := 100;
-    EXPLOSION_LENGTH        : constant Integer := 10;
-    EYES_ANGULAR_VELOCITY   : constant Float := 10.0;
-    TUTORIAL_WAIT_TIME_SECS : constant C_Float := 3.0;
+    BASE_TURN_DURATION_SECS      : constant Float := 0.125;
+    TURN_DURATION_SECS           : Float := BASE_TURN_DURATION_SECS;
+    GUARD_ATTACK_COOLDOWN        : constant Integer := 10;
+    EEPER_EXPLOSION_DAMAGE       : constant Float := 0.45;
+    GUARD_TURN_REGENERATION      : constant Float := 0.01;
+    BOMB_GENERATOR_COOLDOWN      : constant Integer := 10;
+    GUARD_STEPS_LIMIT            : constant Integer := 4;
+    GUARD_STEP_LENGTH_LIMIT      : constant Integer := 100;
+    EXPLOSION_LENGTH             : constant Integer := 10;
+    EYES_ANGULAR_VELOCITY        : constant Float := 10.0;
+    TUTORIAL_MOVE_WAIT_TIME_SECS : constant C_Float := 3.0;
+    TUTORIAL_BOMB_WAIT_TIME_SECS : constant C_Float := 4.0;
 
     type IVector2 is record
         X, Y: Integer;
@@ -1280,7 +1281,7 @@ procedure Eepers is
                 if Game.Tutorial.Knows_How_To_Move then
                     Game.Tutorial.Phase := Tutorial_Place_Bombs;
                     Game.Tutorial.Waiting := 0.0;
-                elsif Game.Tutorial.Waiting < TUTORIAL_WAIT_TIME_SECS then
+                elsif Game.Tutorial.Waiting < TUTORIAL_MOVE_WAIT_TIME_SECS then
                     Game.Tutorial.Waiting := Game.Tutorial.Waiting + Get_Frame_Time;
                 else
                     Draw_Tutorial_Popup(Game, "WASD to Move");
@@ -1289,7 +1290,7 @@ procedure Eepers is
                 if Game.Tutorial.Knows_How_To_Place_Bombs then
                     Game.Tutorial.Phase := Tutorial_Waiting_For_Sprint;
                 elsif Game.Player.Bombs > 0 then
-                    if Game.Tutorial.Waiting < TUTORIAL_WAIT_TIME_SECS then
+                    if Game.Tutorial.Waiting < TUTORIAL_BOMB_WAIT_TIME_SECS then
                         Game.Tutorial.Waiting := Game.Tutorial.Waiting + Get_Frame_Time;
                     else
                         Draw_Tutorial_Popup(Game, "SPACE to Place Bombs");
