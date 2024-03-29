@@ -153,6 +153,7 @@ procedure Eepers is
     GUARD_STEP_LENGTH_LIMIT : constant Integer := 100;
     EXPLOSION_LENGTH        : constant Integer := 10;
     EYES_ANGULAR_VELOCITY   : constant Float := 10.0;
+    TUTORIAL_WAIT_TIME_SECS : constant C_Float := 3.0;
 
     type IVector2 is record
         X, Y: Integer;
@@ -310,6 +311,26 @@ procedure Eepers is
         Bombs: Bomb_State_Array;
     end record;
 
+    type Direction is (Left, Right, Up, Down);
+
+    Direction_Vector: constant array (Direction) of IVector2 := (
+      Left  => (X => -1, Y => 0),
+      Right => (X => 1, Y => 0),
+      Up    => (X => 0, Y => -1),
+      Down  => (X => 0, Y => 1));
+
+    type Tutorial_Phase is (Tutorial_Move, Tutorial_Place_Bombs, Tutorial_Waiting_For_Sprint, Tutorial_Sprint, Tutorial_Done);
+    type Tutorial_State is record
+        Phase: Tutorial_Phase := Tutorial_Move;
+        Waiting: C_Float := 0.0;
+        Prev_Direction: Direction := Left;
+        Same_Direction_Count: Integer := 0;
+
+        Knows_How_To_Move: Boolean := False;
+        Knows_How_To_Place_Bombs: Boolean := False;
+        Knows_How_To_Sprint: Boolean := False;
+    end record;
+
     type Game_State is record
         Map: Map_Access := Null;
         Player: Player_State;
@@ -321,6 +342,7 @@ procedure Eepers is
         Bombs: Bomb_State_Array;
         Camera_Position: Vector2 := (x => 0.0, y => 0.0);
 
+        Tutorial: Tutorial_State;
         Checkpoint: Checkpoint_State;
 
         Duration_Of_Last_Turn: Double;
@@ -338,14 +360,6 @@ procedure Eepers is
         M1.all := M0.all;
         return M1;
     end;
-
-    type Direction is (Left, Right, Up, Down);
-
-    Direction_Vector: constant array (Direction) of IVector2 := (
-      Left  => (X => -1, Y => 0),
-      Right => (X => 1, Y => 0),
-      Up    => (X => 0, Y => -1),
-      Down  => (X => 0, Y => 1));
 
     function Inside_Of_Rect(Start, Size, Point: in IVector2) return Boolean is
     begin
@@ -1223,6 +1237,22 @@ procedure Eepers is
         end loop;
     end;
 
+    procedure Draw_Tutorial_Popup(Game: Game_State; Text: String) is
+        Label: constant Char_Array := To_C(Text);
+        Label_Height: constant Integer := 30;
+        Label_Padding: constant C_Float := C_Float(Label_Height)*0.6;
+        Popup_Bottom_Margin: constant C_Float := C_Float(Label_Height);
+
+        Label_Width: constant Integer := Integer(Measure_Text(Label, Int(Label_Height)));
+        Label_Size: constant IVector2 := (Label_Width, Label_Height);
+        Popup_Size: constant Vector2 := To_Vector2(Label_Size) + (Label_Padding*2.0, Label_Padding*2.0);
+        Popup_Position: constant Vector2 := Screen_Player_Position(Game) + Cell_Size*(0.5, 0.0) - Popup_Size*(0.5, 1.0) - (0.0, Popup_Bottom_Margin);
+        Label_Position: constant Vector2 := Popup_Position + Popup_Size*(0.5, 0.5) - To_Vector2(Label_Size)*(0.5, 0.5);
+    begin
+        Draw_Rectangle_V(Popup_Position, Popup_Size, Palette_RGB(COLOR_WALL));
+        Draw_Text(Label, Int(Label_Position.X), Int(Label_Position.Y), Int(Label_Height), Palette_RGB(COLOR_PLAYER));
+    end;
+
     procedure Game_Player(Game: in out Game_State) is
         Eyes_Angular_Direction: constant Float := Delta_Angle(Game.Player.Eyes_Angle, Look_At(To_Vector2(Game.Player.Position)*Cell_Size + Cell_Size*0.5, To_Vector2(Game.Player.Eyes_Target)*Cell_Size + Cell_Size*0.5));
     begin
@@ -1244,6 +1274,40 @@ procedure Eepers is
         Draw_Rectangle_V(Screen_Player_Position(Game), Cell_Size, Palette_RGB(COLOR_PLAYER));
         Draw_Eyes(Screen_Player_Position(Game), Cell_Size, Game.Player.Eyes_Angle, Game.Player.Prev_Eyes, Game.Player.Eyes, Game.Turn_Animation);
 
+        --  Tutorial
+        case Game.Tutorial.Phase is
+            when Tutorial_Move =>
+                if Game.Tutorial.Knows_How_To_Move then
+                    Game.Tutorial.Phase := Tutorial_Place_Bombs;
+                    Game.Tutorial.Waiting := 0.0;
+                elsif Game.Tutorial.Waiting < TUTORIAL_WAIT_TIME_SECS then
+                    Game.Tutorial.Waiting := Game.Tutorial.Waiting + Get_Frame_Time;
+                else
+                    Draw_Tutorial_Popup(Game, "WASD to Move");
+                end if;
+            when Tutorial_Place_Bombs =>
+                if Game.Tutorial.Knows_How_To_Place_Bombs then
+                    Game.Tutorial.Phase := Tutorial_Waiting_For_Sprint;
+                elsif Game.Player.Bombs > 0 then
+                    if Game.Tutorial.Waiting < TUTORIAL_WAIT_TIME_SECS then
+                        Game.Tutorial.Waiting := Game.Tutorial.Waiting + Get_Frame_Time;
+                    else
+                        Draw_Tutorial_Popup(Game, "SPACE to Place Bombs");
+                    end if;
+                end if;
+            when Tutorial_Waiting_For_Sprint =>
+                if Game.Tutorial.Same_Direction_Count >= 10 then
+                    Game.Tutorial.Phase := Tutorial_Sprint;
+                end if;
+            when Tutorial_Sprint =>
+                if Game.Tutorial.Knows_How_To_Sprint then
+                    Game.Tutorial.Phase := Tutorial_Done;
+                else
+                    Draw_Tutorial_Popup(Game, "Hold SHIFT to Sprint");
+                end if;
+            when Tutorial_Done => null;
+        end case;
+
         if Game.Turn_Animation > 0.0 then
             return;
         end if;
@@ -1257,6 +1321,22 @@ procedure Eepers is
                         declare
                             Start_Of_Turn: constant Double := Get_Time;
                         begin
+                            Game.Tutorial.Knows_How_To_Move := True;
+                            -- TODO: If you change the spriting key you will have too make changes in too many damn places.
+                            -- Centralize that somehow.
+                            if Is_Key_Down(KEY_LEFT_SHIFT) then
+                                Game.Tutorial.Knows_How_To_Sprint := True;
+                            end if;
+
+                            if Game.Tutorial.Phase = Tutorial_Waiting_For_Sprint then
+                                if Game.Tutorial.Prev_Direction = C.Dir then
+                                    Game.Tutorial.Same_Direction_Count := Game.Tutorial.Same_Direction_Count + 1;
+                                else
+                                    Game.Tutorial.Prev_Direction := C.Dir;
+                                    Game.Tutorial.Same_Direction_Count := 0;
+                                end if;
+                            end if;
+
                             Game.Turn_Animation := 1.0;
                             Game_Explosions_Turn(Game);
                             Game_Items_Turn(Game);
@@ -1270,6 +1350,8 @@ procedure Eepers is
                             declare
                                 Start_Of_Turn: constant Double := Get_Time;
                             begin
+                                Game.Tutorial.Knows_How_To_Place_Bombs := True;
+
                                 Game.Turn_Animation := 1.0;
                                 Game_Explosions_Turn(Game);
                                 Game_Items_Turn(Game);
