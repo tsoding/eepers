@@ -2,7 +2,8 @@
 
 - @Eropi4 - MacOS build - https://github.com/tsoding/eepers/pull/13
 - @cornishon - Sprint with Right Shift - https://github.com/tsoding/eepers/pull/18
-- Port the Source Code to Ada 2012 making it accessible to more setups. We were not using anything important from Ada 2022 anyway.
+- @rexim - Port the Source Code to Ada 2012 making it accessible to more setups. We were not using anything important from Ada 2022 anyway.
+- @rexim - Implement a Basic Tutorial that explains how to play the Game.
 - ...
 
 # Eepers v1.2

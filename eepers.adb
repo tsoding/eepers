@@ -34,6 +34,7 @@ procedure Eepers is
     Checkpoint_Sound: Sound;
     Plant_Bomb_Sound: Sound;
     Guard_Step_Sound: Sound;
+    Popup_Show_Sound: Sound;
     Ambient_Music: Music;
 
     DEVELOPMENT : constant Boolean := False;
@@ -143,16 +144,20 @@ procedure Eepers is
             Put_Line("WARNING: could not load colors from file " & File_Name & ": " & Exception_Message(E));
     end;
 
-    BASE_TURN_DURATION_SECS : constant Float := 0.125;
-    TURN_DURATION_SECS      :  Float := BASE_TURN_DURATION_SECS;
-    GUARD_ATTACK_COOLDOWN   : constant Integer := 10;
-    EEPER_EXPLOSION_DAMAGE  : constant Float := 0.45;
-    GUARD_TURN_REGENERATION : constant Float := 0.01;
-    BOMB_GENERATOR_COOLDOWN : constant Integer := 10;
-    GUARD_STEPS_LIMIT       : constant Integer := 4;
-    GUARD_STEP_LENGTH_LIMIT : constant Integer := 100;
-    EXPLOSION_LENGTH        : constant Integer := 10;
-    EYES_ANGULAR_VELOCITY   : constant Float := 10.0;
+    BASE_TURN_DURATION_SECS      : constant Float := 0.125;
+    TURN_DURATION_SECS           : Float := BASE_TURN_DURATION_SECS;
+    GUARD_ATTACK_COOLDOWN        : constant Integer := 10;
+    EEPER_EXPLOSION_DAMAGE       : constant Float := 0.45;
+    GUARD_TURN_REGENERATION      : constant Float := 0.01;
+    BOMB_GENERATOR_COOLDOWN      : constant Integer := 10;
+    GUARD_STEPS_LIMIT            : constant Integer := 4;
+    GUARD_STEP_LENGTH_LIMIT      : constant Integer := 100;
+    EXPLOSION_LENGTH             : constant Integer := 10;
+    EYES_ANGULAR_VELOCITY        : constant Float := 10.0;
+    TUTORIAL_MOVE_WAIT_TIME_SECS : constant C_Float := 5.0;
+    TUTORIAL_BOMB_WAIT_TIME_SECS : constant C_Float := 4.0;
+    TUTORIAL_SPRINT_WAIT_TIME_SECS : constant C_Float := 15.0;
+    POPUP_ANIMATION_DURATION : constant C_Float := 0.1;
 
     type IVector2 is record
         X, Y: Integer;
@@ -310,6 +315,81 @@ procedure Eepers is
         Bombs: Bomb_State_Array;
     end record;
 
+    type Direction is (Left, Right, Up, Down);
+
+    Direction_Vector: constant array (Direction) of IVector2 := (
+      Left  => (X => -1, Y => 0),
+      Right => (X => 1, Y => 0),
+      Up    => (X => 0, Y => -1),
+      Down  => (X => 0, Y => 1));
+
+    type Popup_State is record
+        Label: Char_Array(1..50);
+        Visible: Boolean := False;
+        Animation: C_Float := 0.0;
+    end record;
+
+    procedure Show_Popup(Popup: in out Popup_State; Text: String) is
+        Ignore: Size_t;
+    begin
+        if not Popup.Visible then
+            Play_Sound(Popup_Show_Sound);
+        end if;
+        Popup.Visible := True;
+        To_C(Text, Popup.Label, Ignore);
+    end;
+
+    procedure Hide_Popup(Popup: in out Popup_State) is
+    begin
+        Popup.Visible := False;
+    end;
+
+    procedure Draw_Popup(Popup: in out Popup_State; Start, Size: Vector2) is
+    begin
+        if Popup.Visible then
+            if Popup.Animation < 1.0 then
+                Popup.Animation := (Popup.Animation*POPUP_ANIMATION_DURATION + Get_Frame_Time)/POPUP_ANIMATION_DURATION;
+            end if;
+        else
+            if Popup.Animation > 0.0 then
+                Popup.Animation := (Popup.Animation*POPUP_ANIMATION_DURATION - Get_Frame_Time)/POPUP_ANIMATION_DURATION;
+            end if;
+        end if;
+
+        if Popup.Animation > 0.0 then
+            declare
+                Label_Max_Height : constant C_Float := 28.0;
+                Label_Height: constant Integer := Integer(Label_Max_Height*Popup.Animation);
+                Label_Padding: constant C_Float := C_Float(Label_Height)*0.6;
+                Popup_Bottom_Margin: constant C_Float := C_Float(Label_Height);
+
+                Label_Width: constant Integer := Integer(Measure_Text(Popup.Label, Int(Label_Height)));
+                Label_Size: constant IVector2 := (Label_Width, Label_Height);
+                Popup_Size: constant Vector2 := To_Vector2(Label_Size) + (Label_Padding*2.0, Label_Padding*2.0);
+                Popup_Position: constant Vector2 := Start + Size*(0.5, 0.0) - Popup_Size*(0.5, 1.0) - (0.0, Popup_Bottom_Margin);
+                Label_Position: constant Vector2 := Popup_Position + Popup_Size*(0.5, 0.5) - To_Vector2(Label_Size)*(0.5, 0.5);
+            begin
+                Draw_Rectangle_V(Popup_Position, Popup_Size, Palette_RGB(COLOR_WALL));
+                Draw_Text(Popup.Label, Int(Label_Position.X), Int(Label_Position.Y), Int(Label_Height), Palette_RGB(COLOR_PLAYER));
+            end;
+        end if;
+    end;
+
+    type Tutorial_Phase is (Tutorial_Move, Tutorial_Place_Bombs, Tutorial_Waiting_For_Sprint, Tutorial_Sprint, Tutorial_Done);
+    type Tutorial_State is record
+        Phase: Tutorial_Phase := Tutorial_Move;
+        Waiting: C_Float := 0.0;
+
+        Prev_Step_Timestamp: Double := 0.0;
+        Hurry_Count: Integer := 0;
+
+        Popup: Popup_State;
+
+        Knows_How_To_Move: Boolean := False;
+        Knows_How_To_Place_Bombs: Boolean := False;
+        Knows_How_To_Sprint: Boolean := False;
+    end record;
+
     type Game_State is record
         Map: Map_Access := Null;
         Player: Player_State;
@@ -321,6 +401,7 @@ procedure Eepers is
         Bombs: Bomb_State_Array;
         Camera_Position: Vector2 := (x => 0.0, y => 0.0);
 
+        Tutorial: Tutorial_State;
         Checkpoint: Checkpoint_State;
 
         Duration_Of_Last_Turn: Double;
@@ -338,14 +419,6 @@ procedure Eepers is
         M1.all := M0.all;
         return M1;
     end;
-
-    type Direction is (Left, Right, Up, Down);
-
-    Direction_Vector: constant array (Direction) of IVector2 := (
-      Left  => (X => -1, Y => 0),
-      Right => (X => 1, Y => 0),
-      Up    => (X => 0, Y => -1),
-      Down  => (X => 0, Y => 1));
 
     function Inside_Of_Rect(Start, Size, Point: in IVector2) return Boolean is
     begin
@@ -1223,6 +1296,53 @@ procedure Eepers is
         end loop;
     end;
 
+    procedure Game_Tutorial(Game: in out Game_State) is
+    begin
+        case Game.Tutorial.Phase is
+            when Tutorial_Move =>
+                if Game.Tutorial.Knows_How_To_Move then
+                    Game.Tutorial.Phase := Tutorial_Place_Bombs;
+                    Game.Tutorial.Waiting := 0.0;
+                    Hide_Popup(Game.Tutorial.Popup);
+                elsif Game.Tutorial.Waiting < TUTORIAL_MOVE_WAIT_TIME_SECS then
+                    Game.Tutorial.Waiting := Game.Tutorial.Waiting + Get_Frame_Time;
+                else
+                    Show_Popup(Game.Tutorial.Popup, "WASD to Move");
+                end if;
+            when Tutorial_Place_Bombs =>
+                if Game.Tutorial.Knows_How_To_Place_Bombs then
+                    Game.Tutorial.Phase := Tutorial_Waiting_For_Sprint;
+                    Hide_Popup(Game.Tutorial.Popup);
+                elsif Game.Player.Bombs > 0 then
+                    if Game.Tutorial.Waiting < TUTORIAL_BOMB_WAIT_TIME_SECS then
+                        Game.Tutorial.Waiting := Game.Tutorial.Waiting + Get_Frame_Time;
+                    else
+                        Show_Popup(Game.Tutorial.Popup, "SPACE to Place Bombs");
+                    end if;
+                end if;
+            when Tutorial_Waiting_For_Sprint =>
+                if Game.Tutorial.Hurry_Count >= 10 then
+                    Game.Tutorial.Phase := Tutorial_Sprint;
+                    Game.Tutorial.Waiting := 0.0;
+                end if;
+            when Tutorial_Sprint =>
+                if Game.Tutorial.Knows_How_To_Sprint then
+                    Game.Tutorial.Phase := Tutorial_Done;
+                    Hide_Popup(Game.Tutorial.Popup);
+                else
+                    if Game.Tutorial.Waiting < TUTORIAL_SPRINT_WAIT_TIME_SECS then
+                        Show_Popup(Game.Tutorial.Popup, "Hold SHIFT to Sprint");
+                        Game.Tutorial.Waiting := Game.Tutorial.Waiting + Get_Frame_Time;
+                    else
+                        Game.Tutorial.Phase := Tutorial_Done;
+                        Hide_Popup(Game.Tutorial.Popup);
+                    end if;
+                end if;
+            when Tutorial_Done => null;
+        end case;
+        Draw_Popup(Game.Tutorial.Popup, Screen_Player_Position(Game), Cell_Size);
+    end;
+
     procedure Game_Player(Game: in out Game_State) is
         Eyes_Angular_Direction: constant Float := Delta_Angle(Game.Player.Eyes_Angle, Look_At(To_Vector2(Game.Player.Position)*Cell_Size + Cell_Size*0.5, To_Vector2(Game.Player.Eyes_Target)*Cell_Size + Cell_Size*0.5));
     begin
@@ -1257,6 +1377,27 @@ procedure Eepers is
                         declare
                             Start_Of_Turn: constant Double := Get_Time;
                         begin
+                            Game.Tutorial.Knows_How_To_Move := True;
+                            -- TODO: If you change the spriting key you will have too make changes in too many damn places.
+                            -- Centralize that somehow.
+                            if Is_Key_Down(KEY_LEFT_SHIFT) then
+                                Game.Tutorial.Knows_How_To_Sprint := True;
+                            end if;
+
+                            if Game.Tutorial.Phase = Tutorial_Waiting_For_Sprint then
+                                declare
+                                    Step_Timestamp: constant Double := Get_Time;
+                                    Delta_Timestamp: constant Double := Step_Timestamp - Game.Tutorial.Prev_Step_Timestamp;
+                                begin
+                                    if Delta_Timestamp < 0.2 Then
+                                        Game.Tutorial.Hurry_Count := Game.Tutorial.Hurry_Count + 1;
+                                    elsif Game.Tutorial.Hurry_Count > 0 then
+                                        Game.Tutorial.Hurry_Count := Game.Tutorial.Hurry_Count - 1;
+                                    end if;
+                                    Game.Tutorial.Prev_Step_Timestamp := Step_Timestamp;
+                                end;
+                            end if;
+
                             Game.Turn_Animation := 1.0;
                             Game_Explosions_Turn(Game);
                             Game_Items_Turn(Game);
@@ -1270,6 +1411,8 @@ procedure Eepers is
                             declare
                                 Start_Of_Turn: constant Double := Get_Time;
                             begin
+                                Game.Tutorial.Knows_How_To_Place_Bombs := True;
+
                                 Game.Turn_Animation := 1.0;
                                 Game_Explosions_Turn(Game);
                                 Game_Items_Turn(Game);
@@ -1441,6 +1584,7 @@ begin
     Set_Sound_Pitch(Checkpoint_Sound, 0.8);
     Guard_Step_Sound := Load_Sound(To_C("assets/sounds/guard-step.ogg"));   -- https://opengameart.org/content/fire-whip-hit-yo-frankie
     Plant_Bomb_Sound := Load_Sound(To_C("assets/sounds/plant-bomb.wav"));   -- https://opengameart.org/content/ui-soundpack-by-m1chiboi-bleeps-and-clicks
+    Popup_Show_Sound := Load_Sound(To_C("assets/sounds/popup-show.wav"));   -- https://opengameart.org/content/ui-soundpack-by-m1chiboi-bleeps-and-clicks
 
     Random_Integer.Reset(Gen);
     Load_Colors("assets/colors.txt");
@@ -1584,6 +1728,7 @@ begin
                 Game_Player(Game);
                 Game_Eepers(Game);
                 Game_Bombs(Game);
+                Game_Tutorial(Game);
                 if DEVELOPMENT then
                     if Is_Key_Down(KEY_P) then
                         for Row in Game.Map'Range(1) loop
