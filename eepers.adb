@@ -1789,6 +1789,9 @@ end;
 
 --  TODO: Increase Bomb Slots item.
 --  TODO: Items in HUD may sometimes blend with the background
+--  TODO: The gnome blocking trick was never properly explained.
+--    We should introduce an extra room that entirely relies on that mechanic, 
+--    so it does not feel out of place, when you discover it on Mother.
 --  TODO: Footstep variation for Mother/Guard bosses (depending on the distance traveled?)
 --  TODO: Footsteps for mother should be lower
 --  TODO: Restarting should be considered a turn
