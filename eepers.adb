@@ -1039,11 +1039,13 @@ procedure Eepers is
 
     Command_Queue: Command_Queue_Record;
     Any_Key_Pressed: Boolean := False;
+    Holding_Shift: Boolean := False;
 
     procedure Swallow_Player_Input is
     begin
         Command_Queue.Size := 0;
         Any_Key_Pressed := False;
+        Holding_Shift := False;
     end;
 
     procedure Game_Bombs_Turn(Game: in out Game_State) is
@@ -1378,9 +1380,7 @@ procedure Eepers is
                             Start_Of_Turn: constant Double := Get_Time;
                         begin
                             Game.Tutorial.Knows_How_To_Move := True;
-                            -- TODO: If you change the spriting key you will have too make changes in too many damn places.
-                            -- Centralize that somehow.
-                            if Is_Key_Down(KEY_LEFT_SHIFT) then
+                            if Holding_Shift then
                                 Game.Tutorial.Knows_How_To_Sprint := True;
                             end if;
 
@@ -1599,10 +1599,11 @@ begin
         Begin_Drawing;
             Clear_Background(Palette_RGB(COLOR_BACKGROUND));
 
+            Holding_Shift := Boolean(Is_Key_Down(KEY_LEFT_SHIFT)) or else Boolean(Is_Key_Down(KEY_RIGHT_SHIFT));
             if Game.Player.Dead then
                 Command_Queue.Size := 0;
             else
-                if (Boolean(Is_Key_Down(KEY_LEFT_SHIFT)) or else Boolean(Is_Key_Down(KEY_RIGHT_SHIFT))) and then Game.Turn_Animation <= 0.0 then
+                if Holding_Shift and then Game.Turn_Animation <= 0.0 then
                     if Is_Key_Down(KEY_A) or else Is_Key_Down(KEY_LEFT) then
                         Command_Queue.Size := 0;
                         Command_Enqueue(Command_Queue, (Kind => Command_Step, Dir => Left));
@@ -1637,7 +1638,7 @@ begin
                     Command_Enqueue(Command_Queue, (Kind => Command_Plant));
                 end if;
             end if;
-            if Boolean(Is_Key_Down(KEY_LEFT_SHIFT)) or else Boolean(Is_Key_Down(KEY_RIGHT_SHIFT)) then
+            if Holding_Shift then
                 TURN_DURATION_SECS := BASE_TURN_DURATION_SECS * 0.8;
             else
                 if Command_Queue.Size /= 0 then
@@ -1786,6 +1787,7 @@ begin
     Close_Window;
 end;
 
+--  TODO: Increase Bomb Slots item.
 --  TODO: Items in HUD may sometimes blend with the background
 --  TODO: Footstep variation for Mother/Guard bosses (depending on the distance traveled?)
 --  TODO: Footsteps for mother should be lower
@@ -1804,10 +1806,6 @@ end;
 --  TODO: Visual Clue that the Eeper is about to kill the Player when Completely outside of the Screen
 --    - Cooldown ball is shaking
 --  TODO: Cool animation for New Game
---  TODO: Tutorial
---    - Sign that says "WASD" to move when you start the game for the first time.
---    - And how to place the bomb on picking it up.
---    - How to sprint after you blow up firt Barricade.
 --  TODO: Count the player's turns towards the final score of the game
 --    We can even collect different stats, like bombs collected, bombs used,
 --    times died etc.
