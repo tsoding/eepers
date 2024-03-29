@@ -4,9 +4,9 @@
 - @cornishon - Sprint with Right Shift - https://github.com/tsoding/eepers/pull/18
 - @Eropi4 - MacOS build - https://github.com/tsoding/eepers/pull/13
 
-    Since I don't have a MacOS setup I'm not able to provide MacOS binaries.
-    So if you want to play on MacOS you will have to build the Game from the
-    Sour code yourself sorry.
+    Since I don't have a MacOS setup I'm not able to provide the MacOS binaries.
+    So if you want to play on MacOS you have to build the Game from the Sourc Code
+    yourself, sorry.
       - @rexim
 
 - @rexim - Increased Path Finding Limit. Now Bosses give up on chasing the Player if the distance is over 10 turns instead of just 4.
