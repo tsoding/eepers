@@ -150,7 +150,7 @@ procedure Eepers is
     EEPER_EXPLOSION_DAMAGE       : constant Float := 0.45;
     GUARD_TURN_REGENERATION      : constant Float := 0.01;
     BOMB_GENERATOR_COOLDOWN      : constant Integer := 10;
-    GUARD_STEPS_LIMIT            : constant Integer := 4;
+    GUARD_STEPS_LIMIT            : constant Integer := 10;
     GUARD_STEP_LENGTH_LIMIT      : constant Integer := 100;
     EXPLOSION_LENGTH             : constant Integer := 10;
     EYES_ANGULAR_VELOCITY        : constant Float := 10.0;

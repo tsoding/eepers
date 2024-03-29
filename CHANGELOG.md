@@ -9,6 +9,7 @@
     Sour code yourself sorry.
       - @rexim
 
+- @rexim - Increased Path Finding Limit. Now Bosses give up on chasing the Player if the distance is over 10 turns instead of just 4.
 - @rexim - Ported the Source Code to Ada 2012 making it accessible to more setups.
 - ...
 
