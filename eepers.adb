@@ -168,6 +168,7 @@ procedure Eepers is
     TUTORIAL_BOMB_WAIT_TIME_SECS : constant C_Float := 4.0;
     TUTORIAL_SPRINT_WAIT_TIME_SECS : constant C_Float := 15.0;
     POPUP_ANIMATION_DURATION : constant C_Float := 0.1;
+    RESTART_TIMEOUT_SECS : constant Double := 2.0;
 
     type IVector2 is record
         X, Y: Integer;
@@ -288,6 +289,7 @@ procedure Eepers is
         Bombs: Integer := 0;
         Bomb_Slots: Integer := 1;
         Dead: Boolean := False;
+        Death_Time: Double;
     end record;
 
     type Eeper_Kind is (Eeper_Guard, Eeper_Mother, Eeper_Gnome, Eeper_Father);
@@ -951,6 +953,12 @@ procedure Eepers is
         end;
     end;
 
+    procedure Kill_Player(Game: in out Game_State) is
+    begin
+        Game.Player.Dead := True;
+        Game.Player.Death_Time := Get_Time;
+    end;
+
     procedure Explode(Game: in out Game_State; Position: in IVector2) is
         procedure Explode_Line(Dir: Direction) is
             New_Position: IVector2 := Position;
@@ -965,7 +973,7 @@ procedure Eepers is
                        Game.Map(New_Position.Y, New_Position.X) := Cell_Explosion;
 
                        if New_Position = Game.Player.Position then
-                           Game.Player.Dead := True;
+                           Kill_Player(Game);
                        end if;
 
                        for Eeper of Game.Eepers loop
@@ -1058,13 +1066,11 @@ procedure Eepers is
     end;
 
     Command_Queue: Command_Queue_Record;
-    Any_Key_Pressed: Boolean := False;
     Holding_Shift: Boolean := False;
 
     procedure Swallow_Player_Input is
     begin
         Command_Queue.Size := 0;
-        Any_Key_Pressed := False;
         Holding_Shift := False;
     end;
 
@@ -1155,7 +1161,7 @@ procedure Eepers is
                         when Eeper_Guard | Eeper_Mother =>
                             Recompute_Path_For_Eeper(Game, Me, GUARD_STEPS_LIMIT, GUARD_STEP_LENGTH_LIMIT);
                             if Eeper.Path(Eeper.Position.Y, Eeper.Position.X) = 0 then
-                                Game.Player.Dead := True;
+                                Kill_Player(Game);
                                 Eeper.Eyes := Eyes_Surprised;
                             elsif Eeper.Path(Eeper.Position.Y, Eeper.Position.X) > 0 then
                                 if Eeper.Attack_Cooldown <= 0 then
@@ -1196,7 +1202,7 @@ procedure Eepers is
                                 Eeper.Eyes_Target := Game.Player.Position;
 
                                 if Inside_Of_Rect(Eeper.Position, Eeper.Size, Game.Player.Position) then
-                                    Game.Player.Dead := True;
+                                    Kill_Player(Game);
                                 end if;
                             else
                                 Eeper.Eyes := Eyes_Closed;
@@ -1375,7 +1381,7 @@ procedure Eepers is
                 Draw_Eyes(Screen_Player_Position(Game), Cell_Size, Game.Player.Eyes_Angle, Game.Player.Prev_Eyes, Game.Player.Eyes, Game.Turn_Animation);
             end if;
 
-            if Any_Key_Pressed then
+            if (Get_Time - Game.Player.Death_Time) > RESTART_TIMEOUT_SECS then
                 Game_Restore_Checkpoint(Game);
                 Game.Player.Dead := False;
             end if;
@@ -1676,11 +1682,6 @@ begin
                 end if;
             end if;
 
-            Any_Key_Pressed := False;
-            while not Any_Key_Pressed and then Get_Key_Pressed /= KEY_NULL loop
-                Any_Key_Pressed := True;
-            end loop;
-
             if DEVELOPMENT then
                 if Is_Key_Pressed(KEY_R) then
                     Load_Game_From_Image("assets/map.png", Game, Update_Player => False, Update_Camera => False);
@@ -1815,7 +1816,6 @@ begin
     Close_Window;
 end;
 
---  TODO: Restart is annoying. It's easy to accidentally hit restart after death.
 --  TODO: Items in HUD may sometimes blend with the background
 --  TODO: Different palettes on each NG+
 --  TODO: NG+ must make the Game harder while retaining the collected bomb slots

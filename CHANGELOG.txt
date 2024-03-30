@@ -1,6 +1,7 @@
 # Eepers v1.4
 
 - @rexim - Added items that extend the amount of bombs you can carry
+- @rexim - Do not restart on Any Key Press. Restart automatically after 2 seconds. 
 - ...
 
 # Eepers v1.3
