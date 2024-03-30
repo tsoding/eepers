@@ -1383,6 +1383,13 @@ procedure Eepers is
 
             if (Get_Time - Game.Player.Death_Time) > RESTART_TIMEOUT_SECS then
                 Game_Restore_Checkpoint(Game);
+                for Me in Eeper_Index loop
+                    for Y in Game.Eepers(Me).Path'Range(1) loop
+                        for X in Game.Eepers(Me).Path'Range(2) loop
+                            Game.Eepers(Me).Path(Y, X) := -1;
+                        end loop;
+                    end loop;
+                end loop;
                 Game.Player.Dead := False;
             end if;
 
