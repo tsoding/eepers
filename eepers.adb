@@ -1428,8 +1428,8 @@ procedure Eepers is
                             Game_Explosions_Turn(Game);
                             Game_Items_Turn(Game);
                             Game_Player_Turn(Game, C.Dir);
-                            Game_Eepers_Turn(Game);
                             Game_Bombs_Turn(Game);
+                            Game_Eepers_Turn(Game);
                             Game.Duration_Of_Last_Turn := Get_Time - Start_Of_Turn;
                         end;
                     when Command_Plant =>
@@ -1447,8 +1447,8 @@ procedure Eepers is
                                 Game.Player.Prev_Eyes := Game.Player.Eyes;
                                 Game.Player.Prev_Position := Game.Player.Position;
 
-                                Game_Eepers_Turn(Game);
                                 Game_Bombs_Turn(Game);
+                                Game_Eepers_Turn(Game);
 
                                 if Game.Player.Bombs > 0 then
                                     for Bomb of Game.Bombs loop
