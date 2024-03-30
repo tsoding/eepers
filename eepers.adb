@@ -36,6 +36,11 @@ procedure Eepers is
     Guard_Step_Sound: Sound;
     Popup_Show_Sound: Sound;
     Ambient_Music: Music;
+    Tutorial_Font: Font;
+    Death_Font: Font;
+
+    Tutorial_Font_Size: constant Int := 42;
+    Death_Font_Size: constant Int := 68;
 
     DEVELOPMENT : constant Boolean := False;
 
@@ -358,19 +363,13 @@ procedure Eepers is
 
         if Popup.Animation > 0.0 then
             declare
-                Label_Max_Height : constant C_Float := 28.0;
-                Label_Height: constant Integer := Integer(Label_Max_Height*Popup.Animation);
-                Label_Padding: constant C_Float := C_Float(Label_Height)*0.6;
-                Popup_Bottom_Margin: constant C_Float := C_Float(Label_Height);
-
-                Label_Width: constant Integer := Integer(Measure_Text(Popup.Label, Int(Label_Height)));
-                Label_Size: constant IVector2 := (Label_Width, Label_Height);
-                Popup_Size: constant Vector2 := To_Vector2(Label_Size) + (Label_Padding*2.0, Label_Padding*2.0);
-                Popup_Position: constant Vector2 := Start + Size*(0.5, 0.0) - Popup_Size*(0.5, 1.0) - (0.0, Popup_Bottom_Margin);
-                Label_Position: constant Vector2 := Popup_Position + Popup_Size*(0.5, 0.5) - To_Vector2(Label_Size)*(0.5, 0.5);
+                Font_Size: constant C_Float := C_Float(Tutorial_Font_Size)*Popup.Animation;
+                Popup_Bottom_Margin: constant C_Float := Font_Size*0.05;
+                Label_Size: constant Vector2 := Measure_Text_Ex(Tutorial_Font, Popup.Label, Font_Size, 0.0);
+                Label_Position: constant Vector2 := Start + Size*(0.5, 0.0) - Label_Size*(0.5, 1.0) - (0.0, Popup_Bottom_Margin);
             begin
-                Draw_Rectangle_V(Popup_Position, Popup_Size, Palette_RGB(COLOR_WALL));
-                Draw_Text(Popup.Label, Int(Label_Position.X), Int(Label_Position.Y), Int(Label_Height), Palette_RGB(COLOR_PLAYER));
+                Draw_Text_Ex(Tutorial_Font, Popup.Label, Label_Position + (-2.0, 2.0), Font_Size, 0.0, Palette_RGB(COLOR_WALL));
+                Draw_Text_Ex(Tutorial_Font, Popup.Label, Label_Position, Font_Size, 0.0, Palette_RGB(COLOR_PLAYER));
             end;
         end if;
     end;
@@ -1475,12 +1474,11 @@ procedure Eepers is
         if Game.Player.Dead then
             declare
                 Label: constant Char_Array := To_C("You Died!");
-                Label_Height: constant Integer := 48;
-                Label_Width: constant Integer := Integer(Measure_Text(Label, Int(Label_Height)));
-                Text_Size: constant Vector2 := To_Vector2((Label_Width, Label_Height));
+                Text_Size: constant Vector2 := Measure_Text_Ex(Death_Font, Label, C_Float(Death_Font_Size), 0.0);
                 Position: constant Vector2 := Screen_Size*0.5 - Text_Size*0.5;
             begin
-                Draw_Text(Label, Int(Position.X), Int(Position.Y), Int(Label_Height), Palette_RGB(COLOR_LABEL));
+                Draw_Text_Ex(Death_Font, Label, Position + (-2.0, 2.0), C_Float(Death_Font_Size), 0.0, Palette_RGB(COLOR_WALL));
+                Draw_Text_Ex(Death_Font, Label, Position, C_Float(Death_Font_Size), 0.0, Palette_RGB(COLOR_PLAYER));
             end;
         end if;
     end;
@@ -1585,6 +1583,10 @@ begin
     Guard_Step_Sound := Load_Sound(To_C("assets/sounds/guard-step.ogg"));   -- https://opengameart.org/content/fire-whip-hit-yo-frankie
     Plant_Bomb_Sound := Load_Sound(To_C("assets/sounds/plant-bomb.wav"));   -- https://opengameart.org/content/ui-soundpack-by-m1chiboi-bleeps-and-clicks
     Popup_Show_Sound := Load_Sound(To_C("assets/sounds/popup-show.wav"));   -- https://opengameart.org/content/ui-soundpack-by-m1chiboi-bleeps-and-clicks
+    Tutorial_Font := Load_Font_Ex(To_C("assets/fonts/Vollkorn/static/Vollkorn-Regular.ttf"), Tutorial_Font_Size, 0, 0);
+    Gen_Texture_Mipmaps(Tutorial_Font.Texture'Access);
+    Death_Font := Load_Font_Ex(To_C("assets/fonts/Vollkorn/static/Vollkorn-Regular.ttf"), Death_Font_Size, 0, 0);
+    Gen_Texture_Mipmaps(Death_Font.Texture'Access);
 
     Random_Integer.Reset(Gen);
     Load_Colors("assets/colors.txt");
@@ -1789,6 +1791,7 @@ end;
 
 --  TODO: Increase Bomb Slots item.
 --  TODO: Items in HUD may sometimes blend with the background
+--  TODO: Restart is annoying. It's easy to accidentally hit restart after death.
 --  TODO: The gnome blocking trick was never properly explained.
 --    We should introduce an extra room that entirely relies on that mechanic, 
 --    so it does not feel out of place, when you discover it on Mother.
@@ -1799,7 +1802,6 @@ end;
 --    Or maybe we should just save Path Maps too?
 --  TODO: If you are standing on the refilled bomb gen and place a bomb you should refill your bomb in that turn.
 --  TODO: Checkpoints should be circles (like all the items)
---  TODO: Custom font
 --  TODO: Mother should require several attacks before being "split"
 --  TODO: Enemies should attack on zero just like a bomb.
 --  TODO: Properly disablable DEV features

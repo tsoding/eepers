@@ -7,6 +7,8 @@ package Raylib is
     type Bool is new Boolean;
     pragma Convention (C, Bool);
 
+    type Addr is mod 2 ** Standard'Address_Size;
+
     procedure Init_Window(Width, Height: int; Title: in char_array)
         with
             Import => True,
@@ -164,6 +166,30 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "DrawText";
+    type Texture2D is record
+        Id: unsigned;
+        Width: int;
+        Height: int;
+        Mipmaps: int;
+        Format: int;
+    end record
+        with Convention => C_Pass_By_Copy;
+
+    type Font is record
+        Base_Size: int;
+        Glyph_Count: int;
+        Glyph_Padding: int;
+        Texture: aliased Texture2D;
+        Rects: Addr;
+        Glyph_Info: Addr;
+    end record
+        with Convention => C_Pass_By_Copy;
+
+    procedure Draw_Text_Ex(F: Font; Text: Char_Array; Position: Vector2; Font_Size: C_Float; Spacing: C_Float; Tint: Color)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "DrawTextEx";
     procedure Set_Target_FPS(Fps: int)
         with
             Import => True,
@@ -199,7 +225,6 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "GetTime";
-    type Addr is mod 2 ** Standard'Address_Size;
     type Image is record
         Data: Addr;
         Width: int;
@@ -333,4 +358,20 @@ package Raylib is
             Import => True,
             Convention => C,
             External_Name => "SetWindowIcon";
+
+    function Load_Font_Ex(File_Name: char_array; Font_Size: int; Codepoints: Addr; Codepoint_Count: Integer) return Font
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "LoadFontEx";
+    function Measure_Text_Ex(F: Font; Text: Char_Array; Font_Size: C_Float; Spacing: C_Float) return Vector2
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "MeasureTextEx";
+    procedure Gen_Texture_Mipmaps(T: access Texture2D)
+        with
+            Import => True,
+            Convention => C,
+            External_Name => "GenTextureMipmaps";
 end Raylib;

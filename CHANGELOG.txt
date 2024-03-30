@@ -10,6 +10,7 @@
       - @rexim
 
 - @rexim - Increased Path Finding Limit. Now Bosses give up on chasing the Player if the distance is over 10 turns instead of just 4. - https://github.com/tsoding/eepers/issues/16
+- @rexim - Custom font for "You Died!" sign (Vollkorn)
 - ...
 
 # Eepers v1.2
