@@ -1,6 +1,6 @@
 *.ali
 *.o
-eepers
+eepers-linux
 eepers.exe
 test
 test.exe
