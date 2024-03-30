@@ -73,6 +73,11 @@ procedure Eepers is
         return Color_From_HSV(H, S, V);
     end;
 
+    procedure Increment(X: in out Integer) is
+    begin
+        X := X + 1;
+    end;
+
     Palette_RGB: array (Palette) of Color := (others => (A => 255, others => 0));
     Palette_HSV: array (Palette) of HSV := (others => (others => 0));
 
@@ -220,7 +225,12 @@ procedure Eepers is
         return (A.X*S, A.Y*S);
     end;
 
-    type Item_Kind is (Item_None, Item_Key, Item_Bomb_Gen, Item_Checkpoint);
+    type Item_Kind is (
+      Item_None,
+      Item_Key,
+      Item_Bomb_Refill,
+      Item_Checkpoint,
+      Item_Bomb_Slot);
     type Item is record
         Kind: Item_Kind := Item_None;
         Position: IVector2;
@@ -306,7 +316,7 @@ procedure Eepers is
 
     type Bomb_State_Array is array (1..10) of Bomb_State;
 
-    type Eeper_Index is range 1..15;
+    type Eeper_Index is range 1..30;
     type Eeper_Array is array (Eeper_Index) of Eeper_State;
 
     type Checkpoint_State is record
@@ -645,25 +655,27 @@ procedure Eepers is
       Level_Wall,
       Level_Door,
       Level_Checkpoint,
-      Level_Bomb_Gen,
+      Level_Bomb_Refill,
       Level_Barricade,
       Level_Key,
       Level_Player,
-      Level_Father);
+      Level_Father,
+      Level_Bomb_Slot);
     Level_Cell_Color: constant array (Level_Cell) of Color := (
-      Level_None       => Get_Color(16#00000000#),
-      Level_Gnome      => Get_Color(16#FF9600FF#),
-      Level_Mother     => Get_Color(16#96FF00FF#),
-      Level_Guard      => Get_Color(16#00FF00FF#),
-      Level_Floor      => Get_Color(16#FFFFFFFF#),
-      Level_Wall       => Get_Color(16#000000FF#),
-      Level_Door       => Get_Color(16#00FFFFFF#),
-      Level_Checkpoint => Get_Color(16#FF00FFFF#),
-      Level_Bomb_Gen   => Get_Color(16#FF0000FF#),
-      Level_Barricade  => Get_Color(16#FF0096FF#),
-      Level_Key        => Get_Color(16#FFFF00FF#),
-      Level_Player     => Get_Color(16#0000FFFF#),
-      Level_Father     => Get_Color(16#265FDAFF#));
+      Level_None        => Get_Color(16#00000000#),
+      Level_Gnome       => Get_Color(16#FF9600FF#),
+      Level_Mother      => Get_Color(16#96FF00FF#),
+      Level_Guard       => Get_Color(16#00FF00FF#),
+      Level_Floor       => Get_Color(16#FFFFFFFF#),
+      Level_Wall        => Get_Color(16#000000FF#),
+      Level_Door        => Get_Color(16#00FFFFFF#),
+      Level_Checkpoint  => Get_Color(16#FF00FFFF#),
+      Level_Bomb_Refill => Get_Color(16#FF0000FF#),
+      Level_Barricade   => Get_Color(16#FF0096FF#),
+      Level_Key         => Get_Color(16#FFFF00FF#),
+      Level_Player      => Get_Color(16#0000FFFF#),
+      Level_Father      => Get_Color(16#265FDAFF#),
+      Level_Bomb_Slot   => Get_Color(16#BC5353FF#));
 
     function Cell_By_Color(Col: Color; Out_Cel: out Level_Cell) return Boolean is
     begin
@@ -751,9 +763,12 @@ procedure Eepers is
                             when Level_Checkpoint =>
                                 Game.Map(Row, Column) := Cell_Floor;
                                 Allocate_Item(Game, (Column, Row), Item_Checkpoint);
-                            when Level_Bomb_Gen =>
+                            when Level_Bomb_Refill =>
                                 Game.Map(Row, Column) := Cell_Floor;
-                                Allocate_Item(Game, (Column, Row), Item_Bomb_Gen);
+                                Allocate_Item(Game, (Column, Row), Item_Bomb_Refill);
+                            when Level_Bomb_Slot =>
+                                Game.Map(Row, Column) := Cell_Floor;
+                                Allocate_Item(Game, (Column, Row), Item_Bomb_Slot);
                             when Level_Barricade =>
                                 Game.Map(Row, Column) := Cell_Barricade;
                             when Level_Key =>
@@ -833,13 +848,15 @@ procedure Eepers is
                     begin
                         Draw_Rectangle_V(To_Vector2(Item.Position)*Cell_Size + Cell_Size*0.5 - Checkpoint_Item_Size*0.5, Checkpoint_Item_Size, Palette_RGB(COLOR_CHECKPOINT));
                     end;
-                when Item_Bomb_Gen =>
+                when Item_Bomb_Refill =>
                     if Item.Cooldown > 0 then
                         Draw_Bomb(Item.Position, Color_Brightness(Palette_RGB(COLOR_BOMB), -0.5));
                         Draw_Number(Item.Position, Item.Cooldown, Palette_RGB(COLOR_LABEL));
                     else
                         Draw_Bomb(Item.Position, Palette_RGB(COLOR_BOMB));
                     end if;
+                when Item_Bomb_Slot =>
+                    Draw_Bomb(Item.Position, Palette_RGB(COLOR_DOORKEY));
             end case;
         end loop;
     end;
@@ -901,7 +918,7 @@ procedure Eepers is
                                     Game.Player.Keys := Game.Player.Keys + 1;
                                     Item.Kind := Item_None;
                                     Play_Sound(Key_Pickup_Sound);
-                                when Item_Bomb_Gen => if
+                                when Item_Bomb_Refill => if
                                     Game.Player.Bombs < Game.Player.Bomb_Slots
                                     and then Item.Cooldown <= 0
                                 then
@@ -909,6 +926,10 @@ procedure Eepers is
                                     Item.Cooldown := BOMB_GENERATOR_COOLDOWN;
                                     Play_Sound(Bomb_Pickup_Sound);
                                 end if;
+                                when Item_Bomb_Slot =>
+                                    Item.Kind := Item_None;
+                                    Increment(Game.Player.Bomb_Slots);
+                                    Game.Player.Bombs := Game.Player.Bomb_Slots;
                                 when Item_Checkpoint =>
                                     Item.Kind := Item_None;
                                     Game.Player.Bombs := Game.Player.Bomb_Slots;
@@ -1230,7 +1251,7 @@ procedure Eepers is
     procedure Game_Items_Turn(Game: in out Game_State) is
     begin
         for Item of Game.Items loop
-            if Item.Kind = Item_Bomb_Gen then
+            if Item.Kind = Item_Bomb_Refill then
                 if Item.Cooldown > 0 then
                     Item.Cooldown := Item.Cooldown - 1;
                 end if;
@@ -1463,11 +1484,16 @@ procedure Eepers is
             end;
         end loop;
 
-        for Index in 1..Game.Player.Bombs loop
+        for Index in 1..Game.Player.Bomb_Slots loop
             declare
-                Position: constant Vector2 := (100.0 + C_float(Index - 1)*Cell_Size.X, 200.0);
+                Padding: constant C_Float := Cell_Size.X*0.5;
+                Position: constant Vector2 := (100.0 + C_float(Index - 1)*(Cell_Size.X + Padding), 200.0);
             begin
-                Draw_Circle_V(Position, Cell_Size.X*0.5, Palette_RGB(COLOR_BOMB));
+                if Index <= Game.Player.Bombs then
+                    Draw_Circle_V(Position, Cell_Size.X*0.5, Palette_RGB(COLOR_BOMB));
+                else
+                    Draw_Circle_V(Position, Cell_Size.X*0.5, Color_Brightness(Palette_RGB(COLOR_BOMB), -0.5));
+                end if;
             end;
         end loop;
 
@@ -1546,7 +1572,7 @@ procedure Eepers is
     end;
 
     Game: Game_State;
-    Title: constant Char_Array := To_C("Eepers (v1.3)");
+    Title: constant Char_Array := To_C("Eepers (v1.4)");
 
     Palette_Editor: Boolean := False;
     Palette_Editor_Choice: Palette := Palette'First;
@@ -1789,12 +1815,14 @@ begin
     Close_Window;
 end;
 
---  TODO: Increase Bomb Slots item.
---  TODO: Items in HUD may sometimes blend with the background
 --  TODO: Restart is annoying. It's easy to accidentally hit restart after death.
+--  TODO: Items in HUD may sometimes blend with the background
+--  TODO: Different palettes on each NG+
+--  TODO: NG+ must make the Game harder while retaining the collected bomb slots
 --  TODO: The gnome blocking trick was never properly explained.
 --    We should introduce an extra room that entirely relies on that mechanic,
 --    so it does not feel out of place, when you discover it on Mother.
+--  TODO: The puzzle with Gnome blocking Guard repeated twice (which sucks)
 --  TODO: Footstep variation for Mother/Guard bosses (depending on the distance traveled?)
 --  TODO: Footsteps for mother should be lower
 --  TODO: Restarting should be considered a turn
@@ -1816,8 +1844,6 @@ end;
 --    times died etc.
 --  TODO: Animate key when you pick it up
 --    Smoothly move it into the HUD.
---  TODO: Different palettes depending on the area
---    Or maybe different palette for each NG+
 --  TODO: Particles
 --    - Player Death animation
 --    - Eeper Death animation

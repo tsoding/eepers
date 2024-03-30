@@ -1,3 +1,8 @@
+# Eepers v1.4
+
+- @rexim - Added items that extend the amount of bombs you can carry
+- ...
+
 # Eepers v1.3
 
 - @rexim - Implemented a Basic Tutorial that explains how to play the Game.
