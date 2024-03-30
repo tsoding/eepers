@@ -1546,7 +1546,7 @@ procedure Eepers is
     end;
 
     Game: Game_State;
-    Title: constant Char_Array := To_C("Eepers (v1.2)");
+    Title: constant Char_Array := To_C("Eepers (v1.3)");
 
     Palette_Editor: Boolean := False;
     Palette_Editor_Choice: Palette := Palette'First;
@@ -1793,7 +1793,7 @@ end;
 --  TODO: Items in HUD may sometimes blend with the background
 --  TODO: Restart is annoying. It's easy to accidentally hit restart after death.
 --  TODO: The gnome blocking trick was never properly explained.
---    We should introduce an extra room that entirely relies on that mechanic, 
+--    We should introduce an extra room that entirely relies on that mechanic,
 --    so it does not feel out of place, when you discover it on Mother.
 --  TODO: Footstep variation for Mother/Guard bosses (depending on the distance traveled?)
 --  TODO: Footsteps for mother should be lower
