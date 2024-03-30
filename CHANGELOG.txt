@@ -2,6 +2,7 @@
 
 - @rexim - Added items that extend the amount of bombs you can carry
 - @rexim - Do not restart on Any Key Press. Restart automatically after 2 seconds. 
+- @ProgKea - Fix the Boss killing the Player on the same turn as it does - https://github.com/tsoding/eepers/pull/24
 - ...
 
 # Eepers v1.3
@@ -11,7 +12,7 @@
 - @Eropi4 - MacOS build - https://github.com/tsoding/eepers/pull/13
 
 > Since I don't have a MacOS setup I'm not able to provide the MacOS binaries.
-> So if you want to play on MacOS you have to build the Game from the Sourc Code
+> So if you want to play on MacOS you have to build the Game from the Source Code
 > yourself, sorry.
 >   - @rexim
 
