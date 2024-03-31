@@ -410,7 +410,11 @@ procedure Eepers is
 
         Items: Item_Array;
         Bombs: Bomb_State_Array;
-        Camera_Position: Vector2 := (x => 0.0, y => 0.0);
+        Camera: Camera2D := (
+          offset => (x => 0.0, y => 0.0),
+          target => (x => 0.0, y => 0.0),
+          rotation => 0.0,
+          zoom => 1.0);
 
         Tutorial: Tutorial_State;
         Checkpoint: Checkpoint_State;
@@ -755,7 +759,8 @@ procedure Eepers is
                                 Game.Map(Row, Column) := Cell_Floor;
                             when Level_Father =>
                                 if Update_Camera then
-                                    Game.Camera_Position := Screen_Size*0.5 - (To_Vector2((Column, Row))*Cell_Size + To_Vector2((7, 7))*Cell_Size*0.5);
+                                    Game.Camera.target := (To_Vector2((Column, Row)) + To_Vector2((7, 7))*0.5) * Cell_Size;
+                                    Game.Camera.offset := Screen_Size*0.5 - Cell_Size*0.5;
                                 end if;
                                 Spawn_Father(Game, (Column, Row));
                                 Game.Map(Row, Column) := Cell_Floor;
@@ -1006,20 +1011,13 @@ procedure Eepers is
     );
 
     procedure Game_Update_Camera(Game: in out Game_State) is
-        Camera_Target: constant Vector2 :=
-          Screen_Size*0.5 - To_Vector2(Game.Player.Position)*Cell_Size - Cell_Size*0.5;
-        Camera_Velocity: constant Vector2 := (Camera_Target - Game.Camera_Position)*2.0;
+        Camera_Target: constant Vector2 := To_Vector2(Game.Player.Position)*Cell_Size;
+        Camera_Offset: constant Vector2 := Screen_Size*0.5 - Cell_Size*0.5;
+        Camera_Velocity: constant Vector2 := (Camera_Target - Game.Camera.target)*2.0;
     begin
-        Game.Camera_Position := Game.Camera_Position + Camera_Velocity*Get_Frame_Time;
-    end;
-
-    function Game_Camera(Game: in Game_State) return Camera2D is
-    begin
-        return (
-          offset => Game.Camera_Position,
-          target => (x => 0.0, y => 0.0),
-          rotation => 0.0,
-          zoom => 1.0);
+        Game.Camera.offset := Camera_Offset;
+        Game.Camera.target := Game.Camera.target + Camera_Velocity*Get_Frame_Time;
+        Game.Camera.zoom := C_Float'Max(Screen_Size.x/1920.0, Screen_Size.y/1080.0);
     end;
 
     function Interpolate_Positions(IPrev_Position, IPosition: IVector2; T: Float) return Vector2 is
@@ -1752,7 +1750,7 @@ begin
             end if;
 
             Game_Update_Camera(Game);
-            Begin_Mode2D(Game_Camera(Game));
+            Begin_Mode2D(Game.Camera);
                 Game_Cells(Game);
                 Game_Items(Game);
                 Game_Player(Game);
