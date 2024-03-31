@@ -2,7 +2,8 @@
 
 - @rexim - Added items that extend the amount of bombs you can carry
 - @rexim - Do not restart on Any Key Press. Restart automatically after 2 seconds. 
-- @ProgKea - Fix the Boss killing the Player on the same turn as it does - https://github.com/tsoding/eepers/pull/24
+- @ProgKea - Fix the Boss killing the Player on the same turn as it dies - https://github.com/tsoding/eepers/pull/24
+- @slukovic - Camera adjusts its zoom on bigger screen - https://github.com/tsoding/eepers/pull/27
 - ...
 
 # Eepers v1.3
