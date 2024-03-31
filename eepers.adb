@@ -73,9 +73,24 @@ procedure Eepers is
         return Color_From_HSV(H, S, V);
     end;
 
-    procedure Increment(X: in out Integer) is
+    procedure Inc(X: in out Integer; Offset: Integer := 1) is
     begin
-        X := X + 1;
+        X := X + Offset;
+    end;
+
+    procedure Dec(X: in out Integer; Offset: Integer := 1) is
+    begin
+        X := X - Offset;
+    end;
+
+    procedure Inc(X: in out Byte; Offset: Byte := 1) is
+    begin
+        X := X + Offset;
+    end;
+
+    procedure Dec(X: in out Byte; Offset: Byte := 1) is
+    begin
+        X := X - Offset;
     end;
 
     Palette_RGB: array (Palette) of Color := (others => (A => 255, others => 0));
@@ -103,7 +118,7 @@ procedure Eepers is
     begin
         Open(F, In_File, File_Name);
         while not End_Of_File(F) loop
-            Line_Number := Line_Number + 1;
+            Inc(Line_Number);
             declare
                 Line: Unbounded_String := To_Unbounded_String(Get_Line(F));
 
@@ -917,20 +932,20 @@ procedure Eepers is
                             case Item.Kind is
                                 when Item_None => null;
                                 when Item_Key =>
-                                    Game.Player.Keys := Game.Player.Keys + 1;
+                                    Inc(Game.Player.Keys);
                                     Item.Kind := Item_None;
                                     Play_Sound(Key_Pickup_Sound);
                                 when Item_Bomb_Refill => if
                                     Game.Player.Bombs < Game.Player.Bomb_Slots
                                     and then Item.Cooldown <= 0
                                 then
-                                    Game.Player.Bombs := Game.Player.Bombs + 1;
+                                    Inc(Game.Player.Bombs);
                                     Item.Cooldown := BOMB_GENERATOR_COOLDOWN;
                                     Play_Sound(Bomb_Pickup_Sound);
                                 end if;
                                 when Item_Bomb_Slot =>
                                     Item.Kind := Item_None;
-                                    Increment(Game.Player.Bomb_Slots);
+                                    Inc(Game.Player.Bomb_Slots);
                                     Game.Player.Bombs := Game.Player.Bomb_Slots;
                                 when Item_Checkpoint =>
                                     Item.Kind := Item_None;
@@ -942,7 +957,7 @@ procedure Eepers is
                     end loop;
                 when Cell_Door =>
                     if Game.Player.Keys > 0 then
-                        Game.Player.Keys := Game.Player.Keys - 1;
+                        Dec(Game.Player.Keys);
                         Flood_Fill(Game, New_Position, Cell_Floor);
                         Game.Player.Position := New_Position;
                         Play_Sound(Open_Door_Sound);
@@ -1048,7 +1063,7 @@ procedure Eepers is
     begin
         Q.Items((Q.Start + Q.Size) mod Command_Capacity) := C;
         if Q.Size < Command_Capacity then
-            Q.Size := Q.Size + 1;
+            Inc(Q.Size);
         else
             Q.Start := (Q.Start + 1) mod Command_Capacity;
         end if;
@@ -1060,7 +1075,7 @@ procedure Eepers is
             return False;
         end if;
         C := Q.Items(Q.Start);
-        Q.Size := Q.Size - 1;
+        Dec(Q.Size);
         Q.Start := (Q.Start + 1) mod Command_Capacity;
         return True;
     end;
@@ -1081,7 +1096,7 @@ procedure Eepers is
         end loop;
         for Bomb of Game.Bombs loop
             if Bomb.Countdown > 0 then
-                Bomb.Countdown := Bomb.Countdown - 1;
+                Dec(Bomb.Countdown);
                 if Bomb.Countdown <= 0 then
                     Play_Sound(Blast_Sound);
                     Explode(Game, Bomb.Position);
@@ -1178,7 +1193,7 @@ procedure Eepers is
                                                     Position := Position + Direction_Vector(Dir);
                                                     if Within_Map(Game, Position) and then Eeper.Path(Position.Y, Position.X) = Current - 1 then
                                                         Available_Positions(Count) := Position;
-                                                        Count := Count + 1;
+                                                        Inc(Count);
                                                         exit;
                                                     end if;
                                                 end loop;
@@ -1191,7 +1206,7 @@ procedure Eepers is
                                     end;
                                     Eeper.Attack_Cooldown := GUARD_ATTACK_COOLDOWN;
                                 else
-                                    Eeper.Attack_Cooldown := Eeper.Attack_Cooldown - 1;
+                                    Dec(Eeper.Attack_Cooldown);
                                 end if;
 
                                 if Eeper.Path(Eeper.Position.Y, Eeper.Position.X) = 1 then
@@ -1232,7 +1247,7 @@ procedure Eepers is
                                                     and then Eeper.Path(New_Position.Y, New_Position.X) > Eeper.Path(Position.Y, Position.X)
                                                 then
                                                     Available_Positions(Count) := New_Position;
-                                                    Count := Count + 1;
+                                                    Inc(Count);
                                                 end if;
                                             end;
                                         end loop;
@@ -1259,7 +1274,7 @@ procedure Eepers is
         for Item of Game.Items loop
             if Item.Kind = Item_Bomb_Refill then
                 if Item.Cooldown > 0 then
-                    Item.Cooldown := Item.Cooldown - 1;
+                    Dec(Item.Cooldown);
                 end if;
             end if;
         end loop;
@@ -1416,9 +1431,9 @@ procedure Eepers is
                                     Delta_Timestamp: constant Double := Step_Timestamp - Game.Tutorial.Prev_Step_Timestamp;
                                 begin
                                     if Delta_Timestamp < 0.2 Then
-                                        Game.Tutorial.Hurry_Count := Game.Tutorial.Hurry_Count + 1;
+                                        Inc(Game.Tutorial.Hurry_Count);
                                     elsif Game.Tutorial.Hurry_Count > 0 then
-                                        Game.Tutorial.Hurry_Count := Game.Tutorial.Hurry_Count - 1;
+                                        Dec(Game.Tutorial.Hurry_Count);
                                     end if;
                                     Game.Tutorial.Prev_Step_Timestamp := Step_Timestamp;
                                 end;
@@ -1458,7 +1473,7 @@ procedure Eepers is
                                             exit;
                                         end if;
                                     end loop;
-                                    Game.Player.Bombs := Game.Player.Bombs - 1;
+                                    Dec(Game.Player.Bombs);
                                     Play_Sound(Plant_Bomb_Sound);
                                 end if;
 
@@ -1713,12 +1728,12 @@ begin
                         end if;
 
                         if Is_Key_Down(Keys(Up)) then
-                            Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) := Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) + 1;
+                            Inc(Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component));
                             Palette_RGB(Palette_Editor_Choice) := HSV_To_RGB(Palette_HSV(Palette_Editor_Choice));
                         end if;
 
                         if Is_Key_Down(Keys(Down)) then
-                            Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) := Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component) - 1;
+                            Dec(Palette_HSV(Palette_Editor_Choice)(Palette_Editor_Component));
                             Palette_RGB(Palette_Editor_Choice) := HSV_To_RGB(Palette_HSV(Palette_Editor_Choice));
                         end if;
                     else
