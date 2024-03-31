@@ -1017,6 +1017,10 @@ procedure Eepers is
     begin
         Game.Camera.offset := Camera_Offset;
         Game.Camera.target := Game.Camera.target + Camera_Velocity*Get_Frame_Time;
+        --  TODO: animate zoom similarly to Game.Camera.target
+        --    So it looks cool when you resize the game in the window mode.
+        --  TODO: The tutorial signs look gross on bigger screens.
+        --    We need to do something with the fonts
         Game.Camera.zoom := C_Float'Max(Screen_Size.x/1920.0, Screen_Size.y/1080.0);
     end;
 
