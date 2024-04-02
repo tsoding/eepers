@@ -201,6 +201,15 @@ procedure Eepers is
     type Map_Access is access Map;
     procedure Delete_Map is new Ada.Unchecked_Deallocation(Map, Map_Access);
 
+    procedure Reset_Path_Map(Path: Path_Map_Access) is
+    begin
+        for Y in Path'Range(1) loop
+            for X in Path'Range(2) loop
+                Path(Y, X) := -1;
+            end loop;
+        end loop;
+    end;
+
     function "<="(A, B: IVector2) return Boolean is
     begin
         return A.X <= B.X and then A.Y <= B.Y;
@@ -478,11 +487,7 @@ procedure Eepers is
         Q: Queue.Vector;
         Eeper: Eeper_State renames Game.Eepers(Me);
     begin
-        for Y in Eeper.Path'Range(1) loop
-            for X in Eeper.Path'Range(2) loop
-                Eeper.Path(Y, X) := -1;
-            end loop;
-        end loop;
+        Reset_Path_Map(Eeper.Path);
 
         for Dy in 0..Eeper.Size.Y-1 loop
             for Dx in 0..Eeper.Size.X-1 loop
@@ -1384,11 +1389,7 @@ procedure Eepers is
             if (Get_Time - Game.Player.Death_Time) > RESTART_TIMEOUT_SECS then
                 Game_Restore_Checkpoint(Game);
                 for Me in Eeper_Index loop
-                    for Y in Game.Eepers(Me).Path'Range(1) loop
-                        for X in Game.Eepers(Me).Path'Range(2) loop
-                            Game.Eepers(Me).Path(Y, X) := -1;
-                        end loop;
-                    end loop;
+                    Reset_Path_Map(Game.Eepers(Me).Path);
                 end loop;
                 Game.Player.Dead := False;
             end if;
