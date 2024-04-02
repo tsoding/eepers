@@ -1840,6 +1840,7 @@ begin
     Close_Window;
 end;
 
+--  TODO: Cringing on damage mechanic broke
 --  TODO: Items in HUD may sometimes blend with the background
 --  TODO: Different palettes on each NG+
 --  TODO: NG+ must make the Game harder while retaining the collected bomb slots
