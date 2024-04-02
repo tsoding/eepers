@@ -1029,6 +1029,8 @@ procedure Eepers is
         Camera_Target: constant Vector2 := To_Vector2(Game.Player.Position)*Cell_Size;
         Camera_Offset: constant Vector2 := Screen_Size*0.5 - Cell_Size*0.5;
         Camera_Velocity: constant Vector2 := (Camera_Target - Game.Camera.target)*2.0;
+	-- set the zoom level to the ratio of the current and the reference screen size (FHD) and round it to the first decimal 
+        Camera_Zoom: constant C_Float := C_Float'Rounding(C_Float'Max(Screen_Size.x/1920.0, Screen_Size.y/1080.0) * 10.0) / 10.0;
     begin
         Game.Camera.offset := Camera_Offset;
         Game.Camera.target := Game.Camera.target + Camera_Velocity*Get_Frame_Time;
@@ -1036,7 +1038,7 @@ procedure Eepers is
         --    So it looks cool when you resize the game in the window mode.
         --  TODO: The tutorial signs look gross on bigger screens.
         --    We need to do something with the fonts
-        Game.Camera.zoom := C_Float'Max(Screen_Size.x/1920.0, Screen_Size.y/1080.0);
+        Game.Camera.zoom := Camera_Zoom;
     end;
 
     function Interpolate_Positions(IPrev_Position, IPosition: IVector2; T: Float) return Vector2 is
