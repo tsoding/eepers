@@ -5,6 +5,7 @@
 - @ProgKea - Fix the Boss killing the Player on the same turn as it dies - https://github.com/tsoding/eepers/pull/24
 - @slukovic - Camera adjusts its zoom on bigger screen - https://github.com/tsoding/eepers/pull/27
 - @ProgKea - Fix the Guard having 11 turns after player died once - https://github.com/tsoding/eepers/pull/25
+- @M0x1m - Fix window icon loading on Windows - https://github.com/tsoding/eepers/pull/33
 - ...
 
 # Eepers v1.3
