@@ -1614,7 +1614,7 @@ begin
         Put_Line("WARNING: Could not change working directory to the application directory");
     end if;
 
-    Icon := Load_Image("assets/icon.png");
+    Icon := Load_Image(To_C("assets/icon.png"));
 
     Set_Config_Flags(FLAG_WINDOW_RESIZABLE);
     Init_Window(1600, 900, Title);
